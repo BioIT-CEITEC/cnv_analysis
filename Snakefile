@@ -29,7 +29,6 @@ reference_directory = os.path.join(GLOBAL_REF_PATH,config["organism"],config["re
 
 # ####################################
 # # VARIALBES FROM CONFIG
-used_SV_callers = []
 used_CNV_callers = []
 if config["use_gatk_cnv"]:
     used_CNV_callers.append("gatk_cnv")
@@ -39,12 +38,12 @@ if config["use_jabCoNtool"]:
     used_CNV_callers.append("jabCoNtool")
 if config["use_control_freec"]:
     used_CNV_callers.append("control_freec")
-if config["use_cnmops"]:
-    used_SV_callers.append("cnmops")
-if config["use_panel_cnmops"]:
-    used_SV_callers.append("panel_cnmops")
-if config["use_exome_depth"]:
-    used_SV_callers.append("exome_depth")
+# if config["use_cnmops"]:
+#     used_SV_callers.append("cnmops")
+# if config["use_panel_cnmops"]:
+#     used_SV_callers.append("panel_cnmops")
+# if config["use_exome_depth"]:
+#     used_SV_callers.append("exome_depth")
 
 
 wildcard_constraints:
