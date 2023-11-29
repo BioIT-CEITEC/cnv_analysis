@@ -1,8 +1,8 @@
 {
   "workflow_description": {
-    "name":"structural_var_call",
+    "name":"cnv_analysis",
     "version": 1.0,
-    "label":"Structural variant calling 3",
+    "label":"CNV analysis",
     "type":"var_call",
     "run_parameters": {
       "cpu": 31,
