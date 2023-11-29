@@ -39,10 +39,12 @@ if config["use_jabCoNtool"]:
     used_CNV_callers.append("jabCoNtool")
 if config["use_control_freec"]:
     used_CNV_callers.append("control_freec")
-if config["use_manta"]:
-    used_SV_callers.append("manta")
-if config["use_gridss"]:
-    used_SV_callers.append("gridss")
+if config["use_cnmops"]:
+    used_SV_callers.append("cnmops")
+if config["use_panel_cnmops"]:
+    used_SV_callers.append("panel_cnmops")
+if config["use_exome_depth"]:
+    used_SV_callers.append("exome_depth")
 
 
 wildcard_constraints:
@@ -55,13 +57,9 @@ include: "rules/cnvkit.smk"
 include: "rules/gatk_cnv.smk"
 include: "rules/jabCoNtool.smk"
 include: "rules/control_freec.smk"
-include: "rules/manta.smk"
-include: "rules/delly.smk"
-# include: "rules/gridss.smk"
-include: "rules/svdb.smk"
 include: "rules/variant_postprocessing.smk"
 include: "rules/common_prep.smk"
-# include: "rules/vep.smk"
+
 
 
 
@@ -69,7 +67,7 @@ include: "rules/common_prep.smk"
 # RULE ALL
 def all_inputs(wildcards):
     input_dict = {}
-    input_dict["final_report"] = "reports/final_SV_report.html",
+    input_dict["final_report"] = "CNV_varcalls/final_CNV_visualization.html",
     if config["create_cohort_data"] == True:
         input_dict["cohort_data_update_tag"] = "cohort_data/cohort_data_updated"
     return input_dict

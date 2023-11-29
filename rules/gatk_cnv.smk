@@ -5,7 +5,7 @@ rule gatk_cnv_collect_allelic_counts:
         interval=expand("{ref_dir}/other/snp/{lib_ROI}/{lib_ROI}_snps.bed",ref_dir=reference_directory,lib_ROI=config["lib_ROI"])[0],
         ref=expand("{ref_dir}/seq/{ref_name}.fa",ref_dir=reference_directory,ref_name=config["reference"])[0],
     output:
-        "structural_varcalls/{sample_name}/gatk_cnv/{tumor_normal}_clean.allelicCounts.tsv",
+        "CNV_varcalls/{sample_name}/gatk_cnv/{tumor_normal}_clean.allelicCounts.tsv",
     params:
         extra="",
     log:
@@ -27,7 +27,7 @@ rule gatk_cnv_collect_read_counts:
         bam=get_bam_input,
         interval=expand("{ref_dir}/intervals/{lib_ROI}/{lib_ROI}.bed",ref_dir=reference_directory,lib_ROI=config["lib_ROI"])[0]
     output:
-        "structural_varcalls/{sample_name}/gatk_cnv/{tumor_normal}_read_counts.hdf5",
+        "CNV_varcalls/{sample_name}/gatk_cnv/{tumor_normal}_read_counts.hdf5",
     params:
         mergingRule="OVERLAPPING_ONLY",
         extra="",
@@ -47,17 +47,17 @@ rule gatk_cnv_collect_read_counts:
 
 def normal_read_counts_input(wildcards):
     if config["calling_type"] == "tumor_normal":
-        return expand("structural_varcalls/{sample_name}/gatk_cnv/normal_read_counts.hdf5",sample_name=sample_tab.loc[
+        return expand("CNV_varcalls/{sample_name}/gatk_cnv/normal_read_counts.hdf5",sample_name=sample_tab.loc[
                 sample_tab.tumor_normal == "normal", "donor"].tolist())
     else:
-        return expand("structural_varcalls/{sample_name}/gatk_cnv/tumor_read_counts.hdf5",sample_name=sample_tab.sample_name.tolist())
+        return expand("CNV_varcalls/{sample_name}/gatk_cnv/tumor_read_counts.hdf5",sample_name=sample_tab.sample_name.tolist())
 
 
 rule gatk_create_panel_of_normals:
     input:
         germinal_read_counts = normal_read_counts_input,
     output:
-        hdf5PoN="structural_varcalls/all_samples/gatk_cnv/panel_of_normals.hdf5"
+        hdf5PoN="CNV_varcalls/all_samples/gatk_cnv/panel_of_normals.hdf5"
     log:
         "logs/all_samples/gatk_cnv/create_panel_of_normals.log",
     threads: 8
@@ -70,11 +70,11 @@ rule gatk_create_panel_of_normals:
 
 rule gatk_cnv_denoise_read_counts:
     input:
-        hdf5PoN="structural_varcalls/all_samples/gatk_cnv/panel_of_normals.hdf5",
-        hdf5Tumor="structural_varcalls/{sample_name}/gatk_cnv/tumor_read_counts.hdf5",
+        hdf5PoN="CNV_varcalls/all_samples/gatk_cnv/panel_of_normals.hdf5",
+        hdf5Tumor="CNV_varcalls/{sample_name}/gatk_cnv/tumor_read_counts.hdf5",
     output:
-        denoisedCopyRatio="structural_varcalls/{sample_name}/gatk_cnv/clean.denoisedCR.tsv",
-        stdCopyRatio="structural_varcalls/{sample_name}/gatk_cnv/clean.standardizedCR.tsv",
+        denoisedCopyRatio="CNV_varcalls/{sample_name}/gatk_cnv/clean.denoisedCR.tsv",
+        stdCopyRatio="CNV_varcalls/{sample_name}/gatk_cnv/clean.standardizedCR.tsv",
     params:
         extra="",
     log:
@@ -93,19 +93,19 @@ rule gatk_cnv_denoise_read_counts:
 
 rule gatk_cnv_model_segments:
     input:
-        denoisedCopyRatio="structural_varcalls/{sample_name}/gatk_cnv/clean.denoisedCR.tsv",
-        allelicCounts="structural_varcalls/{sample_name}/gatk_cnv/tumor_clean.allelicCounts.tsv",
+        denoisedCopyRatio="CNV_varcalls/{sample_name}/gatk_cnv/clean.denoisedCR.tsv",
+        allelicCounts="CNV_varcalls/{sample_name}/gatk_cnv/tumor_clean.allelicCounts.tsv",
     output:
-        "structural_varcalls/{sample_name}/gatk_cnv/clean.modelFinal.seg",
-        temp("structural_varcalls/{sample_name}/gatk_cnv/clean.cr.seg"),
-        temp("structural_varcalls/{sample_name}/gatk_cnv/clean.af.igv.seg"),
-        temp("structural_varcalls/{sample_name}/gatk_cnv/clean.cr.igv.seg"),
-        temp("structural_varcalls/{sample_name}/gatk_cnv/clean.hets.tsv"),
-        temp("structural_varcalls/{sample_name}/gatk_cnv/clean.modelBegin.cr.param"),
-        temp("structural_varcalls/{sample_name}/gatk_cnv/clean.modelBegin.af.param"),
-        temp("structural_varcalls/{sample_name}/gatk_cnv/clean.modelBegin.seg"),
-        temp("structural_varcalls/{sample_name}/gatk_cnv/clean.modelFinal.af.param"),
-        temp("structural_varcalls/{sample_name}/gatk_cnv/clean.modelFinal.cr.param"),
+        "CNV_varcalls/{sample_name}/gatk_cnv/clean.modelFinal.seg",
+        temp("CNV_varcalls/{sample_name}/gatk_cnv/clean.cr.seg"),
+        temp("CNV_varcalls/{sample_name}/gatk_cnv/clean.af.igv.seg"),
+        temp("CNV_varcalls/{sample_name}/gatk_cnv/clean.cr.igv.seg"),
+        temp("CNV_varcalls/{sample_name}/gatk_cnv/clean.hets.tsv"),
+        temp("CNV_varcalls/{sample_name}/gatk_cnv/clean.modelBegin.cr.param"),
+        temp("CNV_varcalls/{sample_name}/gatk_cnv/clean.modelBegin.af.param"),
+        temp("CNV_varcalls/{sample_name}/gatk_cnv/clean.modelBegin.seg"),
+        temp("CNV_varcalls/{sample_name}/gatk_cnv/clean.modelFinal.af.param"),
+        temp("CNV_varcalls/{sample_name}/gatk_cnv/clean.modelFinal.cr.param"),
     params:
         outdir=lambda wildcards, output: os.path.dirname(output[0]),
         outprefix="clean",
@@ -126,10 +126,10 @@ rule gatk_cnv_model_segments:
 
 rule gatk_cnv_call_copy_ratio_segments:
     input:
-        "structural_varcalls/{sample_name}/gatk_cnv/clean.cr.seg",
+        "CNV_varcalls/{sample_name}/gatk_cnv/clean.cr.seg",
     output:
-        segments="structural_varcalls/{sample_name}/gatk_cnv/clean.calledCNVs.seg",
-        igv_segments="structural_varcalls/{sample_name}/gatk_cnv/clean.calledCNVs.igv.seg",
+        segments="CNV_varcalls/{sample_name}/gatk_cnv/clean.calledCNVs.seg",
+        igv_segments="CNV_varcalls/{sample_name}/gatk_cnv/clean.calledCNVs.igv.seg",
     params:
         extra="",
     log:
@@ -146,9 +146,9 @@ rule gatk_cnv_call_copy_ratio_segments:
 
 rule gatk_cnv_vcf:
     input:
-        segment="structural_varcalls/{sample_name}/gatk_cnv/clean.modelFinal.seg",
+        segment="CNV_varcalls/{sample_name}/gatk_cnv/clean.modelFinal.seg",
     output:
-        vcf="structural_varcalls/{sample_name}/gatk_cnv/CNV_varcalls.vcf",
+        vcf="CNV_varcalls/{sample_name}/gatk_cnv/CNV_varcalls.vcf",
     params:
         sample_id="{sample_name}",
         hom_del_limit=0.5, #dat do workflow.json

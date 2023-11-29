@@ -233,7 +233,7 @@ save_per_sample_CNV_tab <- function(jCT_tab_CNVs){
 
 run_all <- function(args){
 
-  args <- c("structural_varcalls/all_samples/jabCoNtool/final_CNV_probs.tsv",F,"tumor_only","wgs")
+  args <- c("CNV_varcalls/all_samples/jabCoNtool/final_CNV_probs.tsv",F,"tumor_only","wgs")
   
   jabcontools_res <- args[1]
   snps_used <- args[2]

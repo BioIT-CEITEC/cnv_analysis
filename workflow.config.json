@@ -13,19 +13,14 @@
       "mapped/{sample}.bam*"
     ],
     "outputs":[
-      "structural_varcalls/*",
-      "final_CNV_results/*",
-      "reports/final_SV_report.html"
+      "CNV_varcalls/*",
+      "logs/*"
     ],
     "inputs_optional":[
       "cohort_data/cohort_cnv_info.tar.gz"
     ],
     "outputs_optional":[
       "cohort_data/cohort_cnv_info.tar.gz"
-    ],
-    "report_index": "reports/final_SV_report.html",
-    "reports":[
-      "reports/final_SV_report.html"
     ]
   },
   "general_params": [
@@ -38,32 +33,27 @@
   ],
   "gui_params" : {
     "primary": {
-      "call_cnvs": {
-        "label": "Call copy number variants.",
-        "type": "bool",
-        "default": true
-      },
-      "call_SVs": {
-        "label": "Call structural variants using discordant reads.",
-        "type": "bool",
-        "default": true
-      },
       "calling_type": {
         "label": "Calling type",
         "type": "enum",
         "default": "germline",
         "list": {
           "germline": "Germline",
-          "tumor_only": "Somatic tumor-only",
-          "tumor_normal": "Somatic tumor-normal pair"
+          "tumor_100": "Somatic 100% purity ",
+          "tumor": "Somatic"
         }
+      },
+      "contain_normal_samples": {
+        "label": "Samples include samples for CNV normalization.",
+        "type": "bool",
+        "default": true
       }
     },
     "detailed": {
       "wgs_bin_size": {
         "label": "Bin size to split genome to in WGS",
         "type": "int",
-        "default": 50000
+        "default": 500000
       },
       "use_gatk_cnv": {
         "label": "Use GATK_cnv for variant calling.",
@@ -137,20 +127,6 @@
       }
     },
     "samples": {
-      "donor": {
-        "label": "Patient ID",
-        "type": "string",
-        "default": ""
-      },
-      "tumor_normal": {
-        "label": "Tumor or normal",
-        "type": "enum",
-        "default": "normal",
-        "list": {
-          "tumor": "tumor",
-          "normal": "normal"
-        }
-      }
     }
   }
 }

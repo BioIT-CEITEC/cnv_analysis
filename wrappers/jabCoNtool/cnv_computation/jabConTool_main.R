@@ -729,7 +729,7 @@ run_all <- function(args){
     sample_tab <- merge(sample_tab,est_tumor_ratio_tab,by = "sample")
   }
 
-  # save(sample_tab,cov_tab,snp_tab,library_type,trans_mat_list,categories_default_tabs,file = "structural_varcalls/all_samples/jabCoNtool/test_run_objects.Rdata")
+  # save(sample_tab,cov_tab,snp_tab,library_type,trans_mat_list,categories_default_tabs,file = "CNV_varcalls/all_samples/jabCoNtool/test_run_objects.Rdata")
   # load("test_run_objects_260123.Rdata")
   # iterations = 1
 

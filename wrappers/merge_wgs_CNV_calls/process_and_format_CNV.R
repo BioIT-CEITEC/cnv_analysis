@@ -68,7 +68,7 @@ direct_cov_plot <- function(jCT_tab,out_filename_prefix,library_type,tumor_cell_
     plot_tab <- jCT_tab[sample == select_sample & !is.na(cov)]
 
     if(!is.null(tumor_cell_fraction_table)){
-      title <- get_plot_tittle_from_info(select_sample,tumor_cell_fraction_table)
+      title <- get_plot_title_from_info(select_sample,tumor_cell_fraction_table)
     } else {
       title <- select_sample
     }
@@ -126,7 +126,7 @@ cov_plot <- function(jCT_tab,out_filename_prefix,library_type,tumor_cell_fractio
     }
 
     if(!is.null(tumor_cell_fraction_table)){
-      title <- get_plot_tittle_from_info(select_sample,tumor_cell_fraction_table)
+      title <- get_plot_title_from_info(select_sample,tumor_cell_fraction_table)
     } else {
       title <- select_sample
     }
@@ -184,7 +184,7 @@ prob_plot <- function(jCT_tab,out_filename_prefix,tumor_cell_fraction_table){
     # }
 
     if(!is.null(tumor_cell_fraction_table)){
-      title <- get_plot_tittle_from_info(select_sample,tumor_cell_fraction_table)
+      title <- get_plot_title_from_info(select_sample,tumor_cell_fraction_table)
     } else {
       title <- select_sample
     }
@@ -312,7 +312,7 @@ get_jCT_CNV_tab <- function(jCT_tab,library_type){
 
 
 
-get_plot_tittle_from_info <- function(select_sample,tumor_cell_fraction_table){
+get_plot_title_from_info <- function(select_sample,tumor_cell_fraction_table){
   title <- paste0("sample: ",select_sample,
                   "        filter: ", 
                   tumor_cell_fraction_table[sample == select_sample]$filter,
@@ -359,7 +359,7 @@ run_all <- function(args){
     jCT_tab_CNVs <- get_jCT_CNV_tab(jCT_tab,library_type)
     
     
-    # TL_tab <- fread("CNV_varcalls/all_samples/jabCoNtool/tc_fraction_prediction.tsv")
+    # TL_tab <- fread("structural_varcalls/all_samples/jabCoNtool/tc_fraction_prediction.tsv")
     # jCT_tab[]
     
     if(file.exists(paste0(dirname(args[which(args == "jabCoNtool") + 1]),"/tc_fraction_prediction.tsv"))){
@@ -432,7 +432,7 @@ args <- strsplit(args,split = " ")[[1]]
 #
 # run_all <- function(args){
 #
-#   args <- c("CNV_varcalls/all_samples/jabCoNtool/final_CNV_probs.tsv",F,"tumor_only","wgs")
+#   args <- c("structural_varcalls/all_samples/jabCoNtool/final_CNV_probs.tsv",F,"tumor_only","wgs")
 #
 #   jabcontools_res <- args[1]
 #   snps_used <- args[2]

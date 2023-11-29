@@ -36,7 +36,7 @@ if hasattr(snakemake.input, "cnvkit_normal_coverage_inputs"):
 
     f = open(log_filename, 'at')
     for filename in snakemake.input.cnvkit_normal_coverage_inputs:
-        out_filename = filename.replace("structural_varcalls/","")
+        out_filename = filename.replace("CNV_varcalls/","")
         out_filename = out_filename.replace("/cnvkit/", "_")
         command = "cp " + filename + " cohort_data/cohort_data/cnvkit/" + out_filename
         f.write("## COMMAND: " + command + "\n")
