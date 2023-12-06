@@ -6,13 +6,14 @@ library(tictoc)
 library(modeest)
 
 # # develop and test
-script_dir <- dirname(rstudioapi::getSourceEditorContext()$path)
-setwd(paste0(script_dir,"/../../.."))
-args <- readLines(con = "logs/all_samples/jabCoNtool/cnv_computation.log_Rargs")
-args <- strsplit(args,split = " ")[[1]]
+# script_dir <- dirname(rstudioapi::getSourceEditorContext()$path)
+# setwd(paste0(script_dir,"/../../.."))
+# args <- readLines(con = "logs/all_samples/jabCoNtool/cnv_computation.log_Rargs")
+# args <- strsplit(args,split = " ")[[1]]
+# args[7] <- sub("data/ceitec_cfg2","share/share",args[7])
 
 #run as Rscript
-# script_dir <- dirname(sub("--file=", "", commandArgs()[grep("--file=", commandArgs())]))
+script_dir <- dirname(sub("--file=", "", commandArgs()[grep("--file=", commandArgs())]))
 
 
 source(paste0(script_dir,"/jabConTool_func_load_inputs.R"))
@@ -467,6 +468,28 @@ test_TL_from_N_longest_CNVs <- function(final_estimates,cn_categories_tab,N_long
   CNV_tab <- CNV_tab[cnv_length > 10 * 10^6,]
   CNV_tab <- merge(CNV_tab,final_estimates[,.(sample,chr,cn_id,cov,cn_pred)],by = c("sample","chr","cn_id"))
   
+  if(nrow(CNV_tab) == 0){
+    # Define an empty data.table with specified columns and example values to set the types
+    empty_dt <- data.table(
+      sample = character(0), # chr type
+      pred_TL = numeric(0), # num type
+      median_one_copy_diff = numeric(0), # num type
+      one_copy_diff_sd = numeric(0), # num type
+      norm_cov_mode = numeric(0), # num type
+      norm_cov_sd = numeric(0), # num type
+      CNV_rel_length = numeric(0), # num type
+      mean_CNV_bin_size = numeric(0), # num type
+      CNV_dup_del_size_ratio = numeric(0), # num type
+      CNV_dup_del_count_ratio = numeric(0) # num type
+    )
+    
+    # Set attributes to match the example
+    setattr(empty_dt, "sorted", "sample")
+    
+    # Display the empty data.table
+    empty_dt
+    return(empty_dt)
+  }
   
   # computed as modus of coverage per sample normalized by predicted CN
    
@@ -673,17 +696,15 @@ run_all <- function(args){
     complex_FP_probability <- (1 - max(default_cn_rel_prob_vec)) / 6
   }
 
-
-
   #create sample table
-  if(calling_type == "tumor_normal"){
-    normal_cov_tab_filenames <- args[(which(args == "normal_cov") + 1):(which(args == "cov") - 1)]
-    sample_tab <- data.table(cov_tab_filenames = c(cov_tab_filenames,normal_cov_tab_filenames),
-                             type = c(rep("call",length(cov_tab_filenames)),rep("normal",length(normal_cov_tab_filenames))))
-  } else {
-    sample_tab <- data.table(cov_tab_filenames = cov_tab_filenames,
+  # if(calling_type == "tumor_normal"){
+  #   normal_cov_tab_filenames <- args[(which(args == "normal_cov") + 1):(which(args == "cov") - 1)]
+  #   sample_tab <- data.table(cov_tab_filenames = c(cov_tab_filenames,normal_cov_tab_filenames),
+  #                            type = c(rep("call",length(cov_tab_filenames)),rep("normal",length(normal_cov_tab_filenames))))
+  # } else {
+  sample_tab <- data.table(cov_tab_filenames = cov_tab_filenames,
                              type = c(rep("call",length(cov_tab_filenames))))
-  }
+
   sample_tab[,sample := gsub(sample_regex,"\\1",cov_tab_filenames)]
 
   if(panel_snps_filename != "no_use_snps"){
@@ -854,12 +875,12 @@ run_all <- function(args){
 
 #run as Rscript
 
-# args <- commandArgs(trailingOnly = T)
-# print("start")
-# timestamp()
-# run_all(args)
-# print("end")
-# timestamp()
+args <- commandArgs(trailingOnly = T)
+print("start")
+timestamp()
+run_all(args)
+print("end")
+timestamp()
 
 
 

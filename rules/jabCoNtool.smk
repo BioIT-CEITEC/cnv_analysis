@@ -19,8 +19,8 @@ rule jabCoNtool_per_sample_snp_AF:
     input:  bam = "mapped/{sample_name}.bam",
             ref = expand("{ref_dir}/seq/{ref_name}.fa",ref_dir=reference_directory,ref_name=config["reference"])[0],
             snp_tsv = expand("{ref_dir}/other/snp/{lib_ROI}/{lib_ROI}_snps.tsv",ref_dir=reference_directory,lib_ROI=config["lib_ROI"])[0],
-    output: snp_tab = "CNV_varcalls/{sample_name}/jabCoNtool/{tumor_normal}.snpAF.tsv",
-    log:    "logs/{sample_name}/jabCoNtool/{tumor_normal}_get_snpAF.log"
+    output: snp_tab = "CNV_varcalls/{sample_name}/jabCoNtool/snpAF.tsv",
+    log:    "logs/{sample_name}/jabCoNtool/get_snpAF.log"
     threads: 8
     resources: mem=10
     conda:  "../wrappers/jabCoNtool/per_sample_snp_AF_computing/env.yaml"
@@ -29,9 +29,9 @@ rule jabCoNtool_per_sample_snp_AF:
 
 def jabCoNtool_cnv_computation_inputs(wildcards):
     input_dict = {}
-    input_dict["sample_cov"] = set(expand("CNV_varcalls/{sample_name}/jabCoNtool/sample.region_coverage.tsv",sample_name=sample_tab.sample_name.tolist()))
+    input_dict["sample_cov"] = set(expand("CNV_varcalls/{sample_name}/jabCoNtool/region_coverage.tsv",sample_name=sample_tab.sample_name.tolist()))
     if config["jabCoNtool_use_snps"] == True:
-        input_dict["snp_AF"] = set(expand("CNV_varcalls/{sample_name}/jabCoNtool/sample.snpAF.tsv",sample_name=sample_tab.sample_name.tolist()))
+        input_dict["snp_AF"] = set(expand("CNV_varcalls/{sample_name}/jabCoNtool/snpAF.tsv",sample_name=sample_tab.sample_name.tolist()))
     if config["use_cohort_data"] == True:
         input_dict["cohort_data"] = "cohort_data/cohort_data/jabCoNtool/cohort_info_tab.tsv"
     if config["lib_ROI"] == "wgs":

@@ -137,11 +137,22 @@ get_cov_tab <- function(sample_tab,
       GC_bin_content_tab[,usable_bases_ratio := NULL]
       
       #merge and normalize using linear model to predict correlation between coverage and GC
+      #remove bins with too low gc content to be able to normalize #TODO
+      min_predicted_value_ratio = 10
+      
       cov_tab <- merge.data.table(cov_tab,GC_bin_content_tab,by = c("chr","start"))
       cov_tab[,c("intercept","a") := as.list(lm(cov_raw ~ gc,.SD)$coefficients),by = .(sample)]
-      cov_tab[,cov_norm := cov_raw / (a  * gc + intercept) * mean(cov_raw),by = .(sample)]
+      cov_tab[,lm_model_norm_cov := a * gc + intercept,by = .(sample)]
+      cov_tab[,min_lm_model_norm_cov := (a[1] * mean(gc) + intercept[1]) / min_predicted_value_ratio,by = .(sample)]
+      cov_tab <- cov_tab[gc > max(cov_tab[lm_model_norm_cov < min_lm_model_norm_cov]$gc)]
+      cov_tab[,cov_norm_val_ratio := cov_raw / lm_model_norm_cov,by = .(sample)]
+      cov_tab[,cov_norm := cov_norm_val_ratio * (a[1] * mean(gc) + intercept[1]),by = .(sample)]
       cov_tab[,cov := cov_norm]
       
+      for(sa in unique(cov_tab$sample)){
+        plot(cov_tab[sample == sa]$gc ,cov_tab[sample == sa]$cov_raw)
+      }
+
       #filter out outlier regions
       cov_tab[,gc_hist_bin := cut(gc,seq(0,1,0.005))]
       cov_tab[,cov_norm_mean :=  mean(cov_norm),by = sample]
@@ -152,7 +163,19 @@ get_cov_tab <- function(sample_tab,
       cov_tab[gc_hist_bin_count < 15 | cov_norm < cov_norm_mean + 2 * cov_norm_sd,sample_region_OK := T]
       cov_tab[,sample_region_OK_count := .N,by = region_id]
       cov_tab <- cov_tab[sample_region_OK_count > length(unique(cov_tab$sample)) * 0.9]
-      cov_tab[,c("gc","intercept","a","cov_norm","gc_hist_bin","cov_norm_mean","cov_norm_sd","gc_hist_bin_count","sample_region_OK","sample_region_OK_count") :=NULL]
+      cov_tab[,c("gc",
+                 "intercept",
+                 "a",
+                 "cov_norm",
+                 "lm_model_norm_cov",
+                 "min_lm_model_norm_cov",
+                 "cov_norm_val_ratio",
+                 "gc_hist_bin",
+                 "cov_norm_mean",
+                 "cov_norm_sd",
+                 "gc_hist_bin_count",
+                 "sample_region_OK",
+                 "sample_region_OK_count") :=NULL]
       
     } else {
       cov_tab[,cov := cov_raw]
