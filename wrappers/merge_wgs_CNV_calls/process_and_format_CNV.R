@@ -468,7 +468,8 @@ run_all <- function(args){
   setkey(panel_intervals,chr,start,end)
 
   library_type <- args[4]
-  direct_sample_CNV_compare_string <- "gDNA3_pts80_1C3::gDNA1_pts80_par|gDNA2_pts80_1BG::gDNA1_pts80_par|gDNA1_pts80_par::gDNA5_nador"
+  direct_sample_CNV_compare_string <- args[5]
+    # "gDNA3_pts80_1C3::gDNA1_pts80_par|gDNA2_pts80_1BG::gDNA1_pts80_par|gDNA1_pts80_par::gDNA5_nador"
   
   
   
