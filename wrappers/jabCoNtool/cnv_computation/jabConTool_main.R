@@ -132,18 +132,31 @@ compute_distribution_pramaters <- function(cov_tab,library_type = "panel"){
     # normalization_sample_type <- tail(sort(unique(cov_tab$type)),1)
     # norm_cov_data <- cov_tab[type == normalization_sample_type]
     cov_tab[,norm_cov := cov / norm_vec]
-    cov_tab[,outlier_region := F]
-    norm_filter_iter <- 3
-    outlier_probability <- 0.05
-    for(i in seq(1,by = 1,length.out = norm_filter_iter)){
-      norm_nbinom_dist_tab <- cov_tab[outlier_region == F,as.list(fitdist(as.integer(norm_cov),distr = "nbinom")$estimate),by = sample]
-      norm_nbinom_dist_tab[,outlier_low_value := qnbinom(outlier_probability,size = size,mu = mu)]
-      norm_nbinom_dist_tab[,outlier_high_value := qnbinom(1 - outlier_probability,size = size,mu = mu)]
-      cov_tab <- merge(cov_tab,norm_nbinom_dist_tab[,.(sample,outlier_low_value,outlier_high_value)],by = "sample")
-      cov_tab[!(norm_cov > outlier_low_value & norm_cov < outlier_high_value),outlier_region := T]
-      cov_tab[,c("outlier_low_value","outlier_high_value") := NULL]
-    }
-    norm_nbinom_dist_tab <- cov_tab[outlier_region == F,as.list(fitdist(as.integer(norm_cov),distr = "nbinom")$estimate),by = sample]
+    
+    # for(h_sample in unique(cov_tab$sample)){
+    #   norm_cov <- cov_tab[sample == h_sample]$norm_cov
+    #   hist(norm_cov[abs(norm_cov - median(norm_cov)) < 3*sd(norm_cov)],breaks = length(norm_cov) / 40)
+    # }
+    
+    cov_tab[,center_norm := gradient_descent(initial_value = median(norm_cov),
+                                             hist_data = hist(norm_cov[abs(norm_cov - median(norm_cov)) < 3*sd(norm_cov)],breaks = length(norm_cov) / 40, plot = FALSE),
+                                             add_global_test = 10)
+            ,by = sample]
+    cov_tab[,norm_low := gradient_descent(initial_value = center_norm[1],
+                                             hist_data = hist(norm_cov[abs(norm_cov - median(norm_cov)) < 3*sd(norm_cov)],breaks = length(norm_cov) / 40, plot = FALSE),
+                                             add_global_test = 10,
+                                             default_dir = -1,
+                                             max_or_min = -1)
+            ,by = sample]
+    cov_tab[,norm_high := gradient_descent(initial_value = center_norm[1],
+                                          hist_data = hist(norm_cov[abs(norm_cov - median(norm_cov)) < 3*sd(norm_cov)],breaks = length(norm_cov) / 40, plot = FALSE),
+                                          add_global_test = 10,
+                                          default_dir = 1,
+                                          max_or_min = -1)
+            ,by = sample]
+    
+
+    norm_nbinom_dist_tab <- cov_tab[norm_cov > norm_low & norm_cov < norm_high,as.list(fitdist(as.integer(norm_cov),distr = "nbinom")$estimate),by = sample]
     cov_tab <- merge(cov_tab,norm_nbinom_dist_tab,by = "sample")
     cov_tab[,nbinom_mean := mu]
     cov_tab[,nbinom_var := mu + mu^2/size]
@@ -156,6 +169,44 @@ compute_distribution_pramaters <- function(cov_tab,library_type = "panel"){
   return(cov_tab)
 
 }
+
+# Create histogram
+
+
+# Function for gradient descent
+gradient_descent <- function(initial_value, hist_data, max_iter = 100,add_global_test = 0,default_dir = 0,max_or_min = 1) {
+
+  # Find the bin index for the initial value
+  bin_index <- findInterval(initial_value, hist_data$mids)
+  
+  if(default_dir == 0){
+    left_freq <- ifelse(bin_index > 1, max_or_min * hist_data$counts[bin_index - 1], 0)
+    right_freq <- ifelse(bin_index < length(hist_data$counts), max_or_min * hist_data$counts[bin_index + 1], 0)
+    
+    if(left_freq >= right_freq){
+      dir <- -1
+    } else {
+      dir <- 1
+    }
+  } else {
+    dir <- default_dir
+  }
+
+  for (i in 1:max_iter) {
+    # Check next bins
+    bins_to_check <- bin_index + dir * seq_along(numeric(add_global_test))
+    bins_to_check <- bins_to_check[bins_to_check %in% seq_along(hist_data$counts)]
+    
+    if(any(max_or_min * hist_data$counts[bins_to_check] > max_or_min * hist_data$counts[bin_index])){
+      bin_index <- bins_to_check[which.max(max_or_min * hist_data$counts[bins_to_check])]
+    } else {
+      break
+    }
+  }
+  return(hist_data$mids[bin_index])
+}
+
+
 
 #TODO implement differently with binom and byas
 get_normal_negative_log_likelihoods <- function(cn_count,cov_tab,library_type){
@@ -378,7 +429,7 @@ predict_CNV_model <- function(sample_tab,trans_mat_list,cov_tab,snp_tab,library_
   }
 }
 
-remove_too_frequent_CNVs <- function(final_cn_pred_info_table,max_CNV_frequency_in_cohort,cohort_tab = NULL,too_frequent_FP_CNVs_tab_filename = NULL){
+remove_too_frequent_CNVs <- function(final_cn_pred_info_table,cov_tab,max_CNV_frequency_in_cohort,cohort_tab = NULL,too_frequent_FP_CNVs_tab_filename = NULL){
   
   #remove and store too frequent CNVs in the cohort
   final_cn_pred_info_table[,CNV_in_cohort := length(unique(sample)),by = .(cn_pred,region_id)]
@@ -624,7 +675,7 @@ predict_CNVs <- function(sample_tab,cov_tab,snp_tab,library_type,trans_mat_list,
     final_estimates[,cn_id := rep(rle_res$cn_id,rle_res$lengths)]
     final_estimates[,cov := NULL]
     final_estimates <- merge.data.table(final_estimates,cn_call_info_tab,by = c("sample","region_id"))
-    final_estimates <- remove_too_frequent_CNVs(final_estimates,max_CNV_frequency_in_cohort,cohort_tab)
+    final_estimates <- remove_too_frequent_CNVs(final_estimates,cov_tab,max_CNV_frequency_in_cohort,cohort_tab)
     final_estimates <- recompute_jCT_variants(final_estimates)
     
     if(initial_TL != 1){
@@ -666,8 +717,6 @@ get_residual_vector_one_sample <- function(finale_estimates,pred_TL,normal_cover
 ######               ######
 ###########################
 ###########################
-
-
 
 run_all <- function(args){
   out_filename <- args[1]
@@ -739,7 +788,6 @@ run_all <- function(args){
     sample_tab <- rbind(sample_tab,cohort_sample_tab)
   }
 
-
   categories_default_tabs <- create_copy_number_categories_default_tabs(default_cn_rel_prob_vec,predict_LOH = !is.null(snp_tab))
   transition_matrix <- create_transition_matrix(categories_default_tabs$cn_categories_tab)
   trans_mat_list <- prepare_transition_matrix_list(transition_matrix,categories_default_tabs$cn_categories_tab,cov_tab,dist_transition_treshold,calling_type)
@@ -779,7 +827,7 @@ run_all <- function(args){
   fwrite(calling_info_tab,file = paste0(dirname(out_filename),"/cohort_info_tab.tsv"),sep="\t")
 
 
-  final_cn_pred_info_table <- remove_too_frequent_CNVs(final_cn_pred_info_table,max_CNV_frequency_in_cohort,cohort_tab,paste0(dirname(out_filename),"/too_frequent_filtered_CNVs.tsv"))
+  final_cn_pred_info_table <- remove_too_frequent_CNVs(final_cn_pred_info_table,cov_tab,max_CNV_frequency_in_cohort,cohort_tab,paste0(dirname(out_filename),"/too_frequent_filtered_CNVs.tsv"))
   final_cn_pred_info_table <- recompute_jCT_variants(final_cn_pred_info_table)
   fwrite(final_cn_pred_info_table,file = out_filename,sep="\t")
 
@@ -912,4 +960,19 @@ timestamp()
 #   snp_tab <- rbind(snp_tab,cohort_snp_tab)
 # }
 
+
+# get_cov_tab_for_compare_samples <- function(cov_tab,target_sample,to_compare_sample){
+#   # target_sample <- "gDNA1_pts80_par"
+#   # to_compare_sample <- "gDNA5_nador"
+#   median(cov_tab[sample == to_compare_sample]$cov)
+#   median(cov_tab[sample == target_sample]$cov)
+#   
+#   to_compare_sample_size_ratio <- median(cov_tab[sample == target_sample]$cov) / median(cov_tab[sample == to_compare_sample]$cov)
+#   compare_cov <- median(cov_tab[sample == target_sample]$cov) + cov_tab[sample == target_sample]$cov - cov_tab[sample == to_compare_sample]$cov * to_compare_sample_size_ratio
+#   compare_cov[compare_cov<0] <- 0
+#   compare_cov_tab <- copy(cov_tab[sample == target_sample])
+#   compare_cov_tab[,cov := compare_cov]
+#   compare_cov_tab[,sample := paste0(target_sample,"__VS__",to_compare_sample)]
+#   return(compare_cov_tab)
+# }
 

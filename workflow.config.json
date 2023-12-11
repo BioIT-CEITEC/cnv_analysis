@@ -95,6 +95,11 @@
         "type": "int",
         "default": 100
       },
+      "direct_sample_CNV_compare": {
+        "label": "String for direct sample comparison.",
+        "type": "string",
+        "default": ""
+      },
       "use_control_freec": {
         "label": "Use Control-FREEC for variant calling.",
         "type": "bool",

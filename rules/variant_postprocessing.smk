@@ -36,7 +36,9 @@ if config["lib_ROI"] == "wgs":
             all_vars_tsv= "CNV_varcalls/all_samples/all_merged_CNV.tsv",
         params:
             lib_ROI = config["lib_ROI"],
-            overlap = 0.6
+            overlap = 0.6,
+            library_type = "wgs",
+            direct_sample_CNV_compare = config["direct_sample_CNV_compare"]
         log:
             "logs/process_and_format_CNV.log",
         threads: 8
@@ -55,8 +57,8 @@ if config["lib_ROI"] == "wgs":
         log:
             "logs/process_and_format_CNV.log",
         threads: 8
-        conda:  "../wrappers/process_and_format_CNV/env.yaml"
-        script: "../wrappers/process_and_format_CNV/script.py"
+        shell:
+            "touch {output.final_res}"
 
 else:
     #MERGING VARIANT

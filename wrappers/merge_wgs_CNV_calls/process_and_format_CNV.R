@@ -14,6 +14,9 @@ CNV_color_tab <- data.table(CNV = c("0","1","2","3","4","5","LOH"),
                             color = c("red","coral1","grey","skyblue2","royalblue3","navyblue","yellow3"))
 
 
+CNV_color_tab_comp <- data.table(CNV = c("target 0","target 1","target 2","target 3","target 4","target 5","compared 0","compared 1","compared 2","compared 3","compared 4","compared 5"),
+                            color = c("red1","coral1","grey50","skyblue1","royalblue1","navyblue","red4","coral4","grey30","skyblue4","royalblue4","midnightblue"))
+
 
 plot_chromosome_circo <- function(){
   plot_tab <- final_estimates[,.(sample,chr,start,end,cov,cn_id,cn_pred)]
@@ -115,55 +118,101 @@ cov_plot <- function(jCT_tab,out_filename_prefix,library_type,tumor_cell_fractio
 
   pdf(file = paste0(out_filename_prefix,"_CNV_rel_cov.pdf"),width = 10,height = 7)
 
-  for(select_sample in unique(jCT_tab$sample)){
-    # select_sample <- "PC_3_01"
-    plot_tab <- jCT_tab[sample == select_sample & !is.na(cov)]
-    if(library_type == "wgs"){
-      plot_tab[cov > nbinom_mean * 3,cov := nbinom_mean * 3 ]
-      plot_tab[,sd_dist := (cov - nbinom_mean) / sqrt(nbinom_var)]
-    } else {
-      plot_tab[,sd_dist := (cov - norm_dist_mean) / norm_dist_sd]
+  if(library_type != "comparison"){
+    for(select_sample in unique(jCT_tab$sample)){
+      # select_sample <- "PC_3_01"
+      plot_tab <- jCT_tab[sample == select_sample & !is.na(cov)]
+      if(library_type == "wgs"){
+        plot_tab[cov > nbinom_mean * 3,cov := nbinom_mean * 3 ]
+        plot_tab[,sd_dist := (cov - nbinom_mean) / sqrt(nbinom_var)]
+      } else {
+        plot_tab[,sd_dist := (cov - norm_dist_mean) / norm_dist_sd]
+      }
+      
+      if(!is.null(tumor_cell_fraction_table)){
+        title <- get_plot_title_from_info(select_sample,tumor_cell_fraction_table)
+      } else {
+        title <- select_sample
+      }
+      
+      plot_tab[,cn_status := ifelse(cn_pred == "2","normal","variant")]
+      plot_tab[,cn_pred := factor(cn_pred,levels = CNV_color_tab$CNV)]
+      plot_tab <- plot_tab[mixedorder(chr),]
+      plot_tab <- plot_tab[,region_id := seq_len(nrow(plot_tab))]
+      
+      var_annot <- unique(plot_tab[cn_status == "variant"],by = c("chr","cn_pred","cn_id"))
+      
+      # Define a minimal constant for y
+      min_constant <- 15
+      # Compute the 1st percentile
+      abs_limit <- ceiling(max(min_constant,sort(abs(plot_tab$sd_dist))[as.integer(length(plot_tab$sd_dist) * 0.99)]))
+      
+      
+      y_limits <- c(-abs_limit,abs_limit)
+      chr_tab <- plot_tab[,.(start = min(region_id),end= max(region_id)),by = chr]
+      chr_tab[,mid := round(start + end) / 2]
+      
+      p <- ggplot(plot_tab,aes(region_id, sd_dist)) +
+        geom_point(aes(col = cn_pred),shape = 20,size = 0.2) +
+        scale_color_manual(values=CNV_color_tab[match(sort(unique(plot_tab$cn_pred)),CNV)]$color) +
+        scale_y_continuous(limits = y_limits, breaks = seq(ceiling(y_limits[1]),floor(y_limits[2]),1)) +
+        geom_vline(xintercept = plot_tab[,min(region_id),by = chr]$V1[-1],linetype="dashed", color = "grey75",lwd = 0.1) +
+        geom_text(data = chr_tab,aes(x = mid, y =  floor(y_limits[2]),label=chr),size = 2) +
+        ggtitle(title) + ylab("standard deviation distance") +
+        theme_minimal() +
+        theme(panel.grid.major.x = element_blank(),panel.grid.minor.x = element_blank(),axis.text.x=element_blank(),axis.ticks.x=element_blank(),axis.title.x=element_blank())
+      
+      # if(any(names(var_annot) == "region_name")){
+      #   p <- p + geom_text(data = var_annot,aes(x = region_id, y =  sd_dist + (sign(sd_dist) * 0.5),label=region_name),size = 2)
+      # }
+      
+      plot(p)
     }
-
-    if(!is.null(tumor_cell_fraction_table)){
-      title <- get_plot_title_from_info(select_sample,tumor_cell_fraction_table)
-    } else {
-      title <- select_sample
-    }
+  } else {
+    title <- paste(strsplit(jCT_tab$sample[1],split = "____")[[1]],collapse = " VS ")
     
-    plot_tab[,cn_status := ifelse(cn_pred == "2","normal","variant")]
-    plot_tab[,cn_pred := factor(cn_pred,levels = CNV_color_tab$CNV)]
+    
+    plot_tab <- copy(jCT_tab)
+    
     plot_tab <- plot_tab[mixedorder(chr),]
-    plot_tab <- plot_tab[,region_id := seq_len(nrow(plot_tab))]
+    plot_tab <- rbind(plot_tab[,.(chr,region_id = seq_along(chr),cn_pred = paste("target",target_cn_pred),sd_dist = target_sd_dist,sample = "target")],
+                      plot_tab[,.(chr,region_id = seq_along(chr),cn_pred = paste("compared",to_compare_cn_pred),sd_dist = to_compare_sd_dist,sample = "compared")])
+    # plot_tab[,cn_status := ifelse(cn_pred == "2","normal","variant")]
+    plot_tab[,cn_pred := factor(cn_pred,levels = CNV_color_tab_comp$CNV)]
+    
 
-    var_annot <- unique(plot_tab[cn_status == "variant"],by = c("chr","cn_pred","cn_id"))
-
+    
+    # var_annot <- unique(plot_tab[cn_status == "variant"],by = c("chr","cn_pred","cn_id"))
+    
     # Define a minimal constant for y
     min_constant <- 15
     # Compute the 1st percentile
     abs_limit <- ceiling(max(min_constant,sort(abs(plot_tab$sd_dist))[as.integer(length(plot_tab$sd_dist) * 0.99)]))
-
+    
     
     y_limits <- c(-abs_limit,abs_limit)
     chr_tab <- plot_tab[,.(start = min(region_id),end= max(region_id)),by = chr]
     chr_tab[,mid := round(start + end) / 2]
-
+    
     p <- ggplot(plot_tab,aes(region_id, sd_dist)) +
-      geom_point(aes(col = cn_pred),shape = 20,size = 0.2) +
-      scale_color_manual(values=CNV_color_tab[match(sort(unique(plot_tab$cn_pred)),CNV)]$color) +
+      geom_point(aes(col = cn_pred,shape = sample),size = 0.2) +
+      guides(color = guide_legend(override.aes = list(size = 3)),shape = guide_legend(override.aes = list(size = 3))) + 
+      scale_shape_manual(values = c("target" = 4, "compared" = 15)) + 
+      scale_color_manual(values=CNV_color_tab_comp[match(sort(unique(plot_tab$cn_pred)),CNV)]$color) +
       scale_y_continuous(limits = y_limits, breaks = seq(ceiling(y_limits[1]),floor(y_limits[2]),1)) +
       geom_vline(xintercept = plot_tab[,min(region_id),by = chr]$V1[-1],linetype="dashed", color = "grey75",lwd = 0.1) +
       geom_text(data = chr_tab,aes(x = mid, y =  floor(y_limits[2]),label=chr),size = 2) +
       ggtitle(title) + ylab("standard deviation distance") +
       theme_minimal() +
       theme(panel.grid.major.x = element_blank(),panel.grid.minor.x = element_blank(),axis.text.x=element_blank(),axis.ticks.x=element_blank(),axis.title.x=element_blank())
-
+    
     # if(any(names(var_annot) == "region_name")){
     #   p <- p + geom_text(data = var_annot,aes(x = region_id, y =  sd_dist + (sign(sd_dist) * 0.5),label=region_name),size = 2)
     # }
-
+    
     plot(p)
   }
+    
 
   dev.off()
 
@@ -227,7 +276,7 @@ prob_plot <- function(jCT_tab,out_filename_prefix,tumor_cell_fraction_table){
 
 
 #TODO add reference selection
-plot_chromosome_lines <- function(jCT_tab_CNVs,out_filename_prefix,reference = "GRCh38-p10"){
+plot_chromosome_lines <- function(jCT_tab_CNVs,out_filename_prefix,reference = "GRCh38-p10",type = "single"){
 
   karyotype <- NULL
   if(grepl("GRCh38",reference)){
@@ -240,32 +289,58 @@ plot_chromosome_lines <- function(jCT_tab_CNVs,out_filename_prefix,reference = "
 
   pdf(file = paste0(out_filename_prefix,"_chromosome_CNVs.pdf"),width = 10,height = 7)
 
-  for(select_sample in unique(jCT_tab_CNVs$sample)){
-    # select_sample <- "PC_3_01"
-    plot_tab <- jCT_tab_CNVs[sample == select_sample]
-    if(karyotype == "hg38" | karyotype == "hg19"){
-      plot_tab[,chr := paste0("chr",chr)]
+  if(type != "comparison"){
+    for(select_sample in unique(jCT_tab_CNVs$sample)){
+      # select_sample <- "PC_3_01"
+      plot_tab <- jCT_tab_CNVs[sample == select_sample]
+      if(karyotype == "hg38" | karyotype == "hg19"){
+        plot_tab[,chr := paste0("chr",chr)]
+      }
+  
+      kp <- plotKaryotype(genome="hg38",chromosomes = paste0("chr",1:22))
+      for(selected_cn_pred in unique(plot_tab$cn_pred)){
+        kpRect(kp, data = toGRanges(plot_tab[cn_pred == selected_cn_pred,.(chr,start,end)]), y0=0, y1=0.8,col=CNV_color_tab[CNV == selected_cn_pred]$color,border=CNV_color_tab[CNV == selected_cn_pred]$color)
+      }
+      kpAddMainTitle(kp, main=select_sample)
+  
+      my_hist <- ggplot(CNV_color_tab, aes(CNV, fill = CNV)) + geom_bar() + scale_fill_manual(values=CNV_color_tab$color)
+  
+      # Using the cowplot package
+      legend <- cowplot::get_legend(my_hist)
+  
+      legend$vp$x <- unit(.75, 'npc')
+      legend$vp$y <- unit(.33, 'npc')
+      grid.draw(legend)
     }
+  } else {
+      title <- paste(strsplit(jCT_tab_CNVs$sample[1],split = "____")[[1]],collapse = " VS ")
+      
+      plot_tab <- jCT_tab_CNVs
+      if(karyotype == "hg38" | karyotype == "hg19"){
+        plot_tab[,chr := paste0("chr",chr)]
+      }
+      
+      kp <- plotKaryotype(genome="hg38",chromosomes = paste0("chr",1:22))
+      for(selected_cn_pred in unique(plot_tab$to_compare_cn_pred)){
+        kpRect(kp, data = toGRanges(plot_tab[to_compare_cn_pred == selected_cn_pred,.(chr,start,end)]), y0=0, y1=0.4,col=CNV_color_tab[CNV == selected_cn_pred]$color)
+      }
+      for(selected_cn_pred in unique(plot_tab$target_cn_pred)){
+        kpRect(kp, data = toGRanges(plot_tab[target_cn_pred == selected_cn_pred,.(chr,start,end)]), y0=0.41, y1=0.8,col=CNV_color_tab[CNV == selected_cn_pred]$color)
+      }
+      kpAddMainTitle(kp, main=title)
+      
+      my_hist <- ggplot(CNV_color_tab, aes(CNV, fill = CNV)) + geom_bar() + scale_fill_manual(values=CNV_color_tab$color)
+      
+      # Using the cowplot package
+      legend <- cowplot::get_legend(my_hist)
+      
+      legend$vp$x <- unit(.75, 'npc')
+      legend$vp$y <- unit(.33, 'npc')
+      grid.draw(legend)
 
-    kp <- plotKaryotype(genome="hg38",chromosomes = paste0("chr",1:22))
-    for(selected_cn_pred in unique(plot_tab$cn_pred)){
-      kpRect(kp, data = toGRanges(plot_tab[cn_pred == selected_cn_pred,.(chr,start,end)]), y0=0, y1=0.8,col=CNV_color_tab[CNV == selected_cn_pred]$color,border=CNV_color_tab[CNV == selected_cn_pred]$color)
-    }
-    kpAddMainTitle(kp, main=select_sample)
-
-    my_hist <- ggplot(CNV_color_tab, aes(CNV, fill = CNV)) + geom_bar() + scale_fill_manual(values=CNV_color_tab$color)
-
-    # Using the cowplot package
-    legend <- cowplot::get_legend(my_hist)
-
-    legend$vp$x <- unit(.75, 'npc')
-    legend$vp$y <- unit(.33, 'npc')
-    grid.draw(legend)
   }
 
-
   dev.off()
-
 
 }
 
@@ -325,6 +400,52 @@ get_plot_title_from_info <- function(select_sample,tumor_cell_fraction_table){
 
 
 
+print_comparison_results <- function(jCT_tab,target_sample,to_compare_sample){
+  # target_sample <- "gDNA1_pts80_par"
+  # to_compare_sample <- "gDNA5_nador"
+  
+  res_prefix <- paste0(gsub("all_samples","comparisons",result_dir),"/",target_sample,"__vs__",to_compare_sample,"/",target_sample,"__vs__",to_compare_sample)
+  dir.create(dirname(res_prefix),recursive = T,showWarnings = F)
+  
+  compare_jCT_tab <- jCT_tab[sample == target_sample,.(sample = paste(target_sample,to_compare_sample,sep = "____"),chr,start,end,region_name,
+                                                       target_cn_pred = cn_pred,
+                                                       to_compare_cn_pred = jCT_tab[sample == to_compare_sample]$cn_pred,
+                                                       cn_pred_diff = cn_pred - jCT_tab[sample == to_compare_sample]$cn_pred,
+                                                       target_cn_id = cn_id,
+                                                       to_compare_cn_id = jCT_tab[sample == to_compare_sample]$cn_id,
+                                                       target_sd_dist = sd_dist,
+                                                       to_compare_sd_dist = jCT_tab[sample == to_compare_sample]$sd_dist,
+                                                       sd_dist_diff = sd_dist - jCT_tab[sample == to_compare_sample]$sd_dist)]
+  
+  
+  
+  cov_plot(compare_jCT_tab,res_prefix,library_type = "comparison")
+  
+  
+  compare_jCT_tab_CNVs <-  compare_jCT_tab[,.(sample = sample[1],target_cn_pred = target_cn_pred[1],
+                              to_compare_cn_pred = to_compare_cn_pred[1],
+                              cn_pred_diff = target_cn_pred[1] - to_compare_cn_pred[1],
+                              start = min(start),
+                              end = max(end),
+                              len = max(end) - min(start),
+                              target_cov_rel_dist = median(target_sd_dist,na.rm = T),
+                              to_compare_cov_rel_dist = median(to_compare_sd_dist,na.rm = T),
+                              cov_rel_dist_diff = median(target_sd_dist,na.rm = T) - median(to_compare_sd_dist,na.rm = T),
+                              region_names = paste(unique(region_name),collapse = ",")),by = .(chr,target_cn_id,to_compare_cn_id)]
+  
+ 
+  plot_chromosome_lines(compare_jCT_tab_CNVs[target_cn_pred != to_compare_cn_pred],res_prefix,type = "comparison")
+  
+  compare_jCT_tab_CNVs[,target_cn_id := NULL]
+  compare_jCT_tab_CNVs[,to_compare_cn_id := NULL]
+  compare_jCT_tab_CNVs <- compare_jCT_tab_CNVs[target_cn_pred != normal_cn_value | to_compare_cn_pred != normal_cn_value,]
+  
+  write.xlsx(jCT_tab_CNVs,paste0(res_prefix,"_CNV_tab.xlsx"))
+  
+  return(jCT_tab_CNVs)
+}
+
+
 run_all <- function(args){
   final_CNV_vars_outfilename <- args[1]
   result_dir <- dirname(final_CNV_vars_outfilename)
@@ -347,7 +468,10 @@ run_all <- function(args){
   setkey(panel_intervals,chr,start,end)
 
   library_type <- args[4]
-
+  direct_sample_CNV_compare_string <- "gDNA3_pts80_1C3::gDNA1_pts80_par|gDNA2_pts80_1BG::gDNA1_pts80_par|gDNA1_pts80_par::gDNA5_nador"
+  
+  
+  
   # for now process and plot jabcontools
   if(any(args == "jabCoNtool")){
     jCT_tab <- fread(args[which(args == "jabCoNtool") + 1])
@@ -390,6 +514,17 @@ run_all <- function(args){
       plot_chromosome_lines(jCT_tab_CNVs[sample == select_sample],paste0(per_sample_results_dir,"/jabCoNtool_",select_sample))
       write.xlsx(jCT_tab_CNVs[sample == select_sample],paste0(per_sample_results_dir,"/jabCoNtool_",select_sample,"_CNV_tab.xlsx"))
     }
+    
+    if(nchar(direct_sample_CNV_compare_string) > 0){
+      direct_sample_CNV_compare_compare <- as.data.table(tstrsplit(strsplit(direct_sample_CNV_compare_string,split = "|",fixed = T)[[1]],split="::"))
+      direct_sample_CNV_compare_compare <- unique(direct_sample_CNV_compare_compare)
+      setnames(direct_sample_CNV_compare_compare,c("target","to_compare"))
+      
+      res_OK <- apply(direct_sample_CNV_compare_compare,1,function(line) {
+        print_comparison_results(jCT_tab,target_sample = line[1],to_compare_sample = line[2])
+      })
+      
+    }
 
   }
 
@@ -400,16 +535,16 @@ run_all <- function(args){
 
 # develop and test
 
-script_dir <- dirname(rstudioapi::getSourceEditorContext()$path)
-setwd(paste0(script_dir,"/../.."))
-args <- readLines(con = "logs/process_and_format_CNV.log_Rargs")
-args <- strsplit(args,split = " ")[[1]]
+# script_dir <- dirname(rstudioapi::getSourceEditorContext()$path)
+# setwd(paste0(script_dir,"/../.."))
+# args <- readLines(con = "logs/process_and_format_CNV.log_Rargs")
+# args <- strsplit(args,split = " ")[[1]]
 
 #run as Rscript
 
-# script_dir <- dirname(sub("--file=", "", commandArgs()[grep("--file=", commandArgs())]))
-# args <- commandArgs(trailingOnly = T)
-# run_all(args)
+script_dir <- dirname(sub("--file=", "", commandArgs()[grep("--file=", commandArgs())]))
+args <- commandArgs(trailingOnly = T)
+run_all(args)
 
 
 

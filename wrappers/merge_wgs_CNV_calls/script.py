@@ -31,12 +31,14 @@ if hasattr(snakemake.input, "control_freec_variants"):
     CNV_call_file_list.append("control_freec_end")
 
 if len(CNV_call_file_list) > 0:
-    command = "Rscript "+os.path.abspath(os.path.dirname(__file__))+"/process_and_format_CNV.R" \
+    command = ("Rscript "+os.path.abspath(os.path.dirname(__file__))+"/process_and_format_CNV.R" \
               + " " + snakemake.output.all_vars_tsv \
               + " " + str(snakemake.params.overlap) \
               + " " + str(snakemake.input.region_bed) \
+              + " " + str(snakemake.params.library_type) \
+              + " " + str(snakemake.params.direct_sample_CNV_compare) \
               + " " + " ".join(CNV_call_file_list) \
-              + " >> " + log_filename + " 2>&1"
+              + " >> " + log_filename + " 2>&1")
 
     f = open(log_filename + "_Rargs", 'w')
     f.write(" ".join(command.split(" ")[2:-3]) + "\n")
