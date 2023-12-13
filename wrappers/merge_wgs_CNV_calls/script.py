@@ -36,7 +36,7 @@ if len(CNV_call_file_list) > 0:
               + " " + str(snakemake.params.overlap) \
               + " " + str(snakemake.input.region_bed) \
               + " " + str(snakemake.params.library_type) \
-              + " " + str(snakemake.params.direct_sample_CNV_compare) \
+              + " '" + str(snakemake.params.direct_sample_CNV_compare) + "'" \
               + " " + " ".join(CNV_call_file_list) \
               + " >> " + log_filename + " 2>&1")
 

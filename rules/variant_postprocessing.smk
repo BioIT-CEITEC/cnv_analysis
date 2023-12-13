@@ -42,8 +42,8 @@ if config["lib_ROI"] == "wgs":
         log:
             "logs/process_and_format_CNV.log",
         threads: 8
-        conda:  "../wrappers/process_and_format_CNV/env.yaml"
-        script: "../wrappers/process_and_format_CNV/script.py"
+        conda:  "../wrappers/merge_wgs_CNV_calls/env.yaml"
+        script: "../wrappers/merge_wgs_CNV_calls/script.py"
 
     #MERGING VARIANT
     rule wgs_CNV_formating_and_visualisation:

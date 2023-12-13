@@ -400,7 +400,7 @@ get_plot_title_from_info <- function(select_sample,tumor_cell_fraction_table){
 
 
 
-print_comparison_results <- function(jCT_tab,target_sample,to_compare_sample){
+print_comparison_results <- function(result_dir,jCT_tab,target_sample,to_compare_sample){
   # target_sample <- "gDNA1_pts80_par"
   # to_compare_sample <- "gDNA5_nador"
   
@@ -440,9 +440,9 @@ print_comparison_results <- function(jCT_tab,target_sample,to_compare_sample){
   compare_jCT_tab_CNVs[,to_compare_cn_id := NULL]
   compare_jCT_tab_CNVs <- compare_jCT_tab_CNVs[target_cn_pred != normal_cn_value | to_compare_cn_pred != normal_cn_value,]
   
-  write.xlsx(jCT_tab_CNVs,paste0(res_prefix,"_CNV_tab.xlsx"))
+  write.xlsx(compare_jCT_tab_CNVs,paste0(res_prefix,"_CNV_tab.xlsx"))
   
-  return(jCT_tab_CNVs)
+  return("OK")
 }
 
 
@@ -522,7 +522,7 @@ run_all <- function(args){
       setnames(direct_sample_CNV_compare_compare,c("target","to_compare"))
       
       res_OK <- apply(direct_sample_CNV_compare_compare,1,function(line) {
-        print_comparison_results(jCT_tab,target_sample = line[1],to_compare_sample = line[2])
+        print_comparison_results(result_dir,jCT_tab,target_sample = line[1],to_compare_sample = line[2])
       })
       
     }
@@ -542,8 +542,6 @@ run_all <- function(args){
 # args <- strsplit(args,split = " ")[[1]]
 
 #run as Rscript
-
-script_dir <- dirname(sub("--file=", "", commandArgs()[grep("--file=", commandArgs())]))
 args <- commandArgs(trailingOnly = T)
 run_all(args)
 
