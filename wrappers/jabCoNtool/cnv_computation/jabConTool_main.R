@@ -102,7 +102,6 @@ vector.weighted.sd <- function(value_vec,weight_matrix){
 
 compute_distribution_pramaters <- function(cov_tab,library_type = "panel"){
 
-
   if(any(names(cov_tab) == "cov_norm_factor")){
     cov_tab[,norm_vec := TL * cov_norm_factor + (1 - TL)]
   } else {
@@ -129,16 +128,10 @@ compute_distribution_pramaters <- function(cov_tab,library_type = "panel"){
     cov_tab <- merge(cov_tab,cor_sums_tab,by = "sample")
 
   } else {
-    # normalization_sample_type <- tail(sort(unique(cov_tab$type)),1)
-    # norm_cov_data <- cov_tab[type == normalization_sample_type]
     cov_tab[,norm_cov := cov / norm_vec]
-    
-    # for(h_sample in unique(cov_tab$sample)){
-    #   norm_cov <- cov_tab[sample == h_sample]$norm_cov
-    #   hist(norm_cov[abs(norm_cov - median(norm_cov)) < 3*sd(norm_cov)],breaks = length(norm_cov) / 40)
-    # }
-    
-    cov_tab[,center_norm := gradient_descent(initial_value = median(norm_cov),
+    cov_tab[default_sample_norm_cov == 0,default_sample_norm_cov := median(norm_cov),by = sample]
+
+    cov_tab[,center_norm := gradient_descent(initial_value = default_sample_norm_cov[1],
                                              hist_data = hist(norm_cov[abs(norm_cov - median(norm_cov)) < 3*sd(norm_cov)],breaks = length(norm_cov) / 40, plot = FALSE),
                                              add_global_test = 10)
             ,by = sample]
@@ -169,9 +162,6 @@ compute_distribution_pramaters <- function(cov_tab,library_type = "panel"){
   return(cov_tab)
 
 }
-
-# Create histogram
-
 
 # Function for gradient descent
 gradient_descent <- function(initial_value, hist_data, max_iter = 100,add_global_test = 0,default_dir = 0,max_or_min = 1) {
@@ -348,6 +338,12 @@ predict_CNV_model <- function(sample_tab,trans_mat_list,cov_tab,snp_tab,library_
   } else {
     cov_tab <- merge(sample_tab[,.(sample,type,TL)],cov_tab,by = "sample")
   }
+  if(any(names(cov_tab) == "default_sample_norm_cov")){
+    cov_tab <- merge(cov_tab,sample_tab[,.(sample,default_sample_norm_cov)],by = "sample")
+  } else {
+    cov_tab[default_sample_norm_cov := 0]
+  }
+
   cov_nloglike_tab <- compute_coverage_based_nloglike(cov_tab,library_type,categories_default_tabs$cn_categories_tab,complex_FP_probability)
 
   tictoc::toc()
@@ -729,6 +725,7 @@ run_all <- function(args){
   cohort_data_filename <- args[8] #filename or "no_previous_cohort_data"
   prior_est_tumor_ratio <- as.logical(args[9])
   max_CNV_frequency_in_cohort <- as.numeric(args[10]) / 100
+  default_sample_norm_cov_string <- args[11]
   cov_tab_filenames <- args[(which(args == "cov") + 1):length(args)]
 
   dir.create(dirname(out_filename),recursive = T,showWarnings = F)
@@ -758,6 +755,13 @@ run_all <- function(args){
 
   if(panel_snps_filename != "no_use_snps"){
     sample_tab[,snp_tab_filenames := gsub(".region_coverage.tsv",".snpAF.tsv",cov_tab_filenames)]
+  }
+  setcolorder(sample_tab,c("sample","type"))
+
+  #process default_sample_norm_cov
+  default_sample_norm_cov <- as.numeric(strsplit(default_sample_norm_cov_string,split = ";")[[1]])
+  if(any(default_sample_norm_cov > 0)){
+    sample_tab[,default_sample_norm_cov := default_sample_norm_cov]
   }
   setcolorder(sample_tab,c("sample","type"))
 

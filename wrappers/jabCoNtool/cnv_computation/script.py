@@ -48,6 +48,8 @@ if snakemake.params.lib_ROI == "wgs":
 else:
     library_type = "panel"
 
+default_norm_cov_text = snakemake.input.
+
 if snakemake.params.calling_type == "tumor_normal":
     norm_cov_sample_params = " norm_cov " + " ".join(snakemake.input.normal_sample_cov)
 else:
@@ -64,6 +66,7 @@ else:
                     + " " + previous_cohort_data \
                     + " " + str(snakemake.params.jabCoNtool_predict_TL) \
                     + " " + str(snakemake.params.max_CNV_occurance_in_cohort) \
+                    + " '" + ';'.join(str(element) for element in snakemake.params.default_norm_cov) + "' " \
                     + " cov " + " ".join(snakemake.input.sample_cov)\
                     + norm_cov_sample_params \
                     + " >> " + log_filename + " 2>&1"

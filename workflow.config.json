@@ -132,6 +132,11 @@
       }
     },
     "samples": {
+      "default_norm_cov": {
+        "label": "Default mean coverage of normal copy number.",
+        "type": "int",
+        "default": 0
+      }
     }
   }
 }
