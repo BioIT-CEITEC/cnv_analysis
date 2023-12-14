@@ -338,12 +338,6 @@ predict_CNV_model <- function(sample_tab,trans_mat_list,cov_tab,snp_tab,library_
   } else {
     cov_tab <- merge(sample_tab[,.(sample,type,TL)],cov_tab,by = "sample")
   }
-  if(any(names(cov_tab) == "default_sample_norm_cov")){
-    cov_tab <- merge(cov_tab,sample_tab[,.(sample,default_sample_norm_cov)],by = "sample")
-  } else {
-    cov_tab[default_sample_norm_cov := 0]
-  }
-
   cov_nloglike_tab <- compute_coverage_based_nloglike(cov_tab,library_type,categories_default_tabs$cn_categories_tab,complex_FP_probability)
 
   tictoc::toc()
@@ -758,13 +752,6 @@ run_all <- function(args){
   }
   setcolorder(sample_tab,c("sample","type"))
 
-  #process default_sample_norm_cov
-  default_sample_norm_cov <- as.numeric(strsplit(default_sample_norm_cov_string,split = ";")[[1]])
-  if(any(default_sample_norm_cov > 0)){
-    sample_tab[,default_sample_norm_cov := default_sample_norm_cov]
-  }
-  setcolorder(sample_tab,c("sample","type"))
-
 
   if(cohort_data_filename != "no_previous_cohort_data"){
     cohort_tab <- fread(cohort_data_filename)
@@ -786,6 +773,17 @@ run_all <- function(args){
   snp_tab <- res[[2]]
   sample_tab[,c("cov_tab_filenames","snp_tab_filenames") := NULL]
 
+  #process default_sample_norm_cov
+  #TODO in combination with cohort data ???
+  default_sample_norm_cov <- as.numeric(strsplit(gsub("\\'","",default_sample_norm_cov_string),split = ";")[[1]])
+  if(any(default_sample_norm_cov > 0)){
+    default_sample_norm_cov_tab <- data.table(sample = sort(unique(sample_tab$sample)),default_sample_norm_cov = default_sample_norm_cov)
+    cov_tab <- merge(cov_tab,default_sample_norm_cov_tab,by = "sample")
+  } else {
+    cov_tab[,default_sample_norm_cov := 0]
+  }
+  
+  
   if(cohort_data_filename != "no_previous_cohort_data"){
     #combine sample tab
     cohort_sample_tab <- data.table(sample = unique(cohort_tab$sample),type = "cohort")

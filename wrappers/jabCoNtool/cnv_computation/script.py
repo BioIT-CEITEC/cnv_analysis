@@ -48,7 +48,7 @@ if snakemake.params.lib_ROI == "wgs":
 else:
     library_type = "panel"
 
-default_norm_cov_text = snakemake.input.
+default_norm_cov_text = snakemake.params.default_norm_cov
 
 if snakemake.params.calling_type == "tumor_normal":
     norm_cov_sample_params = " norm_cov " + " ".join(snakemake.input.normal_sample_cov)
