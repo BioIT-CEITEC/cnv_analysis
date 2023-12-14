@@ -21,6 +21,10 @@
     ],
     "outputs_optional":[
       "cohort_data/cohort_cnv_info.tar.gz"
+    ],
+    "report_index": "CNV_varcalls/all_samples/jabCoNtool_all_CNV_cov.pdf",
+    "reports":[
+       "CNV_varcalls/all_samples/jabCoNtool_all_CNV_cov.pdf"
     ]
   },
   "general_params": [
