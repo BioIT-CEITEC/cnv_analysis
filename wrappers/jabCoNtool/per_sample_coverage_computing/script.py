@@ -11,7 +11,7 @@ f.close()
 
 command = "bedtools coverage -sorted " + \
           " -a " + snakemake.input.region_bed + \
-          " -b " + snakemake.input.bam + \
+          " -b " + str(snakemake.input.bam) + \
           " -g " + snakemake.input.ref_dict + \
           " > " + snakemake.output.cov_tab
 

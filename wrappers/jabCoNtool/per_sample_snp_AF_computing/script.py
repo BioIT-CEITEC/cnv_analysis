@@ -12,7 +12,7 @@ f.close()
 command = "alleleCounter " + \
             " -r " + snakemake.input.ref + \
             " -l " + snakemake.input.snp_tsv + \
-            " -b  " + snakemake.input.bam + \
+            " -b  " + str(snakemake.input.bam) + \
             " -o " + snakemake.output.snp_tab + \
             " >> " + log_filename + " 2>&1 "
 

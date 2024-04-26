@@ -53,7 +53,7 @@ if snakemake.params.calling_type == "tumor_normal":
 else:
     norm_cov_sample_params = ""
 
-    command = "Rscript " + os.path.abspath(os.path.dirname(__file__)) + "/jabConTool_main.R" \
+command = "Rscript " + os.path.abspath(os.path.dirname(__file__)) + "/jabConTool_main.R" \
                     + " " + snakemake.output.all_res_prob_tab \
                     + " " + snakemake.input.region_bed\
                     + " " + panel_snps_filename \

@@ -46,7 +46,7 @@ def jabCoNtool_cnv_computation_inputs(wildcards):
             input_dict["snp_AF"] = set(expand("structural_varcalls/{sample_name}/jabCoNtool/tumor.snpAF.tsv",sample_name=
                 sample_tab.loc[sample_tab.tumor_normal == "tumor", "donor"].tolist()))
             input_dict["normal_snp_AF"] = set(expand("structural_varcalls/{sample_name}/jabCoNtool/normal.snpAF.tsv",sample_name=
-                sample_tab.sample_name.tolist()))
+                sample_tab.loc[sample_tab.tumor_normal == "normal", "donor"].tolist()))
     else:
         input_dict["sample_cov"] = set(expand("structural_varcalls/{sample_name}/jabCoNtool/sample.region_coverage.tsv",sample_name=sample_tab.sample_name.tolist()))
         if config["jabCoNtool_use_snps"] == True:
