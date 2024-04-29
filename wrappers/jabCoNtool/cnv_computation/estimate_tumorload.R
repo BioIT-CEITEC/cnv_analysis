@@ -1,15 +1,12 @@
 library(data.table)
 library(mclust)
 
-# sample_cov_tab <- cov_tab[sample == "386"]
+#sample_cov_tab <- cov_tab[sample == "386"]
 estimate_tumor_ratio_from_hist_one_sample <- function(sample_cov_tab,TL_vec,values_to_consider){
   densityMclust_res <- densityMclust(sample_cov_tab$cov,plot = F)
   
-  # hist <- hist(sample_cov_tab[cov < mean(cov) * 2 & cov > mean(cov) / 2]$cov,200,plot = F)
-  # normal_cov <- hist$mids[which.max(hist$counts)]
-
-
-  normal_cov <- mlv(sample_cov_tab$cov,method = "naive")
+  hist <- hist(sample_cov_tab[cov < mean(cov) * 2 & cov > mean(cov) / 2]$cov,200,plot = F)
+  normal_cov <- hist$mids[which.max(hist$counts)]
   TL_mat <- sapply(TL_vec,function(TL) TL * ((1:3)/2 * normal_cov) + normal_cov * (1 - TL))
   
   peak_centers_to_use <- densityMclust_res$parameters$mean[densityMclust_res$parameters$mean < 1.75 * normal_cov &
@@ -73,126 +70,6 @@ estimate_tumor_ratio_from_hist_one_sample_one_chr <- function(sample_chr_cov_tab
   setorder(res_tab,score)
   
 }
-
-# 
-# 
-# prior_probs <- c(0.1, 0.2, 0.3, 0.2, 0.2)  # adjust this to your actual prior probabilities
-# 
-# # convert prior probabilities to greta array
-# prior_probs_greta <- as_data(prior_probs)
-# 
-# # create the categorical random variable
-# random_variable <- categorical(t(prior_probs_greta))
-# 
-# 
-# sample_cov_tab <- cov_tab[sample == "386"]
-# 
-# estimate_with_byas <- function(sample_cov_tab,categories_default_tabs,nsamples = 1000){
-#   
-#   normal_count <- mlv(sample_cov_tab$cov,method = "naive")
-#   
-#   y <- as.integer(sample_cov_tab$cov)
-#   
-#   num_categories <- nrow(categories_default_tabs$cn_categories_tab)
-#   
-#   # set prior for the probabilities of each category (uniform prior)
-#   # prior_probabilities <- variable(dim = num_categories, lower = 0, upper = 1)
-#   # probabilities <- softmax(prior_probabilities)  # to ensure they sum to 1
-#   
-#   # set prior for overdispersion parameter (Gamma prior)
-#   dispersion <- gamma(2, 2)
-#   
-#   # set prior for ratio parameter (Beta prior)
-#   ratio <- beta(2, 2)
-#   
-#   DNA_category <- categorical(t(categories_default_tabs$cn_categories_tab$cn_norm_prob))
-#   # now the DNA copies are assumed to be a categorical variable
-#   DNA_category <- t(as_data())
-#   
-#   # set the mean of the Negative Binomial according to your formula
-#   mu <- ratio * (DNA_category[1] / 2 * normal_count) + normal_count * (1 - ratio)
-#   
-#   # Model count of reads as negative binomial
-#   distribution(y) <- negative_binomial(mu, dispersion)
-#   
-#   # define the model
-#   model <- model(mu, dispersion, ratio)
-#   
-#   # perform the sampling using your chosen method, for example using HMC
-#   draws <- mcmc(model, n_samples = 1000)
-#   
-#   
-#   #########
-#   ## greta stats
-#   # data
-#   y <- as.integer(sample_cov_tab$cov)
-#   y <- experiment_tab$Count_G
-#   
-#   #CNV 
-#   
-#   site_id <- as.numeric(as.factor(experiment_tab$pos))
-#   site_effect <- normal(0, 10, dim = max(site_id))
-#   
-#   # condition effect 
-#   condition_id <- as.numeric(factor(experiment_tab$condition,levels = unique(experiment_tab$condition)))
-#   condition_offset <- normal(0, 10, dim = max(condition_id) - 1)
-#   condition_effect <- rbind(0, condition_offset)
-#   
-#   p <- ilogit(site_effect[site_id] + condition_effect[condition_id])
-#   distribution(y) <- binomial(n,p)
-#   
-#   m <- model(condition_offset)
-#   
-#   draws <- mcmc(m, n_samples = nsamples,n_cores = 20)
-#   
-#   return(summary(draws))
-# }
-# 
-# 
-# greta_stats <- function(experiment_tab,nsamples = 1000){
-#   
-#   
-#   #########
-#   ## greta stats
-#   # data
-#   n <- experiment_tab$Good_depth
-#   y <- experiment_tab$Count_G
-#   
-#   #site effect
-#   site_id <- as.numeric(as.factor(experiment_tab$pos))
-#   site_effect <- normal(0, 10, dim = max(site_id))
-#   
-#   # condition effect 
-#   condition_id <- as.numeric(factor(experiment_tab$condition,levels = unique(experiment_tab$condition)))
-#   condition_offset <- normal(0, 10, dim = max(condition_id) - 1)
-#   condition_effect <- rbind(0, condition_offset)
-#   
-#   p <- ilogit(site_effect[site_id] + condition_effect[condition_id])
-#   distribution(y) <- binomial(n,p)
-#   
-#   m <- model(condition_offset)
-#   
-#   draws <- mcmc(m, n_samples = nsamples,n_cores = 20)
-#   
-#   return(summary(draws))
-#   
-#   
-#   
-#   
-#   data(attitude)
-#   design <- as.matrix(attitude[, 2:7])
-#   int <- normal(0, 10)
-#   coefs <- normal(0, 10, dim = ncol(design))
-#   sd <- cauchy(0, 3, truncation = c(0, Inf))
-#   
-#   # matrix multiplication is more efficient than multiplying the coefficients
-#   # separately
-#   mu <- int + design %*% coefs
-#   
-#   distribution(attitude$rating) <- normal(mu, sd)
-#   
-#   
-# }
 
 
 # ## printing

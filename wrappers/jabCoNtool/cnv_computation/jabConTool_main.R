@@ -3,13 +3,14 @@ library(proxy)
 library(fitdistrplus)
 library(mclust)
 library(tictoc)
-library(modeest)
 
 # # develop and test
 script_dir <- dirname(rstudioapi::getSourceEditorContext()$path)
 setwd(paste0(script_dir,"/../../.."))
 args <- readLines(con = "logs/all_samples/jabCoNtool/cnv_computation.log_Rargs")
 args <- strsplit(args,split = " ")[[1]]
+args <- sub("data/ceitec_cfg2","share/share",args)
+
 
 #run as Rscript
 # script_dir <- dirname(sub("--file=", "", commandArgs()[grep("--file=", commandArgs())]))
@@ -25,7 +26,7 @@ sample_regex <<- ".*/(.*)/jabCoNtool.*"
 
 
 min_corelation_threshold <<- 0.9
-dist_transition_treshold <<- 2000000
+dist_transition_treshold <<- 50000
 
 
 ###########################
@@ -128,25 +129,25 @@ compute_distribution_pramaters <- function(cov_tab,library_type = "panel"){
     cov_tab <- merge(cov_tab,cor_sums_tab,by = "sample")
 
   } else {
-    # normalization_sample_type <- tail(sort(unique(cov_tab$type)),1)
-    # norm_cov_data <- cov_tab[type == normalization_sample_type]
-    cov_tab[,norm_cov := cov / norm_vec]
-    cov_tab[,outlier_region := F]
-    norm_filter_iter <- 3
-    outlier_probability <- 0.05
+    normalization_sample_type <- tail(sort(unique(cov_tab$type)),1)
+    norm_cov_data <- cov_tab[type == normalization_sample_type]
+    norm_cov_data[,cov := cov / norm_vec]
+    norm_cov_data[,outlier_region := F]
+    norm_filter_iter <- 6
+    outlier_probability <- 0.1
     for(i in seq(1,by = 1,length.out = norm_filter_iter)){
-      norm_nbinom_dist_tab <- cov_tab[outlier_region == F,as.list(fitdist(as.integer(norm_cov),distr = "nbinom")$estimate),by = sample]
-      norm_nbinom_dist_tab[,outlier_low_value := qnbinom(outlier_probability,size = size,mu = mu)]
-      norm_nbinom_dist_tab[,outlier_high_value := qnbinom(1 - outlier_probability,size = size,mu = mu)]
-      cov_tab <- merge(cov_tab,norm_nbinom_dist_tab[,.(sample,outlier_low_value,outlier_high_value)],by = "sample")
-      cov_tab[!(norm_cov > outlier_low_value & norm_cov < outlier_high_value),outlier_region := T]
-      cov_tab[,c("outlier_low_value","outlier_high_value") := NULL]
+      norm_nbinom_dist <- fitdist(as.integer(norm_cov_data[outlier_region == F]$cov),distr = "nbinom")
+      outlier_low_value <- qnbinom(outlier_probability,size = norm_nbinom_dist$estimate["size"],mu = norm_nbinom_dist$estimate["mu"])
+      outlier_high_value <- qnbinom(1 - outlier_probability,size = norm_nbinom_dist$estimate["size"],mu = norm_nbinom_dist$estimate["mu"])
+      norm_cov_data[!(cov > outlier_low_value & cov < outlier_high_value),outlier_region := T]
     }
-    norm_nbinom_dist_tab <- cov_tab[outlier_region == F,as.list(fitdist(as.integer(norm_cov),distr = "nbinom")$estimate),by = sample]
-    cov_tab <- merge(cov_tab,norm_nbinom_dist_tab,by = "sample")
+    norm_cov_data <- norm_cov_data[outlier_region == F]
+    norm_nbinom_dist <- fitdist(as.integer(norm_cov_data$cov),distr = "nbinom")
+
+    mu <- norm_nbinom_dist$estimate["mu"]
+    size <- norm_nbinom_dist$estimate["size"]
     cov_tab[,nbinom_mean := mu]
     cov_tab[,nbinom_var := mu + mu^2/size]
-    cov_tab[,c("mu","size") := NULL]
 
   }
 
@@ -320,31 +321,54 @@ predict_CNV_model <- function(sample_tab,trans_mat_list,cov_tab,snp_tab,library_
   cn_categories_vec <- categories_default_tabs$cn_categories_tab$cn_category
 
 
-  per_sample_res <- lapply(sample_tab[type == "call"]$sample,function(sel_sample){
-    #sel_sample = sample_tab[type == "call"]$sample[1]
-    #sel_sample = "BR-1470"
-    print(paste0("sample: ",sel_sample))
-    if(!is.null(snp_tab)){
+  # Initializing a vector to keep track of samples that should be removed due to errors
+  samples_to_remove <- character()
+  
+  # Using lapply for iteration and error handling
+  per_sample_res <- lapply(sample_tab[type == "call"]$sample, function(sel_sample) {
+    tryCatch({
+      # Displaying the sample being processed
+      print(paste0("sample: ", sel_sample))
+      
+      # Creating combined negative log-likelihood tables
+      if (!is.null(snp_tab)) {
+        tictoc::tic()
+        combined_nloglike_tab <- rbind(cov_nloglike_tab[sample == sel_sample, c("region_id", cn_categories_vec), with = FALSE],
+                                       snp_nloglike_tab[sample == sel_sample, c("region_id", cn_categories_vec), with = FALSE])
+        setkey(combined_nloglike_tab, region_id)
+        combined_nloglike_tab <- melt.data.table(combined_nloglike_tab, id.vars = "region_id")
+        combined_nloglike_tab <- combined_nloglike_tab[, .(value = sum(value)), by = .(region_id, variable)]
+        combined_nloglike_matrix <- matrix(data = combined_nloglike_tab$value, nrow = length(trans_mat_list))
+        tictoc::toc()
+      } else {
+        combined_nloglike_matrix <- as.matrix(cov_nloglike_tab[sample == sel_sample, cn_categories_vec, with = FALSE])
+      }
+      
+      # Computing Bayesian network likelihood
       tictoc::tic()
-      combined_nloglike_tab <- rbind(cov_nloglike_tab[sample == sel_sample,c("region_id",cn_categories_vec),with = F],
-                                     snp_nloglike_tab[sample == sel_sample,c("region_id",cn_categories_vec),with = F])
-      setkey(combined_nloglike_tab,region_id)
-      combined_nloglike_tab <- melt.data.table(combined_nloglike_tab,id.vars = "region_id")
-      combined_nloglike_tab <- combined_nloglike_tab[,.(value = sum(value)),by = .(region_id,variable)]
-      combined_nloglike_matrix <- matrix(data = combined_nloglike_tab$value,nrow = length(trans_mat_list))
+      res <- compute_byes_net_likelihood(trans_mat_list = trans_mat_list,
+                                         per_region_state_nloglike_matrix = combined_nloglike_matrix,
+                                         only_model_nloglike = estimate_only,
+                                         cn_categories_vec = cn_categories_vec)
       tictoc::toc()
-    } else {
-      combined_nloglike_matrix <- as.matrix(cov_nloglike_tab[sample == sel_sample,cn_categories_vec,with = F])
-    }
-    tictoc::tic()
-    res <- compute_byes_net_likelihood(trans_mat_list = trans_mat_list,
-                                       per_region_state_nloglike_matrix = combined_nloglike_matrix,
-                                       only_model_nloglike = estimate_only,
-                                       cn_categories_vec = cn_categories_vec)
-
-    tictoc::toc()
-    return(res)
+      
+      # Return the result
+      return(res)
+    }, error = function(e) {
+      # Print error message
+      print(paste0("Error processing sample ", sel_sample, ": ", e$message))
+      # Add to samples to be removed
+      samples_to_remove <<- c(samples_to_remove, sel_sample)
+      # Return NULL for this sample
+      return(NULL)
+    })
   })
+  
+  # Removing samples that caused errors from the sample_tab
+  sample_tab <- sample_tab[!sample_tab$sample %in% samples_to_remove,]
+  per_sample_res <- Filter(Negate(is.null), per_sample_res)
+  
+  
 
   if(estimate_only){
     TL_estimate_tab <- sample_tab[type == "call",c("sample",TL_select),with = F]
@@ -377,205 +401,41 @@ predict_CNV_model <- function(sample_tab,trans_mat_list,cov_tab,snp_tab,library_
   }
 }
 
-remove_too_frequent_CNVs <- function(final_cn_pred_info_table,max_CNV_frequency_in_cohort,cohort_tab = NULL,too_frequent_FP_CNVs_tab_filename = NULL){
-  
-  #remove and store too frequent CNVs in the cohort
-  final_cn_pred_info_table[,CNV_in_cohort := length(unique(sample)),by = .(cn_pred,region_id)]
-  
-  if(!is.null(cohort_tab)){
-    
-    CNV_in_previous_cohort_tab <- cohort_tab[,.(CNV_in_previous_cohort = length(unique(sample))),by = .(chr,start,end,cn_pred)]
-    final_cn_pred_info_table <- merge(final_cn_pred_info_table,CNV_in_previous_cohort_tab,by = c("chr","start","end","cn_pred"),all.x = T)
-    setcolorder(final_cn_pred_info_table,c("sample","region_id"))
-    final_cn_pred_info_table[is.na(CNV_in_previous_cohort),CNV_in_previous_cohort := 0]
-    final_cn_pred_info_table[,CNV_in_cohort := CNV_in_cohort + CNV_in_previous_cohort]
-    final_cn_pred_info_table[,CNV_in_previous_cohort := NULL]
-  }
-  
-  final_cn_pred_info_table[,samples_in_cohort := length(unique(cov_tab$sample))]
-  
-  if(class(final_cn_pred_info_table$cn_pred) == "character"){
-    final_cn_pred_info_table[,too_frequent_FP_CNVs := cn_pred != "2" & CNV_in_cohort / samples_in_cohort > max_CNV_frequency_in_cohort ]
-  } else {
-    final_cn_pred_info_table[,too_frequent_FP_CNVs := cn_pred != 3 & CNV_in_cohort / samples_in_cohort > max_CNV_frequency_in_cohort ]
-  }
-  
-  if(!is.null(too_frequent_FP_CNVs_tab_filename)){
-    too_frequent_FP_CNVs_tab <- final_cn_pred_info_table[too_frequent_FP_CNVs == T,]
-    fwrite(too_frequent_FP_CNVs_tab,file = too_frequent_FP_CNVs_tab_filename,sep="\t")
-  }
-  
-  if(class(final_cn_pred_info_table$cn_pred) == "character"){
-    final_cn_pred_info_table[too_frequent_FP_CNVs == T,cn_pred := "2"]
-  } else {
-    final_cn_pred_info_table[too_frequent_FP_CNVs == T,cn_pred := 3]
-  }
-  
-  final_cn_pred_info_table[,too_frequent_FP_CNVs := NULL]
-  
-  return(final_cn_pred_info_table)
-  
-}
-
-recompute_jCT_variants <- function(final_cn_pred_info_table,join_distance = 200000){
-  jCT_tab <- copy(final_cn_pred_info_table)
-  jCT_tab <- unique(jCT_tab[,.(sample,region_id,chr,start,end,cn_pred)])
-  jCT_tab[,region_dist := c(tail(start,-1) - head(end, -1),Inf),by = .(sample,chr)]
-  jCT_tab[,region_break := as.integer(region_dist > join_distance)]
-  setorder(jCT_tab,sample,chr,start)
-  rle_res <- jCT_tab[,rle(region_break),by = .(sample,chr)]
-  rle_res[,join_region_id := rep(1:(length(values)/2),each = 2),by = .(sample)]
-  rle_res <- rle_res[,.(lengths = sum(lengths)),by = .(sample,chr,join_region_id)]
-  jCT_tab[,join_region_id := rep(rle_res$join_region_id,rle_res$lengths)]
-  
-  rle_res <- jCT_tab[,rle(cn_pred),by = .(sample)]
-  rle_res[,cn_id := seq_along(values),by = .(sample)]
-  jCT_tab[,cn_id := rep(rle_res$cn_id,rle_res$lengths)]
-  jCT_tab[,cn_id := cn_id * join_region_id]
-  final_cn_pred_info_table <- merge(final_cn_pred_info_table,jCT_tab[,.(sample,region_id,new_cn_id = cn_id)],by = c("sample","region_id"))
-  final_cn_pred_info_table[,cn_id := new_cn_id]
-  final_cn_pred_info_table[,new_cn_id := NULL]
-  return(final_cn_pred_info_table)
-}
-
 
 test_TL_from_N_longest_CNVs <- function(final_estimates,cn_categories_tab,N_longest_CNVs = 10,min_CNV_len = mean(final_estimates[,.(end - start)]$V1) * 3){
-
-  if(class(final_estimates$cn_pred) == "character"){
-    norm_cov_tab <- final_estimates[cn_pred == "2",.(norm_cov = median(cov),norm_sd = sd(cov)),by = sample]
-    
-    CNV_tab <- final_estimates[cn_pred != "2"]
-    CNV_tab <- CNV_tab[cn_pred != "5"]
-  } else {
-    norm_cov_tab <- final_estimates[cn_pred == 3,.(norm_cov = median(cov),norm_sd = sd(cov)),by = sample]
-    
-    CNV_tab <- final_estimates[cn_pred != 3]
-    CNV_tab <- CNV_tab[cn_pred != 6]
-  }
-  
-
-  # CNV_tab <- CNV_tab[,.(start = min(start),end = max(end),cov = median(cov),cov_sum = sum(cov),norm_sum_cov = sum(nbinom_mean),var = nbinom_var[1],cn_pred_id = cn_pred[1]),by = .(sample,chr,cn_id)]
-  # CNV_tab[cn_pred_id < 3,region_prob := pnbinom(cov_sum,mu = norm_sum_cov,size = norm_sum_cov^2 / (var - norm_sum_cov),lower.tail = T)]
-  # CNV_tab[cn_pred_id > 3,region_prob := pnbinom(cov_sum,mu = norm_sum_cov,size = norm_sum_cov^2 / (var - norm_sum_cov),lower.tail = F)]
-  CNV_tab <- CNV_tab[,.(start = min(start),end = max(end)),by = .(sample,chr,cn_id)]
+  CNV_tab <- final_estimates[cn_pred != 3]
+  CNV_tab <- CNV_tab[,.(start = min(start),end = max(end),cov = median(cov),cn_pred_id = cn_pred[1]),by = .(sample,chr,cn_id)]
   CNV_tab[,cnv_length := end - start]
   # CNV_tab <- CNV_tab[cnv_length > min_CNV_len]
-  # setorder(CNV_tab,-cnv_length)
+  setorder(CNV_tab,-cnv_length)
 
-  #min CNV length <- 10 * 10^6
-  # CNV_tab <- CNV_tab[,.SD[1:min(N_longest_CNVs,nrow(.SD))],by = sample]
-  CNV_tab <- CNV_tab[cnv_length > 10 * 10^6,]
-  CNV_tab <- merge(CNV_tab,final_estimates[,.(sample,chr,cn_id,cov,cn_pred)],by = c("sample","chr","cn_id"))
-  
-  
-  # computed as modus of coverage per sample normalized by predicted CN
-   
-  # CNV_tab <- merge(CNV_tab,norm_cov_tab,by = "sample")
-  
-  CNV_tab <- merge(CNV_tab,norm_cov_tab,by = "sample")
-  if(class(final_estimates$cn_pred) == "character"){
-    CNV_tab <- merge(CNV_tab,cn_categories_tab[,.(cn_pred = cn_category,cov_norm_factor)],by = "cn_pred")
-  } else {
-    CNV_tab <- merge(CNV_tab,cn_categories_tab[,.(cn_pred = seq_along(cn_category),cov_norm_factor)],by = "cn_pred")
-  }
-  CNV_tab[,cov_diff := cov - norm_cov]
-  CNV_tab[,relative_cov_diff := cov_diff / ((cov_norm_factor - 1) * 2)]
-  
-  if(class(final_estimates$cn_pred) == "character"){
-    TL_estimates_tab <- as.data.table(t(sapply(unique(CNV_tab$sample),function(sel_sample){
-      mode <-  median(CNV_tab[sample == sel_sample]$relative_cov_diff)
-      sd <- sd(CNV_tab[sample == sel_sample]$relative_cov_diff)
-      norm_cov <- norm_cov_tab[sample == sel_sample]$norm_cov
-      norm_sd <- norm_cov_tab[sample == sel_sample]$norm_sd
-      TL <- (mode * 2) / norm_cov
-      # region_count <- nrow(CNV_tab[sample == sel_sample]) 
-      # cnv_length_dup <- sum(unique(CNV_tab[sample == sel_sample & cov_norm_factor > 1],by = c("chr","cn_id"))$cnv_length)
-      # cnv_length_del <- sum(unique(CNV_tab[sample == sel_sample & cov_norm_factor < 1],by = c("chr","cn_id"))$cnv_length)
-      # t_test <- t.test(final_estimates[sample == sel_sample & cn_pred == "2"]$cov - norm_cov,CNV_tab[sample == sel_sample]$relative_cov_diff,alternative = "less")
-      
-      return(c(TL,round(mode),round(sd,2),round(norm_cov),round(norm_sd,2)))
-    })))
-  } else {
-    TL_estimates_tab <- as.data.table(t(sapply(unique(CNV_tab$sample),function(sel_sample){
-      mode <-  median(CNV_tab[sample == sel_sample]$relative_cov_diff)
-      sd <- sd(CNV_tab[sample == sel_sample]$relative_cov_diff)
-      norm_cov <- norm_cov_tab[sample == sel_sample]$norm_cov
-      norm_sd <- norm_cov_tab[sample == sel_sample]$norm_sd
-      TL <- (mode * 2) / norm_cov
-      # region_count <- nrow(CNV_tab[sample == sel_sample]) 
-      # cnv_length_dup <- sum(unique(CNV_tab[sample == sel_sample & cov_norm_factor > 1],by = c("chr","cn_id"))$cnv_length)
-      # cnv_length_del <- sum(unique(CNV_tab[sample == sel_sample & cov_norm_factor < 1],by = c("chr","cn_id"))$cnv_length)
-      # t_test <- t.test(final_estimates[sample == sel_sample & cn_pred == 3]$cov - norm_cov,CNV_tab[sample == sel_sample]$relative_cov_diff,alternative = "less")
-      
-      return(c(TL,round(mode),round(sd,2),round(norm_cov),round(norm_sd,2)))
-    })))
-  }
-    
-  # "CNV_regions","CNV_length_dup","CNV_length_del"
-  
-  TL_estimates_tab <- cbind(unique(CNV_tab$sample),TL_estimates_tab)
-  
-  setnames(TL_estimates_tab,c("sample","pred_TL","median_one_copy_diff","one_copy_diff_sd","norm_cov_mode","norm_cov_sd"))
-  TL_estimates_tab <- TL_estimates_tab[pred_TL > 0.01]
-  
-  test_cov_var_tab <- merge(final_estimates[,.(sample,region_id,chr,cn_pred,cn_id,cov)],TL_estimates_tab[,.(sample,median_one_copy_diff,norm_cov_mode)],by="sample")
-  if(class(final_estimates$cn_pred) == "character"){
-    test_cov_var_tab <- merge(test_cov_var_tab,cn_categories_tab[,.(cn_pred = cn_category,cov_norm_factor)],by = "cn_pred")
-  } else {
-    test_cov_var_tab <- merge(test_cov_var_tab,cn_categories_tab[,.(cn_pred = seq_along(cn_category),cov_norm_factor)],by = "cn_pred")
-  }
-  
-  test_cov_var_tab[,CNV_size := .N,by = .(sample,chr,cn_id)]
-  
-  test_cov_var_tab[,null_residuals := cov - norm_cov_mode]
-  test_cov_var_tab[,CNV_residuals := cov - norm_cov_mode - ((cov_norm_factor - 1) * 2) * median_one_copy_diff]
-  test_cov_var_tab <- test_cov_var_tab[,.(null_MAE = mean(abs(null_residuals)),
-                                          CNV_MAE = mean(abs(CNV_residuals)),
-                                          null_RMSE = sqrt(mean(null_residuals ^ 2)),
-                                          CNV_RMSE = sqrt(mean(CNV_residuals ^ 2)),
-                                          norm_cov_mode = norm_cov_mode[1],
-                                          dup_size = sum(cov_norm_factor > 1),
-                                          CNV_size = sum(cov_norm_factor != 1),
-                                          dup_count = sum(1 / CNV_size[cov_norm_factor > 1]),
-                                          CNV_count = sum(1 / CNV_size[cov_norm_factor != 1]),
-                                          full_size = .N) ,by = sample]
-  test_cov_var_tab[,rel_MAE_diff := (null_MAE - CNV_MAE) / norm_cov_mode]
-  test_cov_var_tab[,rel_RMSE_diff := (null_RMSE - CNV_RMSE) / norm_cov_mode]
-  test_cov_var_tab[,CNV_rel_length := round(CNV_size / full_size,3)]
-  test_cov_var_tab[,CNV_dup_del_size_ratio := round(dup_size / CNV_size,3)]
-  test_cov_var_tab[,CNV_dup_del_count_ratio := round(dup_count / CNV_count,3)]
-  test_cov_var_tab[,mean_CNV_bin_size := round(CNV_size / CNV_count,3)]
-  
-  TL_estimates_tab <- merge(TL_estimates_tab,test_cov_var_tab[,.(sample,CNV_rel_length,mean_CNV_bin_size,CNV_dup_del_size_ratio,CNV_dup_del_count_ratio)],by = "sample")
-  
-  TL_estimates_tab[pred_TL > 99.99,pred_TL := 99.99]
-  
-  # TL_estimates_tab[,CNV_length := CNV_length_dup + CNV_length_del]
-  # CNV_region_size <- sum(unique(final_estimates[,.(chr,start,end)])[,end - start])
-  # TL_estimates_tab[,CNV_length_rel := round(CNV_length / CNV_region_size * 100,2)]
-  # TL_estimates_tab[,CNV_dup_del_ratio := round(CNV_length_dup / CNV_length,3)]
-  # TL_estimates_tab[,CNV_length := round(CNV_length / 10 ^ 6,1)]
-  # TL_estimates_tab[,CNV_length_dup := NULL]
-  # TL_estimates_tab[,CNV_length_del := NULL]
-  
-  # CNV_tab[,CNV_pred_TL := (cov / norm_cov - 1) / (cn_categories_tab$cn_count[cn_pred_id] / 2 - 1)]
-  # CNV_tab <- CNV_tab[!is.na(CNV_pred_TL)]
-  # TL_estimates_tab <- CNV_tab[,.(pred_TL = median(CNV_pred_TL),pred_TL_sd = sd(CNV_pred_TL),pred_TL_relative_sd = sd(CNV_pred_TL) / median(CNV_pred_TL),CNV_size_Mbp = sum(cnv_length) / 10^6),by =sample]
-  # # TL_estimates_tab <- CNV_tab[,.(pred_TL = weighted.mean(x = CNV_pred_TL,w = cnv_length),pred_TL_sd = sqrt(weighted.mean( (CNV_pred_TL - weighted.mean(x = CNV_pred_TL,w = cnv_length))^2, cnv_length )),CNV_size_Mbp = sum(cnv_length) / 10^6),by =sample]
-  # TL_estimates_tab[,rel_CNV_size := round(CNV_size_Mbp / (sum(final_estimates[sample == sample[1],max(end),by = chr]$V1) / 10 ^ 6) * 100,2) ]
-  
+  CNV_tab <- CNV_tab[,.SD[1:min(N_longest_CNVs,nrow(.SD))],by = sample]
+  CNV_tab <- merge(CNV_tab,final_estimates[,.(norm_cov = median(cov / cn_categories_tab$cov_norm_factor[cn_pred],na.rm = T)),by = sample],by = "sample")
+  CNV_tab[,CNV_pred_TL := (cov / norm_cov - 1) / (cn_categories_tab$cn_count[cn_pred_id] / 2 - 1)]
+  CNV_tab <- CNV_tab[!is.na(CNV_pred_TL)]
+  TL_estimates_tab <- CNV_tab[,.(pred_TL = weighted.mean(x = CNV_pred_TL,w = cnv_length),pred_TL_sd = sqrt(weighted.mean( (CNV_pred_TL - weighted.mean(x = CNV_pred_TL,w = cnv_length))^2, cnv_length )),CNV_size_Mbp = sum(cnv_length) / 10^6),by =sample]
+  TL_estimates_tab[,rel_CNV_size := round(CNV_size_Mbp / (sum(final_estimates[sample == sample[1],max(end),by = chr]$V1) / 10 ^ 6) * 100,2) ]
+  TL_estimates_tab[pred_TL > 0.99,pred_TL := 0.99]
   return(TL_estimates_tab)
 }
 
-predict_CNVs <- function(sample_tab,cov_tab,snp_tab,library_type,trans_mat_list,categories_default_tabs,initial_TL,iterations,complex_FP_probability,cohort_tab,max_CNV_frequency_in_cohort){
+predict_CNVs <- function(sample_tab,cov_tab,snp_tab,library_type,trans_mat_list,categories_default_tabs,initial_TL,iterations,complex_FP_probability){
 
   CNV_pred_list <- list()
   TL_estimates_tab_list <- list()
   if(any(names(sample_tab) == "TL")){
-    TL_estimates_tab_list[[1]] <- data.table(sample = sample_tab$sample,pred_TL = sample_tab$TL)
+    TL_estimates_tab_list[[1]] <- data.table(sample = sample_tab$sample,
+                                             pred_TL = sample_tab$TL,
+                                             pred_TL_sd = 0,
+                                             CNV_size_kb = 0,
+                                             rel_CNV_size = 0)
     sample_tab[,TL := NULL]
   } else {
-    TL_estimates_tab_list[[1]] <- data.table(sample = sample_tab$sample,pred_TL = initial_TL)
+    TL_estimates_tab_list[[1]] <- data.table(sample = sample_tab$sample,
+                                             pred_TL = initial_TL,
+                                             pred_TL_sd = 0,
+                                             CNV_size_kb = 0,
+                                             rel_CNV_size = 0)
   }
 
 
@@ -584,7 +444,7 @@ predict_CNVs <- function(sample_tab,cov_tab,snp_tab,library_type,trans_mat_list,
     tictoc::tic()
     print(paste0("iter: ",i))
     process_sample_tab <- merge.data.table(sample_tab,TL_estimates_tab_list[[i]][,.(sample,TL = pred_TL)],by = "sample",all.x = T)
-    process_sample_tab[is.na(TL),TL := 0.05]
+    process_sample_tab[is.na(TL),TL := 0.1]
 
     res <- predict_CNV_model(process_sample_tab,trans_mat_list,cov_tab,snp_tab,library_type,categories_default_tabs,complex_FP_probability)
 
@@ -599,19 +459,18 @@ predict_CNVs <- function(sample_tab,cov_tab,snp_tab,library_type,trans_mat_list,
     rle_res <- final_estimates[,rle(cn_pred),by = .(sample,chr)]
     rle_res[,cn_id := seq_along(values),by = .(sample,chr)]
     final_estimates[,cn_id := rep(rle_res$cn_id,rle_res$lengths)]
-    final_estimates[,cov := NULL]
-    final_estimates <- merge.data.table(final_estimates,cn_call_info_tab,by = c("sample","region_id"))
-    final_estimates <- remove_too_frequent_CNVs(final_estimates,max_CNV_frequency_in_cohort,cohort_tab)
-    final_estimates <- recompute_jCT_variants(final_estimates)
-    
+
     if(initial_TL != 1){
       TL_estimates_tab_list[[i + 1]] <- test_TL_from_N_longest_CNVs(final_estimates,categories_default_tabs$cn_categories_tab,3)
       TL_estimates_tab_list[[i + 1]] <- merge.data.table(TL_estimates_tab_list[[i]][,.(sample)],TL_estimates_tab_list[[i + 1]],by = "sample",all.x = T)
+      TL_estimates_tab_list[[i + 1]][is.na(CNV_size_Mbp),CNV_size_Mbp := 0]
+      TL_estimates_tab_list[[i + 1]][is.na(rel_CNV_size),rel_CNV_size := 0]
     } else {
       TL_estimates_tab_list[[i + 1]] <- TL_estimates_tab_list[[1]]
     }
 
-
+    final_estimates[,cov := NULL]
+    final_estimates <- merge.data.table(final_estimates,cn_call_info_tab,by = c("sample","region_id"))
     CNV_pred_list[[i]] <- final_estimates
 
     tictoc::toc()
@@ -620,20 +479,6 @@ predict_CNVs <- function(sample_tab,cov_tab,snp_tab,library_type,trans_mat_list,
   return(list(CNV_pred_list,TL_estimates_tab_list))
 
 }
-
-
-get_residual_vector_one_sample <- function(finale_estimates,pred_TL,normal_coverage,cn_categories_tab){
-  test_tab <- copy(finale_estimates)
-  if(class(test_tab$cn_pred) == "character"){
-    test_tab <- merge(test_tab,cn_categories_tab[,.(cn_pred = cn_category,cov_norm_factor)],by = "cn_pred")
-  } else {
-    test_tab <- merge(test_tab,cn_categories_tab[,.(cn_pred = seq_along(cn_category),cov_norm_factor)],by = "cn_pred")
-  }
-  return(test_tab[,cov - normal_coverage - (cov_norm_factor - 1) * pred_TL * normal_coverage])
-
-}
-
-
 
 
 ###########################
@@ -657,7 +502,6 @@ run_all <- function(args){
   cohort_data_filename <- args[8] #filename or "no_previous_cohort_data"
   prior_est_tumor_ratio <- as.logical(args[9])
   max_CNV_frequency_in_cohort <- as.numeric(args[10]) / 100
-  cov_tab_filenames <- args[(which(args == "cov") + 1):length(args)]
 
   dir.create(dirname(out_filename),recursive = T,showWarnings = F)
 
@@ -673,18 +517,19 @@ run_all <- function(args){
     complex_FP_probability <- (1 - max(default_cn_rel_prob_vec)) / 6
   }
 
-
-
   #create sample table
   if(calling_type == "tumor_normal"){
-    normal_cov_tab_filenames <- args[(which(args == "normal_cov") + 1):(which(args == "cov") - 1)]
-    sample_tab <- data.table(cov_tab_filenames = c(cov_tab_filenames,normal_cov_tab_filenames),
-                             type = c(rep("call",length(cov_tab_filenames)),rep("normal",length(normal_cov_tab_filenames))))
+    tumor_cov_tab_filenames <- args[(which(args == "cov") + 1):(which(args == "norm_cov") - 1)]
+    normal_cov_tab_filenames <- args[(which(args == "norm_cov") + 1):length(args)]
+    sample_tab <- data.table(cov_tab_filenames = c(tumor_cov_tab_filenames,normal_cov_tab_filenames),
+                             type = c(rep("call",length(tumor_cov_tab_filenames)),rep("normal",length(normal_cov_tab_filenames))))
+    sample_tab[,sample := gsub(sample_regex,"\\1",cov_tab_filenames)]
+    sample_tab[type == "normal",sample := paste0(sample,"_norm")]
   } else {
-    sample_tab <- data.table(cov_tab_filenames = cov_tab_filenames,
+    sample_tab <- data.table(cov_tab_filenames = args[(which(args == "cov") + 1):length(args)],
                              type = c(rep("call",length(cov_tab_filenames))))
+    sample_tab[,sample := gsub(sample_regex,"\\1",cov_tab_filenames)]
   }
-  sample_tab[,sample := gsub(sample_regex,"\\1",cov_tab_filenames)]
 
   if(panel_snps_filename != "no_use_snps"){
     sample_tab[,snp_tab_filenames := gsub(".region_coverage.tsv",".snpAF.tsv",cov_tab_filenames)]
@@ -741,7 +586,7 @@ run_all <- function(args){
     iterations = 3
   }
 
-  res <- predict_CNVs(sample_tab,cov_tab,snp_tab,library_type,trans_mat_list,categories_default_tabs,initial_TL,iterations,complex_FP_probability,cohort_tab,max_CNV_frequency_in_cohort)
+  res <- predict_CNVs(sample_tab,cov_tab,snp_tab,library_type,trans_mat_list,categories_default_tabs,initial_TL,iterations,complex_FP_probability)
 
   # save(res,file = "test_CNV_call_all_samples_260123.Rdata")
   # load("test_optim_1_init_0_05.Rdata")
@@ -757,99 +602,34 @@ run_all <- function(args){
   }
   fwrite(calling_info_tab,file = paste0(dirname(out_filename),"/cohort_info_tab.tsv"),sep="\t")
 
+  #remove and store too frequent CNVs in the cohort
+  final_cn_pred_info_table[,CNV_in_cohort := length(unique(sample)),by = .(cn_pred,region_id)]
 
-  final_cn_pred_info_table <- remove_too_frequent_CNVs(final_cn_pred_info_table,max_CNV_frequency_in_cohort,cohort_tab,paste0(dirname(out_filename),"/too_frequent_filtered_CNVs.tsv"))
-  final_cn_pred_info_table <- recompute_jCT_variants(final_cn_pred_info_table)
+  if(cohort_data_filename != "no_previous_cohort_data"){
+
+    CNV_in_previous_cohort_tab <- cohort_tab[,.(CNV_in_previous_cohort = length(unique(sample))),by = .(chr,start,end,cn_pred)]
+    final_cn_pred_info_table <- merge(final_cn_pred_info_table,CNV_in_previous_cohort_tab,by = c("chr","start","end","cn_pred"),all.x = T)
+    setcolorder(final_cn_pred_info_table,c("sample","region_id"))
+    final_cn_pred_info_table[is.na(CNV_in_previous_cohort),CNV_in_previous_cohort := 0]
+    final_cn_pred_info_table[,CNV_in_cohort := CNV_in_cohort + CNV_in_previous_cohort]
+    final_cn_pred_info_table[,CNV_in_previous_cohort := NULL]
+  }
+
+  final_cn_pred_info_table[,samples_in_cohort := length(unique(cov_tab$sample))]
+  final_cn_pred_info_table[,too_frequent_FP_CNVs := cn_pred != "2" & CNV_in_cohort / samples_in_cohort > max_CNV_frequency_in_cohort ]
+  too_frequent_FP_CNVs_tab <- final_cn_pred_info_table[too_frequent_FP_CNVs == T,]
+  fwrite(too_frequent_FP_CNVs_tab,file = paste0(dirname(out_filename),"/too_frequent_filtered_CNVs.tsv"),sep="\t")
+  final_cn_pred_info_table[too_frequent_FP_CNVs == T,cn_pred := "2"]
+  final_cn_pred_info_table[,too_frequent_FP_CNVs := NULL]
+
   fwrite(final_cn_pred_info_table,file = out_filename,sep="\t")
 
 
   if(calling_type != "germline") {
-    tumor_cell_fraction_table <- test_TL_from_N_longest_CNVs(final_cn_pred_info_table,categories_default_tabs$cn_categories_tab,3)
-    # tumor_cell_fraction_table[,pred_TF_perc := NULL]
-    
-    CNV_residual_vector_list <- lapply(tumor_cell_fraction_table$sample,function(x) get_residual_vector_one_sample(final_cn_pred_info_table[sample == x],
-                                                                                                                   tumor_cell_fraction_table[sample == x]$pred_TL,
-                                                                                                                   tumor_cell_fraction_table[sample == x]$norm_cov_mode,
-                                                                                                                   categories_default_tabs$cn_categories_tab))
-    names(CNV_residual_vector_list) <- tumor_cell_fraction_table$sample
-    #test with permutations
-    test_iter <- 3
-    test_res_list <- sapply(1:test_iter,function(x){
-      test_cov_tab <- copy(cov_tab[sample %in% tumor_cell_fraction_table$sample])
-      test_cov_tab[, cov := sample(cov),by = .(sample)]
-      test_sample_tab <- merge(sample_tab,tumor_cell_fraction_table[,.(sample,TL = pred_TL)],by = "sample")
-      test_res <- predict_CNVs(test_sample_tab,test_cov_tab,NULL,library_type,trans_mat_list,categories_default_tabs,initial_TL,1,complex_FP_probability,cohort_tab,max_CNV_frequency_in_cohort)
-      test_res <- copy(test_res[[1]][[1]])
-      # test_tumor_cell_fraction_table <- test_TL_from_N_longest_CNVs(test_res,categories_default_tabs$cn_categories_tab,3)
-      test_CNV_residual_vector_list <- lapply(tumor_cell_fraction_table$sample,function(x) get_residual_vector_one_sample(test_res[sample == x],
-                                                                                                                 tumor_cell_fraction_table[sample == x]$pred_TL,
-                                                                                                                 tumor_cell_fraction_table[sample == x]$norm_cov_mode,
-                                                                                                                 categories_default_tabs$cn_categories_tab))
-      names(test_CNV_residual_vector_list) <- tumor_cell_fraction_table$sample
-      res <- lapply(tumor_cell_fraction_table$sample,function(x) ks.test(log(abs(CNV_residual_vector_list[[x]])), log(abs(test_CNV_residual_vector_list[[x]]))))
-      return(sapply(res,function(x) x$p.value))
-    })
-    
-
-    tumor_cell_fraction_table[,random_perm_test_p_value := rowMeans(test_res_list)]
-    tumor_cell_fraction_table <- merge(tumor_cell_fraction_table,unique(final_cn_pred_info_table[,.(sample)]),by = "sample",all = T)
-    tumor_cell_fraction_table[,pred_TL := round(pred_TL * 100,1)]
-    setnames(tumor_cell_fraction_table,"pred_TL","pred_TF_perc")
-    tumor_cell_fraction_table[,filter := "PASS"]
-    tumor_cell_fraction_table[is.na(pred_TF_perc),filter := "no_long_CNV_detected"]
-    tumor_cell_fraction_table[random_perm_test_p_value > 0.05,filter := "not_sig_perm_test"]
-    tumor_cell_fraction_table[CNV_dup_del_size_ratio < 0.2,filter := "DEL_bias>0.8"]
-    tumor_cell_fraction_table[,filtered_pred_TF_perc := pred_TF_perc]
-    tumor_cell_fraction_table[filter != "PASS", filtered_pred_TF_perc := 0]
-    setcolorder(tumor_cell_fraction_table,c("sample","filtered_pred_TF_perc","filter","pred_TF_perc","random_perm_test_p_value"))
-    
-    setorder(tumor_cell_fraction_table,-filtered_pred_TF_perc,random_perm_test_p_value,na.last = T)
-    #   return(test_tumor_cell_fraction_table)
-    # })
-
-    # # test_TL <- suppressWarnings(Reduce(function(x,y) merge(x,y,by = "sample",all = T),lapply(test_res_list,function(x) x[,.(sample,pred_TL)] )))
-    # # test_TL <- data.table(sample = test_TL$sample,test_TL = rowSums(as.matrix(test_TL[,-1,with = F]),na.rm = T) / test_iter)
-    # test_tab <- suppressWarnings(Reduce(function(x,y) {merge(x,y,by = "sample",all = T)},lapply(1:test_iter,function(i) setnames(test_res_list[[i]][,.(sample,rel_MAE_diff)],"rel_MAE_diff",paste0("iter",i)) )))
-    # test_tab <- merge(tumor_cell_fraction_table[,.(sample,rel_MAE_diff)],test_tab,by ="sample", all.x = T)
-    # cols_to_modify <- names(test_tab)[-c(1,2)]
-    # test_tab[, (cols_to_modify) := lapply(.SD, function(x) ifelse(is.na(x), runif(1,0,1*10^-4), x)), .SDcols = cols_to_modify]
-    # 
-    # t_test_res <- lapply(test_tab$sample, function(x) t.test(as.numeric(test_tab[sample == x,cols_to_modify,with = F]),mu = test_tab[sample == x]$rel_MAE_diff))
-    # test_pvalue <- data.table(sample = test_tab$sample,random_perm_test_p_value = sapply(t_test_res,function(x) x$p.value))
-    # 
-    # 
-    # 
-    # test_pvalue <- data.table(sample = test_pvalue$sample,random_perm_neg_log10_p_value = rowSums(as.matrix(test_pvalue[,-1,with = F]),na.rm = T) / test_iter)
-    # test_CNV_length <- suppressWarnings(Reduce(function(x,y) merge(x,y,by = "sample",all = T),lapply(test_res_list,function(x) x[,.(sample,CNV_length)] )))
-    # test_CNV_length <- data.table(sample = test_CNV_length$sample,test_CNV_length = rowSums(as.matrix(test_CNV_length[,-1,with = F]),na.rm = T) / test_iter)
-    # test_res <- Reduce(function(x,y) merge(x,y,by = "sample",all = T),list(test_TL,test_pvalue,test_CNV_length))
-    # 
-    # test_res <- merge(test_res,tumor_cell_fraction_table[,.(sample,pred_TL,neg_log10_p_value,CNV_length)],by = "sample")
-    # tumor_cell_fraction_table <- merge(tumor_cell_fraction_table,test_pvalue,by = "sample",all.x = T)
-    # tumor_cell_fraction_table[is.na(random_perm_test_p_value),random_perm_test_p_value := 0]
-    # tumor_cell_fraction_table[,corrected_neg_log10_p_value := neg_log10_p_value]
-    # tumor_cell_fraction_table[corrected_neg_log10_p_value < 0,corrected_neg_log10_p_value := 0]
-    # tumor_cell_fraction_table[,corrected_p_value := 10 ^ -corrected_neg_log10_p_value]
-    # tumor_cell_fraction_table[!is.na(corrected_p_value),corrected_p_value := p.adjust(corrected_p_value, method = "BH")]
-    # tumor_cell_fraction_table[,corrected_neg_log10_p_value := -log10(corrected_p_value)] 
-    # tumor_cell_fraction_table <- tumor_cell_fraction_table[,.(sample,
-    #                                                           pred_TF_perc = round(pred_TL*100,2),
-    #                                                           corrected_neg_log10_p_value,
-    #                                                           median_one_copy_diff, 
-    #                                                           one_copy_diff_sd, 
-    #                                                           norm_cov_mode, 
-    #                                                           norm_cov_sd)]
-    # 
-    # 
-    # tumor_cell_fraction_table <- merge.data.table(tumor_cell_fraction_table,final_cn_pred_info_table[,.(perc_of_CNV_predicted = sum(cn_pred != "2") / .N,
-    #                                                                                                     CNV_dup_del_ratio = sum(!(cn_pred %in% c("0","1","2"))) / sum(cn_pred != "2")),by = sample],by = "sample",all.y = T)
-    # tumor_cell_fraction_table[,perc_of_CNV_predicted := round(perc_of_CNV_predicted*100,2)]
-    # 
-    # setorder(tumor_cell_fraction_table,-random_perm_test_p_value,-pred_TF_perc,na.last = T)
-    
+    tumor_cell_fraction_table <- res[[2]][[iterations]]
     fwrite(tumor_cell_fraction_table,file = paste0(dirname(out_filename),"/tc_fraction_prediction.tsv"),sep="\t")
   }
-  save(res,file = paste0(dirname(out_filename),"/support_data.Rdata"))
+  save(res,too_frequent_FP_CNVs_tab,file = paste0(dirname(out_filename),"/support_data.Rdata"))
 }
 
 #run as Rscript

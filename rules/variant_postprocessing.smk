@@ -20,7 +20,6 @@ def process_and_format_CNV_inputs(wildcards):
 
     return input_dict
 
-#MERGING VARIANT
 rule process_and_format_CNV:
     input:
         unpack(process_and_format_CNV_inputs)

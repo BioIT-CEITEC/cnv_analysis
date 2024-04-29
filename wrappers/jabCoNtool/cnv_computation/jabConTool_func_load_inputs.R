@@ -18,7 +18,7 @@ load_panel_intervals <- function(panel_intervals_filename,library_type){
     panel_intervals[,V4 := paste("reg",V1,V2,V3,sep = "_")]
   }
   setnames(panel_intervals,c("chr","start","end","region_name"))
-  
+
   if(library_type == "wgs"){
     #remove regions smaller then 1/2 of size
     panel_intervals <- panel_intervals[end - start > (max(end - start) / 2) ,]
@@ -36,17 +36,7 @@ load_panel_intervals <- function(panel_intervals_filename,library_type){
   setkeyv(panel_intervals, c("chr","start","end"))
 }
 
-get_cov_tab <- function(sample_tab,
-                        panel_intervals,
-                        cohort_tab,
-                        library_type,
-                        GC_normalization_file,
-                        cytoband_file,
-                        outlier_probability = 0,
-                        wgs_outlier_filter_iter = 2,
-                        usable_bases_ratio_threshold = 0.85,
-                        join_intervals_distance = 0){
-  
+get_cov_tab <- function(sample_tab,panel_intervals,cohort_tab,join_intervals_distance = 0){
   cov_tab <- fread_vector_of_files(sample_tab$cov_tab_filenames,sample_tab$sample)
   cov_tab[,tail(names(cov_tab),3) := NULL]
   setnames(cov_tab,c("V1","V2","V3"),c("chr","start","end"))
@@ -70,98 +60,43 @@ get_cov_tab <- function(sample_tab,
     }
 
     panel_intervals[,grouping_vec := grouping_vec]
-    cov_tab <- merge(cov_tab,panel_intervals[,.(chr,start,end,region_id,grouping_vec)],by = c("chr","start","end"))
-    cov_tab <- cov_tab[,.(chr = chr[1],start = min(start),end = max(end),cov_raw = sum(cov_raw),region_id = grouping_vec[1]),by = .(sample,grouping_vec)]
-    cov_tab[,grouping_vec := NULL]
   } else {
-    cov_tab <- merge(cov_tab,panel_intervals[,.(chr,start,end,region_id)],by = c("chr","start","end"))
+    panel_intervals[,grouping_vec := region_id]
   }
 
 
-  if(library_type != "wgs"){
+  setkey(cov_tab)
+  cov_tab <- merge(cov_tab,panel_intervals[,.(chr,start,end,region_id,grouping_vec)],by = c("chr","start","end"))
+
+  if(join_intervals_distance > 0){
+    cov_tab <- cov_tab[,.(chr = chr[1],start = min(start),end = max(end),cov_raw = sum(cov_raw),region_id = grouping_vec[1]),by = .(sample,grouping_vec)]
+  }
+  cov_tab[,grouping_vec := NULL]
+  cov_tab[,start := c(head(start,1),pmax(tail(start,-1),head(end,-1) + 1)),by = .(sample,chr)]
+  cov_tab <- cov_tab[end - start > 20]
   
-    if(!is.null(cohort_tab)){
-      # combine coverage tab
-      region_tab <- unique(cov_tab,by = c("region_id","chr","start","end"))
-      region_tab[,c("sample","cov_raw","cov") := NULL]
-      cohort_cov_tab <- cohort_tab[!is.na(cov)]
-      cohort_cov_tab <- merge.data.table(cohort_cov_tab,region_tab,by = c("chr","start","end"))
-      cohort_cov_tab <- cohort_cov_tab[,names(cov_tab),with = F]
-      cov_tab <- rbind(cov_tab,cohort_cov_tab)
-    }
-  
+  if(!is.null(cohort_tab)){
+    # combine coverage tab
+    region_tab <- unique(cov_tab,by = c("region_id","chr","start","end"))
+    region_tab[,c("sample","cov_raw") := NULL]
+    cohort_cov_tab <- cohort_tab[!is.na(cov)]
+    cohort_cov_tab <- merge.data.table(cohort_cov_tab,region_tab,by = c("chr","start","end"))
+    cohort_cov_tab[,cov_raw := NA]
+    
+    #read coverage normalization - normalize to the cohort mean
+    overall_mean <- mean(cohort_cov_tab$cov)
+    cov_tab[,cov := cov_raw / mean(cov_raw) * overall_mean,by = sample]
+    
+    #combine tables
+    cohort_cov_tab <- cohort_cov_tab[,names(cov_tab),with = F]
+    cov_tab <- rbind(cov_tab,cohort_cov_tab)
+  } else {
     #read coverage normalization
     overall_mean <- mean(cov_tab$cov_raw)
     cov_tab[,cov := cov_raw / mean(cov_raw) * overall_mean,by = sample]
-  
-  } else {
-    
-    if(cytoband_file != "no_cytoband"){
-      centromere_tab <- fread(cytoband_file)
-      
-      setnames(centromere_tab,c("chr","start","end",as.character(seq_len(ncol(centromere_tab) - 4)),"band_type"))
-      centromere_tab <- centromere_tab[band_type == "acen",.(start = min(start),end = max(end)),by = chr]
-      centromere_tab[,acen_length := end - start]
-      #set removed netromere area as centromere +/- 10% - #TODO set as parameter 
-      centromere_tab[,start := start - (acen_length / 10)]
-      centromere_tab[,end := end + (acen_length / 10)]
-      setkey(centromere_tab,chr,start,end)
-      
-      cov_tab <- foverlaps(cov_tab,centromere_tab)
-      cov_tab <- cov_tab[is.na(acen_length)]
-      cov_tab[,c("start","end","acen_length") := NULL]
-      setnames(cov_tab,c("i.start","i.end"),c("start","end"))
-    }
-    
-    if(outlier_probability > 0){
-      #test join cov_tab
-      cov_tab[,median_cov := median(cov),by = region_id]
-      cov_tab[,outlier_region := F]
-      for(i in seq(1,by = 1,length.out = wgs_outlier_filter_iter)){
-        norm_cov_tab <- cov_tab[sample %in% sample_tab[type == normalization_sample_type]$sample]
-        norm_nbinom_dist <- fitdist(as.integer(norm_cov_tab[outlier_region == F]$cov),distr = "nbinom") 
-        outlier_low_value <- qnbinom(outlier_probability,size = norm_nbinom_dist$estimate["size"],mu = norm_nbinom_dist$estimate["mu"])
-        outlier_high_value <- qnbinom(1 - outlier_probability,size = norm_nbinom_dist$estimate["size"],mu = norm_nbinom_dist$estimate["mu"])
-        cov_tab[!(median_cov > outlier_low_value & median_cov < outlier_high_value),outlier_region := T]
-      }
-      cov_tab <- cov_tab[outlier_region == F]
-      cov_tab[,median_cov :=NULL]
-      cov_tab[,outlier_region :=NULL]
-    }
-    
-    if(nchar(GC_normalization_file) > 0 & GC_normalization_file != "no_GC_norm"){
-      #load_GC_profile_file
-      GC_bin_content_tab <- fread(GC_normalization_file)
-      setnames(GC_bin_content_tab, c("chr","start","gc","usable_bases_ratio"))
-      GC_bin_content_tab <- GC_bin_content_tab[usable_bases_ratio > usable_bases_ratio_threshold]
-      GC_bin_content_tab[,usable_bases_ratio := NULL]
-      
-      #merge and normalize using linear model to predict correlation between coverage and GC
-      cov_tab <- merge.data.table(cov_tab,GC_bin_content_tab,by = c("chr","start"))
-      cov_tab[,c("intercept","a") := as.list(lm(cov_raw ~ gc,.SD)$coefficients),by = .(sample)]
-      cov_tab[,cov_norm := cov_raw / (a  * gc + intercept) * mean(cov_raw),by = .(sample)]
-      cov_tab[,cov := cov_norm]
-      
-      #filter out outlier regions
-      cov_tab[,gc_hist_bin := cut(gc,seq(0,1,0.005))]
-      cov_tab[,cov_norm_mean :=  mean(cov_norm),by = sample]
-      cov_tab[,cov_norm_sd :=  sd(cov_norm),by = sample]
-      cov_tab[,gc_hist_bin_count := sum(cov_norm > cov_norm_mean + 4 * cov_norm_sd),.(sample,gc_hist_bin)]
-      #count threshold set to 15
-      cov_tab[,sample_region_OK := F]
-      cov_tab[gc_hist_bin_count < 15 | cov_norm < cov_norm_mean + 2 * cov_norm_sd,sample_region_OK := T]
-      cov_tab[,sample_region_OK_count := .N,by = region_id]
-      cov_tab <- cov_tab[sample_region_OK_count > length(unique(cov_tab$sample)) * 0.9]
-      cov_tab[,c("gc","intercept","a","cov_norm","gc_hist_bin","cov_norm_mean","cov_norm_sd","gc_hist_bin_count","sample_region_OK","sample_region_OK_count") :=NULL]
-      
-    } else {
-      cov_tab[,cov := cov_raw]
-    } 
-    
-    # cov_tab[,cov_norm := log2(cov / cov_mode),by = sample]
-    
   }
-  
+
+ 
   setcolorder(cov_tab,c("sample","region_id","chr","start","end","cov_raw","cov"))
   return(cov_tab)
 }
@@ -213,12 +148,78 @@ load_and_prefilter_sample_data <- function(sample_tab,
                                            library_type,
                                            GC_normalization_file,
                                            cytoband_file,
-                                           cohort_tab){
+                                           cohort_tab,
+                                           outlier_probability = 0,
+                                           wgs_outlier_filter_iter = 2,
+                                           usable_bases_ratio_threshold = 0.85){
 
   normalization_sample_type <- tail(sort(sample_tab$type),1)
 
   panel_intervals <- load_panel_intervals(panel_intervals_filename,library_type)
-  cov_tab <- get_cov_tab(sample_tab,panel_intervals,cohort_tab,library_type,GC_normalization_file,cytoband_file)
+  cov_tab <- get_cov_tab(sample_tab,panel_intervals,cohort_tab)
+  
+  if(library_type == "wgs"){
+    
+    if(cytoband_file != "no_cytoband"){
+      centromere_tab <- fread(cytoband_file)
+
+      setnames(centromere_tab,c("chr","start","end",as.character(seq_len(ncol(centromere_tab) - 4)),"band_type"))
+      centromere_tab <- centromere_tab[band_type == "acen",.(start = min(start),end = max(end)),by = chr]
+      centromere_tab[,acen_length := end - start]
+      #set removed netromere area as centromere +/- 10% - #TODO set as parameter 
+      centromere_tab[,start := start - (acen_length / 10)]
+      centromere_tab[,end := end + (acen_length / 10)]
+      setkey(centromere_tab,chr,start,end)
+      
+      cov_tab <- foverlaps(cov_tab,centromere_tab)
+      cov_tab <- cov_tab[is.na(acen_length)]
+      cov_tab[,c("start","end","acen_length") := NULL]
+      setnames(cov_tab,c("i.start","i.end"),c("start","end"))
+    }
+    
+    if(outlier_probability > 0){
+      #test join cov_tab
+      cov_tab[,median_cov := median(cov),by = region_id]
+      cov_tab[,outlier_region := F]
+      for(i in seq(1,by = 1,length.out = wgs_outlier_filter_iter)){
+        norm_cov_tab <- cov_tab[sample %in% sample_tab[type == normalization_sample_type]$sample]
+        norm_nbinom_dist <- fitdist(as.integer(norm_cov_tab[outlier_region == F]$cov),distr = "nbinom") 
+        outlier_low_value <- qnbinom(outlier_probability,size = norm_nbinom_dist$estimate["size"],mu = norm_nbinom_dist$estimate["mu"])
+        outlier_high_value <- qnbinom(1 - outlier_probability,size = norm_nbinom_dist$estimate["size"],mu = norm_nbinom_dist$estimate["mu"])
+        cov_tab[!(median_cov > outlier_low_value & median_cov < outlier_high_value),outlier_region := T]
+      }
+      cov_tab <- cov_tab[outlier_region == F]
+      cov_tab[,median_cov :=NULL]
+      cov_tab[,outlier_region :=NULL]
+    }
+
+    
+  }
+  
+  if(nchar(GC_normalization_file) > 0 & GC_normalization_file != "no_GC_norm"){
+    GC_bin_content_tab <- fread(GC_normalization_file)
+    setnames(GC_bin_content_tab, c("chr","start","gc","usable_bases_ratio"))
+    GC_bin_content_tab <- GC_bin_content_tab[usable_bases_ratio > usable_bases_ratio_threshold]
+    GC_bin_content_tab[,usable_bases_ratio := NULL]
+    
+    
+    cov_tab <- merge.data.table(cov_tab,GC_bin_content_tab,by = c("chr","start"))
+    cov_tab[,c("intercept","a") := as.list(lm(cov ~ gc,.SD)$coefficients),by = .(sample)]
+    cov_tab[,cov_norm := cov / (a  * gc + intercept) * mean(cov)]
+    
+    cov_tab[,gc_hist_bin := cut(gc,seq(0,1,0.005))]
+    cov_tab[,cov_norm_mean :=  mean(cov_norm),by = sample]
+    cov_tab[,cov_norm_sd :=  sd(cov_norm),by = sample]
+    cov_tab[,gc_hist_bin_count := sum(cov_norm > cov_norm_mean + 4 * cov_norm_sd),.(sample,gc_hist_bin)]
+    #count threshold set to 15
+    cov_tab[,sample_region_OK := F]
+    cov_tab[gc_hist_bin_count < 15 | cov_norm < cov_norm_mean + 2 * cov_norm_sd,sample_region_OK := T]
+    cov_tab[,sample_region_OK_count := .N,by = region_id]
+    cov_tab <- cov_tab[sample_region_OK_count > length(unique(cov_tab$sample)) * 0.9]
+    cov_tab[,cov := cov_norm]
+    cov_tab[,c("gc","intercept","a","cov_norm","gc_hist_bin","cov_norm_mean","cov_norm_sd","gc_hist_bin_count","sample_region_OK","sample_region_OK_count") :=NULL]
+    
+  }
   
   panel_intervals <- unique(cov_tab[,.(chr,start,end,region_id)])
   setkey(panel_intervals)
@@ -278,14 +279,10 @@ create_copy_number_categories_default_tabs <- function(default_cn_rel_prob_vec =
   
 create_transition_matrix <- function(cn_categories_tab){
   
-  transition_matrix <- matrix(1,nrow(cn_categories_tab),nrow(cn_categories_tab))
-  diag(transition_matrix) <- 20000
+  transition_matrix <- matrix(cn_categories_tab$cn_norm_prob,nrow(cn_categories_tab),nrow(cn_categories_tab))
+  transition_matrix[which(cn_categories_tab$cn_category == "2"),] <- 1/nrow(cn_categories_tab)
+  diag(transition_matrix) <- max(cn_categories_tab$cn_norm_prob)
   transition_matrix <- t(t(transition_matrix) / rowSums(t(transition_matrix)))
-  
-  # transition_matrix <- matrix(cn_categories_tab$cn_norm_prob,nrow(cn_categories_tab),nrow(cn_categories_tab))
-  # transition_matrix[which(cn_categories_tab$cn_category == "2"),] <- 1/nrow(cn_categories_tab)
-  # diag(transition_matrix) <- max(cn_categories_tab$cn_norm_prob)
-  # transition_matrix <- t(t(transition_matrix) / rowSums(t(transition_matrix)))
   
   return(transition_matrix)
 }
