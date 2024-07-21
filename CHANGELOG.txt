@@ -1,2 +1,0 @@
-1. MedExome_GRCh38.bed zadny prunik s GRCh38-p10.wgs.af-only-gnomad.intervals.vcf  ???
-2. zkontrolovat ref_name/other/snp 

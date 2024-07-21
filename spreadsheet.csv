@@ -1,0 +1,5 @@
+patient_id,sample_name,donor
+A,A_N.bam,normal
+A,A_T.bam,tumor
+B,B_T,tumor
+B,B_N,normal
