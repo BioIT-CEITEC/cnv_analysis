@@ -15,7 +15,7 @@ process PREPROCESSING {
         binned_genome_${params.wgs_bin_size}.bed \
         ${params.wgs_bin_size}
 
-    bed nuc -fi ${params.assembly}.fa \
+    bedtools nuc -fi ${params.assembly}.fa \
         -bed binned_genome_${params.wgs_bin_size}.bed \
         > GC_profile_${params.wgs_bin_size}.cnp.tmp
 

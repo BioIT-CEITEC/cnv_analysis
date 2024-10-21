@@ -1,6 +1,6 @@
 process COBALT_READ_DEPTH {
     tag "$meta.id"
-    publishDir "results/purple/cobalt", mode: 'copy'
+    publishDir "results/purple/cobalt/${prefix}", mode: 'copy'
 
     conda (params.conda_enabled ? "bioconda::bioconductor-copynumber" : null)
 
@@ -17,7 +17,7 @@ process COBALT_READ_DEPTH {
         if (!params.normal_tumor) {
         """
         [ ! -f  ${prefix}.bam ] && ln -s $bams ${prefix}_T.bam
-        java -jar -Xmx8G $params.tool_dir/cobalt.jar \
+        java -jar -Xmx8G $params.tool_dir/cnv_tools/cobalt.jar \
             -tumor ${prefix}_T \
             -tumor_bam ${prefix}_T.bam \
             -output_dir cobalt/${prefix} \
@@ -30,7 +30,7 @@ process COBALT_READ_DEPTH {
         """
         [ ! -f  ${prefix}_N.bam ] && ln -s ${bams[0]} ${prefix}_N.bam
         [ ! -f  ${prefix}_T.bam ] && ln -s ${bams[1]} ${prefix}_T.bam
-        java -jar -Xmx8G $params.tool_dir/cobalt.jar \
+        java -jar -Xmx8G $params.tool_dir/cnv_tools/cobalt.jar \
             -reference ${prefix}_N \
             -reference_bam ${prefix}_N.bam \
             -tumor ${prefix}_T \

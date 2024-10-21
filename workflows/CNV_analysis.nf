@@ -8,9 +8,9 @@ if (file(params.organism_fasta).exists()) { ch_organism_fasta = file(params.orga
 if (file("${params.organism_fasta}.fai").exists()) { ch_organism_fai = file(${params.organism_fasta}.fai) } else { exit 1, 'The reference genome index does not exist'}
 if (file(params.organism_dict).exists()) { ch_organism_dict = file(params.organism_dict) } else { exit 1, 'The reference genome dictionary does not exist'}
 
-
 include { INPUT_CHECK } from './subworkflows/input_check.nf'
 include { PREPROCESSING } from './modules/preprocess.nf'
+include { COHORT_PREPROCESS } from './modules/cohort_data.nf'
 include { PURPLE_ANALYSIS } from './workflows/purple.nf'
 include { CONTROL_FREEC } from './modules/control_freec.nf'
 include { JABCONTOOL_ANALYSIS } from './workflows/jabCoNtool.nf'

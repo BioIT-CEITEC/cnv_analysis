@@ -1,6 +1,6 @@
 process GRIDSS_CALL {
     tag "$meta.id"
-    publishDir "results/gridss/$meta.id", mode: 'copy'
+    publishDir [ { file -> file.name.endsWith('.unfiltered.vcf.gz') ? "$meta.id" : "PON" } ], mode: 'copy'
 
     conda (params.conda_enabled ? "bioconda::bioconductor-copynumber" : null)
 
@@ -9,11 +9,12 @@ process GRIDSS_CALL {
 
     output:
     tuple val(meta), path("*.unfiltered.vcf.gz"), emit: vcf
+    tuple val(meta), path("gridss_pon_breakpoint.bedpe"), path("gridss_pon_single_breakend.bed"), emit: bedpe
 
     script:
 
     def prefix = "${meta.id}"
-    
+
         if (!params.normal_tumor) {
         """
         [ ! -f  ${prefix}.bam ] && ln -s $bams ${prefix}_T.bam
@@ -25,7 +26,7 @@ process GRIDSS_CALL {
             ${prefix}_T.bam
 
         java -Xmx8G \
-            -cp $params.tool_dir/gridss-2.13.1-gridss-jar-with-dependencies.jar
+            -cp $params.tool_dir/cnv_tools/gridss-2.13.1-gridss-jar-with-dependencies.jar
             gridss.GeneratePonBedpe \
             $(ls -1 *unfiltered.vcf.gz | awk ' { print "INPUT=" $0 }' | head -$n) \
             O=gridss_pon_breakpoint.bedpe \
@@ -45,7 +46,7 @@ process GRIDSS_CALL {
             ${prefix}_N.bam ${prefix}_T.bam
 
         java -Xmx8G \
-            -cp $params.tool_dir/gridss-2.13.1-gridss-jar-with-dependencies.jar
+            -cp $params.tool_dir/cnv_tools/gridss-2.13.1-gridss-jar-with-dependencies.jar
             gridss.GeneratePonBedpe \
             $(ls -1 *unfiltered.vcf.gz | awk ' { print "INPUT=" $0 }' | head -$n) \
             O=gridss_pon_breakpoint.bedpe \
@@ -55,5 +56,4 @@ process GRIDSS_CALL {
         """
     }
 
-    // TODO: Solve the ln to the bwa index into the reference (two ways, one would be to create it in the references folder or the other would be to create in the work directory as it will be deleted afterwards)
 }

@@ -6,6 +6,7 @@ process GRIPSS_CALL {
 
     input:
     tuple val(meta), path(vcf)
+    tuple val(meta), path(bedpe)
 
     output:
     tuple val(meta), path("*.somatic.vcf.gz"), path("*.sv.vcf.gz") , emit: vcfs
@@ -16,7 +17,7 @@ process GRIPSS_CALL {
 
         if (!params.normal_tumor) {
         """
-        java -jar $params.tool_dir/gripss.jar \
+        java -jar $params.tool_dir/cnv_tools/gripss.jar \
             -sample ${prefix}_T \
             -ref_genome_version $params.organism_genome_version \
             -ref_genome $params.organism_fasta \
@@ -29,7 +30,7 @@ process GRIPSS_CALL {
         """
     } else {
         """
-        java -jar $params.tool_dir/gripss.jar \
+        java -jar $params.tool_dir/cnv_tools/gripss.jar \
             -sample ${prefix}_T \
             -reference ${prefix}_N \
             -ref_genome_version $params.organism_genome_version \

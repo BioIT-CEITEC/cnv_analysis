@@ -23,16 +23,18 @@ workflow PURPLE_ANALYSIS {
         ch_input_bams
     }
 
-    ch_input_vcf = GRIDSS_CALL.out.vcfs
+    ch_input_vcf = GRIDSS_CALL.out.vcf
+    ch_inpit_bedpe = GRIDSS_CALL.out.bedpe
 
     GRIPSS_CALL {
         ch_input_vcf
+        ch_inpit_bedpe
     }
 
     AMBER_BAF_CALCULATION.out.
         .amber
-        .join(COBALT_READ_DEPTH.out.cobalt, by: 'meta')
-        .join(GRIPSS_CALL.out.vcfs, by: 'meta')
+        .join(COBALT_READ_DEPTH.out.cobalt, by: 'meta.id')
+        .join(GRIPSS_CALL.out.vcfs, by: 'meta.id')
         .set { ch_input_purple }
 
     PURPLE_CALL {

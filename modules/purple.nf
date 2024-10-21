@@ -1,13 +1,11 @@
 process PURPLE_CALL {
     tag "$meta.id"
-    publishDir "results", mode: 'copy'
+    publishDir "results/purple/${meta.id}", mode: 'copy'
 
     conda (params.conda_enabled ? "bioconda::bioconductor-copynumber" : null)
 
     input:
     tuple val(meta), path(amber), path(cobalt), path(somatic), path(sv)
-    tuple val(meta), path(amber)
-    tuple val(meta), path(cobalt)
 
     output:
     tuple val(meta), path("*.purity.tsv"), path("*.purity.qc"), emit: purity
@@ -24,7 +22,7 @@ process PURPLE_CALL {
     
         if (!params.normal_tumor) {
         """
-        java -jar $params.tool_dir/purple.jar \
+        java -jar $params.tool_dir/cnv_tools/purple.jar \
             -tumor ${prefix}_T  \
             -amber $amber_folder \
             -cobalt $cobalt_folder \
@@ -39,7 +37,7 @@ process PURPLE_CALL {
         """
     } else {
         """
-        java -jar $params.tool_dir/purple.jar \
+        java -jar $params.tool_dir/cnv_tools/purple.jar \
             -reference ${prefix}_N  \
             -tumor ${prefix}_T  \
             -amber $amber_folder \
