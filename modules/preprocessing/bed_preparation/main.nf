@@ -1,8 +1,8 @@
 process PREPROCESSING {
 
     input:
-    path(reference)
-    path(reference_index)
+    path reference
+    path reference_index
 
     output:
     tuple path("binned_genome_${params.wgs_bin_size}.bed"), path("GC_profile_${params.wgs_bin_size}.cnp"), emit: preprocessed
