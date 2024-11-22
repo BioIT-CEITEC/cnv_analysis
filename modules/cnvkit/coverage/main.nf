@@ -1,6 +1,6 @@
 process GET_COVERAGE_CNVKIT {
 
-    tag "$meta.id"
+    tag "${meta.id}"
     publishDir "structural_varcalls/$meta.id/cnvkit", mode: 'copy'
 
     input:
@@ -12,7 +12,6 @@ process GET_COVERAGE_CNVKIT {
     script:
 
     def prefix = "${meta.id}"
-
 
         if (!params.normal_tumor) {
         """

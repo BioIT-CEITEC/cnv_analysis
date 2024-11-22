@@ -1,4 +1,5 @@
 process CONTROL_FREEC {
+    tag "${meta.id}"
 
     input:
     tuple val(meta), path(bams)
