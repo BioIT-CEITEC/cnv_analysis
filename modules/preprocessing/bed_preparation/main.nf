@@ -5,7 +5,7 @@ process PREPROCESSING {
     path reference_index
 
     output:
-    path("preprocessed/"), emit: preprocessed
+    tuple path("preprocessed/binned_genome_${params.wgs_bin_size}.bed"), path("preprocessed/GC_profile_${params.wgs_bin_size}.cnp"), emit: preprocessed
 
     script:
     """
@@ -17,7 +17,7 @@ process PREPROCESSING {
         ${params.wgs_bin_size}
 
     bedtools nuc -fi ${params.assembly}.fa \
-        -bed ppreprocessed/binned_genome_${params.wgs_bin_size}.bed \
+        -bed preprocessed/binned_genome_${params.wgs_bin_size}.bed \
         > GC_profile_${params.wgs_bin_size}.cnp.tmp
 
     Rscript get_binned_gc_content.R \
