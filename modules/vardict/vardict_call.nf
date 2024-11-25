@@ -1,33 +1,38 @@
 process VARDICT_CALL {
 
     publishDir "structural_varcalls/$meta.id/cnkvit", mode: 'copy'
-    tag "$meta.id"
+    tag "${meta.id}"
 
     input:
-    tuple val(meta), path(bams)
+    tuple val(meta), path(tumor_bam), path(tumor_bai), path(normal_bam), path(normal_bai)
+    path organism_fasta
+    path organism_dna_panel
+
 
     output:
-    tuple val(meta), path("*.vcf"), emit: vcfs
+    tuple val(meta), path("*_T.vcf"), path("*_N.vcf", optional: true), emit: vcfs
 
     script:
 
-    def prefix = "${meta.id}"
+    """
+    mkdir -p results
+    vardict -java -G ${organism_fasta} -th $task.cpus -N ${meta.id}_T -b ${meta.id}_T.bam -c 1 -S 2 -E 3 -g 4 ${organism_dna_panel} | teststrandbias.R | var2vcf_valid.pl -m 7 -c 1 -N ${meta.id}_T -f ${params.AF_threshold} > results/vardict_SNV_${meta.id}_T.vcf
+    sed -i '/TYPE=[DI][UNE][PVL]/d' results/vardict_SNV_${meta.id}_T.vcf
+    """
 
-        if (!params.normal_tumor) {
-        """
-        [ ! -f  ${prefix}.bam ] && ln -s $bams ${prefix}_T.bam
-        vardict -java -G $params.organism_fasta -th $task.cpus -N ${prefix}_T -b ${prefix}_T.bam -c 1 -S 2 -E 3 -g 4 $params.organism_dna_panel | teststrandbias.R | var2vcf_valid.pl -m 7 -c 1 -N ${prefix}_T -f $params.AF_threshold > vardict_SNV_${prefix}_T.vcf
-        sed -i '/TYPE=[DI][UNE][PVL]/d' vardict_SNV_${prefix}_T.vcf
-        """
-    } else {
-        """
-        [ ! -f  ${prefix}_N.bam ] && ln -s ${bams[0]} ${prefix}_N.bam
-        [ ! -f  ${prefix}_T.bam ] && ln -s ${bams[1]} ${prefix}_T.bam
-        vardict -java -G $params.organism_fasta -th $task.cpus -N ${prefix}_N -b ${prefix}_N.bam -c 1 -S 2 -E 3 -g 4 $params.organism_dna_panel | teststrandbias.R | var2vcf_valid.pl -m 7 -c 1 -N ${prefix}_N -f $params.AF_threshold > vardict_SNV_${prefix}_N.vcf
-        vardict -java -G $params.organism_fasta -th $task.cpus -N ${prefix}_T -b ${prefix}_T.bam -c 1 -S 2 -E 3 -g 4 $params.organism_dna_panel | teststrandbias.R | var2vcf_valid.pl -m 7 -c 1 -N ${prefix}_T -f $params.AF_threshold > vardict_SNV_${prefix}_T.vcf
-
-        sed -i '/TYPE=[DI][UNE][PVL]/d' vardict_SNV_${prefix}_N.vcf
-        sed -i '/TYPE=[DI][UNE][PVL]/d' vardict_SNV_${prefix}_T.vcf
-        """
+    if (!params.normal_tumor) {
+    """
+    vardict -java -G ${organism_fasta} -th $task.cpus -N ${meta.id}_T -b ${meta.id}_T.bam -c 1 -S 2 -E 3 -g 4 ${organism_dna_panel} | teststrandbias.R | var2vcf_valid.pl -m 7 -c 1 -N ${meta.id}_N -f ${params.AF_threshold} > results/vardict_SNV_${meta.id}_N.vcf
+    sed -i '/TYPE=[DI][UNE][PVL]/d' results/vardict_SNV_${meta.id}_T.vcf
+    """
     }
+
+    stub:
+
+    """
+    mkdir -p results
+    touch results/vardict_SNV_test_T.vcf
+    touch results/vardict_SNV_test_N.vcf
+    """
+
 }

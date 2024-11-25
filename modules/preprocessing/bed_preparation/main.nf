@@ -5,7 +5,8 @@ process PREPROCESSING {
     path reference_index
 
     output:
-    tuple path("preprocessed/binned_genome_${params.wgs_bin_size}.bed"), path("preprocessed/GC_profile_${params.wgs_bin_size}.cnp"), emit: preprocessed
+    path("preprocessed/binned_genome_${params.wgs_bin_size}.bed"), emit: binned_genome
+    path("preprocessed/GC_profile_${params.wgs_bin_size}.cnp"), emit: gc_profile
 
     script:
     """

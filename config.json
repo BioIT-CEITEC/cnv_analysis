@@ -1,0 +1,46 @@
+{
+    "task_name": "24605__small_var_annot__129_WES_somatic__240426",
+    "entity_name": "129_WES_somatic",
+    "calling_type": "somatic",
+    "germline_format": "default",
+    "somatic_format": "slaby_children_soma",
+    "tumor_normal_paired": true,
+    "use_cohort_data": false,
+    "create_cohort_data": false,
+    "reference": "GRCh38-p10",
+    "lib_ROI": "HyperExome_GRCh38",
+    "samples": {
+        "67228": {
+            "sample_name": "SK1362krev",
+            "donor": "SK1362"
+        },
+        "162317": {
+            "sample_name": "KZ1606_FFPE_001",
+            "donor": "KZ1606"
+        },
+        "162320": {
+            "sample_name": "SK1362_FFPE_004",
+            "donor": "SK1362"
+        },
+        "162323": {
+            "sample_name": "PP1021_FFPE_001",
+            "donor": "PP1021"
+        },
+        "162326": {
+            "sample_name": "KZ1606_krev",
+            "donor": "KZ1606"
+        },
+        "162332": {
+            "sample_name": "PP1021_krev",
+            "donor": "PP1021"
+        }
+    },
+    "globalResources": "/mnt/data/ceitec_cfg2/710000-CEITEC/713000-cmm/713016-bioit/base/references_backup",
+    "globalTmpdPath": "/tmp",
+    "computing_type": "kubernetes",
+    "Filesender_credential_file": "/mnt/data/ceitec_cfg2/710000-CEITEC/713000-cmm/713016-bioit/base/references_backup/resources_info/.secret/Filesender_credentials.json",
+    "globalTaskPath": "/sequia",
+    "S3_credential_file": "/mnt/data/ceitec_cfg2/710000-CEITEC/713000-cmm/713016-bioit/base/references_backup/resources_info/.secret/S3_credentials.json",
+    "aws_id": "acgt",
+    "aws_key": "P84RsiL5TmHu0Ijd"
+}
