@@ -4,8 +4,8 @@ process GET_COVERAGE_CNVKIT {
     publishDir "structural_varcalls/${meta.id}/cnvkit", mode: 'copy'
 
     input:
-    tuple val(meta), path(bam_tumor), path(bam_bai_tumor), path(bam_normal), path(bam_bai_normal)
-    tuple path(target), path(antitarget)
+    tuple val(meta), path(bam_tumor), path(bam_bai_tumor), path(bam_normal), path(bam_bai_normal) // mandatory [ [meta],[bam_tumor],[bam_bai_tumor],[bam_normal],[bam_bai_normal] ]
+    tuple path(target), path(antitarget) // target and antitarget bed file produced in prepare_regions_cnvkit process
 
     output:
     tuple val(meta), 
