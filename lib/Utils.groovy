@@ -7,6 +7,31 @@ class Utils {
         conf.read_pair_dmtex_tags = conf.is_paired ? ['_R1', '_R2'] : ['_R1']
         return conf
     }
+    public static parseInputVC(inputSh, normalTumor, log) {
+
+        def groupedInputs = inputSh
+            .groupBy { it['donor'] }
+            .collect { donor, entries ->
+                def meta = [
+                    donor: donor,
+                    tumor_id: entries.find { it.tumor_normal == 'tumor' }?.sample_name,
+                    normal_id: entries.find { it.tumor_normal == 'normal' }?.sample_name
+                ]
+                def patientInputs = [:]
+                if (normalTumor) {
+                    if (meta.tumor_id && meta.normal_id) {
+                        patientInputs = [ meta, File("mapped/${meta.tumor_id}.bam"), File("mapped/${meta.tumor_id}.bam.bai"), File("mapped/${meta.normal_id}.bam"), File("mapped/${meta.normal_id}.bam.bai") ]
+                    } else {
+                        log.warn "Missing normal-tumor pair for patient_id: ${meta.donor}"
+                        patientInputs = [ [], [], [], [], [] ]
+                    }
+                } else {
+                    patientInputs = [ meta, File("mapped/${meta.tumor_id}.bam"), File("mapped/${meta.tumor_id}.bam.bai"), [], [] ]
+                }
+                return patientInputs
+            }
+        return groupedInputs
+    }
 
     public static List<Map> loadSample(Map conf) {
         List<Map> samplesList = []

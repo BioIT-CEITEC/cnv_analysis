@@ -1,4 +1,4 @@
-process FIX_AND_SEGMENT {
+process FIX_AND_SEGMENT_CNVKIT {
 
     tag "${meta.id}"
 

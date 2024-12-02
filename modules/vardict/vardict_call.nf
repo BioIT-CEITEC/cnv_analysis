@@ -16,14 +16,14 @@ process VARDICT_CALL {
 
     """
     mkdir -p results
-    vardict -java -G ${organism_fasta} -th $task.cpus -N ${meta.id}_T -b ${meta.id}_T.bam -c 1 -S 2 -E 3 -g 4 ${organism_dna_panel} | teststrandbias.R | var2vcf_valid.pl -m 7 -c 1 -N ${meta.id}_T -f ${params.AF_threshold} > results/vardict_SNV_${meta.id}_T.vcf
+    vardict -java -G ${organism_fasta} -th $task.cpus -N ${meta.id}_T -b ${tumor_bam} -c 1 -S 2 -E 3 -g 4 ${organism_dna_panel} | teststrandbias.R | var2vcf_valid.pl -m 7 -c 1 -N ${meta.id}_T -f ${params.AF_threshold} > results/vardict_SNV_${meta.id}_T.vcf
     sed -i '/TYPE=[DI][UNE][PVL]/d' results/vardict_SNV_${meta.id}_T.vcf
     """
 
     if (!params.normal_tumor) {
     """
-    vardict -java -G ${organism_fasta} -th $task.cpus -N ${meta.id}_T -b ${meta.id}_T.bam -c 1 -S 2 -E 3 -g 4 ${organism_dna_panel} | teststrandbias.R | var2vcf_valid.pl -m 7 -c 1 -N ${meta.id}_N -f ${params.AF_threshold} > results/vardict_SNV_${meta.id}_N.vcf
-    sed -i '/TYPE=[DI][UNE][PVL]/d' results/vardict_SNV_${meta.id}_T.vcf
+    vardict -java -G ${organism_fasta} -th $task.cpus -N ${meta.id}_N -b ${normal_bam} -c 1 -S 2 -E 3 -g 4 ${organism_dna_panel} | teststrandbias.R | var2vcf_valid.pl -m 7 -c 1 -N ${meta.id}_N -f ${params.AF_threshold} > results/vardict_SNV_${meta.id}_N.vcf
+    sed -i '/TYPE=[DI][UNE][PVL]/d' results/vardict_SNV_${meta.id}_N.vcf
     """
     }
 

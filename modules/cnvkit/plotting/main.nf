@@ -1,4 +1,4 @@
-process DIAGRAM_AND_SCATTER {
+process DIAGRAM_AND_SCATTER_CNVKIT {
     
     tag "${meta.id}"
     publishDir "structural_varcalls/${meta.id}/cnvkit", mode: 'copy'

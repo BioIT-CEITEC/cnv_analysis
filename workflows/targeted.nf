@@ -7,31 +7,45 @@ if (file(params.input).exists()) { ch_input = file(params.input) } else { exit 1
 inputs = Utils.processInput(params.input)
 
 // Validate inputs and potentially references
-
+/*
 include { AMBER_ANALYSIS } from './subworkflows/amber_analysis.nf'
 include { COBALT_ANALYSIS } from './subworkflows/cobalt_analysis.nf'
 include { GRIDSS_ANALYSIS } from './subworkflows/gridss_analysis.nf'
 include { GRIPSS_ANALYSIS } from './subworkflows/gripss_analysis.nf'
 include { PURPLE_CALL } from './subworkflows/purple_call.nf'
 
-workflow WGS {
+Still need to figure out this as there is already some modules that 
+are available and we could use them instead of creating new ones.
 
-    // Create the channel from the samplesheet CSV
+But as they're in nf-core and we're not using their notation, the
+input channels should be modified accordingly in order to work.
+
+*/
+
+/*
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    REFERENCE CONFIG LOADING
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+*/
+
+// Load the reference data from the paths in config file
+
+organism_fasta = params.organism_fasta ? Channel.fromPath(params.organism_fasta).collect() : Channel.empty()
+organism_fasta_fai = params.organism_fasta ? Channel.fromPath(params.organism_fasta + '.fai').collect() : Channel.empty()
+organism_dna_panel = params.organism_dna_panel ? Channel.fromPath(params.organism_dna_panel).collect() : Channel.empty()
+organism_cytoband = params.organism_cytoband ? Channel.fromPath(params.organism_cytoband).collect() : Channel.empty()
+
+inputs = Utils.parseInputVC(params.input, params.normal_tumor, log)
+
+workflow TARGETED {
+
+    // Create the channel from the parseInputVC function
     // channel: [ meta, []]
     ch_inputs = Channel.fromList(inputs)
 
-    AMBER_ANALYSIS(
-        ch_inputs
-    )
 
 
-
-
-}
-
-
-
-
+/*
 workflow CNV_ANALYSIS {
 
     AMBER_ANALYSIS {
@@ -90,3 +104,4 @@ workflow CNV_ANALYSIS {
 
 
 }
+*/
