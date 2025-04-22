@@ -2,6 +2,8 @@ process FIX_AND_SEGMENT_CNVKIT {
 
     tag "${meta.id}"
 
+    conda "../${moduleDir}/env.yaml" 
+
     input:
     tuple val(meta), path(tumor_target), path(tumor_antitarget) // mandatory [ [meta],[target],[antitarget] ] target and antitarget files produced in the coverage process
     path cnv_reference // mandatory path to the reference file "normal_reference.cnn" produced at reference process

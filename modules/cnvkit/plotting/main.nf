@@ -1,7 +1,9 @@
 process DIAGRAM_AND_SCATTER_CNVKIT {
-    
+
     tag "${meta.id}"
     publishDir "structural_varcalls/${meta.id}/cnvkit", mode: 'copy'
+
+    conda "../${moduleDir}/env.yaml" 
 
     input:
     tuple val(meta), path(fixed_cov), path(vcf_file), path(cnvkit_cnv_calls) // mandatory: [ [meta],[cnr file],[vcf file],[cnv calls file] ]

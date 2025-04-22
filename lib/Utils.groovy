@@ -1,4 +1,33 @@
+import nextflow.Nextflow
+import nextflow.splitter.SplitterEx
+
 class Utils {
+
+public static parseInputVC(inputSh, normalTumor, log) {
+
+    def groupedInputs = inputSh
+        .groupBy { it['donor'] }
+        .collect { donor, entries ->
+            def meta = [
+                donor: donor,
+                tumor_id: entries.find { it.tumor_normal == 'tumor' }?.sample_name,
+                normal_id: entries.find { it.tumor_normal == 'normal' }?.sample_name
+            ]
+            def patientInputs = [:]
+            if (normalTumor) {
+                if (meta.tumor_id && meta.normal_id) {
+                    patientInputs = [ meta, ["mapped/${meta.tumor_id}.bam"], ["mapped/${meta.tumor_id}.bam.bai"], ["mapped/${meta.normal_id}.bam"], ["mapped/${meta.normal_id}.bam.bai"] ]
+                } else {
+                    log.warn "Missing normal-tumor pair for patient_id: ${meta.donor}"
+                    patientInputs = [ [], [], [], [], [] ]
+                }
+            } else {
+                patientInputs = [ meta, ["mapped/${meta.tumor_id}.bam"], ["mapped/${meta.tumor_id}.bam.bai"], [], [] ]
+            }
+            return patientInputs
+        }
+    return groupedInputs
+}
 
     public static set_data_tags(conf) {
         conf.read_pair_tags = conf.is_paired ? ['_R1', '_R2'] : ['']
@@ -6,42 +35,6 @@ class Utils {
         conf.paired_tags = conf.is_paired ? 'PE' : 'SE'
         conf.read_pair_dmtex_tags = conf.is_paired ? ['_R1', '_R2'] : ['_R1']
         return conf
-    }
-    public static parseInputVC(inputSh, normalTumor, log) {
-
-        def groupedInputs = inputSh
-            .groupBy { it['donor'] }
-            .collect { donor, entries ->
-                def meta = [
-                    donor: donor,
-                    tumor_id: entries.find { it.tumor_normal == 'tumor' }?.sample_name,
-                    normal_id: entries.find { it.tumor_normal == 'normal' }?.sample_name
-                ]
-                def patientInputs = [:]
-                if (normalTumor) {
-                    if (meta.tumor_id && meta.normal_id) {
-                        patientInputs = [ meta, File("mapped/${meta.tumor_id}.bam"), File("mapped/${meta.tumor_id}.bam.bai"), File("mapped/${meta.normal_id}.bam"), File("mapped/${meta.normal_id}.bam.bai") ]
-                    } else {
-                        log.warn "Missing normal-tumor pair for patient_id: ${meta.donor}"
-                        patientInputs = [ [], [], [], [], [] ]
-                    }
-                } else {
-                    patientInputs = [ meta, File("mapped/${meta.tumor_id}.bam"), File("mapped/${meta.tumor_id}.bam.bai"), [], [] ]
-                }
-                return patientInputs
-            }
-        return groupedInputs
-    }
-
-    public static List<Map> loadSample(Map conf) {
-        List<Map> samplesList = []
-        conf.samples.each { key, value ->
-            Map<String, Object> row = value
-            row['index'] = key
-            samplesList << row
-        }
-        conf.new_samples = samplesList
-        return samplesList
     }
 
     static def load_lib_ROI(Map conf) {
@@ -52,9 +45,9 @@ class Utils {
     public static List<Map> readCsvFile(String filePath) {
         def csvData = []
         def lines = new File(filePath).readLines()
-        def headers = lines[0].split(',')
+        def headers = lines[0].split('\t')
         lines.drop(1).each { line ->
-            def values = line.split(',')
+            def values = line.split('\t')
             def row = [:]
             headers.eachWithIndex { header, idx ->
                 row[header] = values[idx]
@@ -66,8 +59,7 @@ class Utils {
 
     public static load_organism(conf) {
 
-        //def organism_tab = readCsvFile("${conf.globalResources}/reference_info/organism_tab.tsv")
-        def organism_tab = readCsvFile("/Users/alejandromedaglia/Documents/nf_core_test/tutorial/data.csv")
+        def organism_tab = readCsvFile("${conf.globalResources}/reference_info/organism_tab.tsv")
 
         def organism_data = organism_tab.find { it.assembly == conf.assembly }
 

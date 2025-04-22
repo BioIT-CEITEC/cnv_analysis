@@ -3,27 +3,34 @@ process REFERENCE_CNVKIT {
     publishDir "structural_varcalls/reference/cnvkit", mode: 'copy'
 
     input:
-    path coverage_inputs // list of cnn files depending on calling_type and the number of samples
+    path reference_fasta // channel to the reference fasta file
+    path tumor_coverage // channel to the tumor coverage files
+    path normal_coverage // channel to the normal coverage files
     tuple path(target), path(antitarget) // target and antitarget bed file produced in prepare_regions_cnvkit process
-    path organism_fasta // fasta file of the organism genome
+    val sample_number // if only tumor samples are provided at least 4 are required, otherwise will use antitarget.bed and targed.bed
 
     output:
     path("reference/normal_reference.cnn"), emit: cnvkit_reference
 
     script:
 
-    if (params.normal_coverage_inputs) {
+    def coverage_files = params.tumor_normal ? normal_coverage : tumor_coverage
+
+    if (params.tumor_normal || sample_number) {
+
         """
         mkdir -p reference
-        cnvkit.py reference ${coverage_inputs} \
-            --fasta ${organism_fasta} \
+        cnvkit.py reference $coverage_files \
+            --fasta ${reference_fasta} \
             -o reference/normal_reference.cnn
         """
+
     } else {
+
         """
-        mkrdir -p reference
+        mkdir -p reference
         cnvkit.py reference \
-            --fasta ${organism_fasta} \
+            --fasta ${reference_fasta} \
             -o reference/normal_reference.cnn \
             -t ${target} \
             -a ${antitarget}
