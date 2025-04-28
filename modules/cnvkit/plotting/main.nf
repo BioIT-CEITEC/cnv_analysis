@@ -1,15 +1,16 @@
 process DIAGRAM_AND_SCATTER_CNVKIT {
 
-    tag "${meta.id}"
-    publishDir "structural_varcalls/${meta.id}/cnvkit", mode: 'copy'
+    tag "${meta.donor}"
+    publishDir "structural_varcalls/${meta.donor}/cnvkit", mode: 'copy'
 
     conda "../${moduleDir}/env.yaml" 
 
     input:
-    tuple val(meta), path(fixed_cov), path(vcf_file), path(cnvkit_cnv_calls) // mandatory: [ [meta],[cnr file],[vcf file],[cnv calls file] ]
+    path(cnvkit_cnv_calls)
+    tuple path(fixed_cov), path(segmented_cov)
 
     output:
-    tuple val(meta), path("plots/")
+    tuple val(meta), path("plots/*")
 
     script:
 

@@ -6,16 +6,16 @@ process COHORT_PREPROCESS {
     path cohort_tar
 
     output:
-    path("cohort_data/cohort_info_tab.tsv"), emit: cohort_data
+    path("cohort_info_tab.tsv"), emit: cohort_data
 
     script:
     """
     tar -xzf ${cohort_tar}
+    mv cohort_data/cohort_info_tab.tsv .
     """
 
     stub:
     """
-    mkdir -p cohort_data
-    touch cohort_data/cohort_info_tab.tsv
+    touch cohort_info_tab.tsv
     """
 }

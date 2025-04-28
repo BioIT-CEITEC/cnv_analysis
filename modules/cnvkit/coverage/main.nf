@@ -1,7 +1,7 @@
 process GET_COVERAGE_CNVKIT {
 
-    tag "${meta.id}"
-    publishDir "structural_varcalls/${meta.id}/cnvkit", mode: 'copy'
+    tag "${meta.donor}"
+    publishDir "structural_varcalls/${meta.donor}/cnvkit", mode: 'copy'
 
     conda "../${moduleDir}/env.yaml" 
 
@@ -10,10 +10,7 @@ process GET_COVERAGE_CNVKIT {
     tuple path(target), path(antitarget) // target and antitarget bed file produced in prepare_regions_cnvkit process
 
     output:
-    tuple val(meta), 
-    tuple path("coverage/*.tumor.targetcoverage.cnn"), path("coverage/tumor.antitargetcoverage.cnn"), path("coverage/*.normal.targetcoverage.cnn", optional: true), path("coverage/normal.antitargetcoverage.cnn", optional: true), emit: coverage 
-
-    // this optional comes handy here but it has to be handled in the the subworkflow as we need the to set the last two as empty later
+    tuple val(meta), tuple path("coverage/*.tumor.targetcoverage.cnn"), path("coverage/*.tumor.antitargetcoverage.cnn"), path("coverage/*.normal.targetcoverage.cnn", optional: true), path("coverage/*.normal.antitargetcoverage.cnn", optional: true), emit: coverage 
 
     script:
 

@@ -2,12 +2,11 @@ process JABCONTOOL_CALL {
 
     input:
     tuple path(tumor_cov), path(tumor_snps), path(normal_cov), path(normal_snps)
-    path organism_dna_panel
-    path organism_snps
+    path organism_regions
     path gc_profile
-    path binned_genome
     path organism_cytoband
     path cohort_data
+    path organism_snps
 
     output:
     path("final_CNV_probs.tsv"), emit: final_CNV_probs
@@ -15,8 +14,7 @@ process JABCONTOOL_CALL {
 
     script:
 
-    def cohort_flag = params.use_cohort_data ? "cohort_info_tab.tsv" : "no_previous_cohort_data"
-    def region_bed = params.lib_ROI == "wgs" ? "${binned_genome}" : "${organism_dna_panel}"
+    def cohort_flag = params.use_cohort_data ? "${cohort_data}" : "no_previous_cohort_data"
     def snp_bed = params.jabCoNtool_use_snps ? "${organism_snps}" : "no_use_snps"
     def gc_profile_flag = params.jabCoNtool_normalize_to_GC ? "${gc_profile}" : "no_GC_norm"
     def use_cytoband = params.jabCoNtool_remove_centromeres ? "${organism_cytoband}" : "no_cytoband"
@@ -25,7 +23,7 @@ process JABCONTOOL_CALL {
 
     """
     Rscript jabConTool_main.R results/final_CNV_probs.tsv \
-        ${region_bed} \
+        ${organism_regions} \
         ${snp_bed} \
         ${params.calling_type} \
         ${wgs_or_roi} \
