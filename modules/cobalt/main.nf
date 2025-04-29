@@ -1,45 +1,59 @@
-process COBALT_READ_DEPTH {
-    tag "$meta.id"
-    publishDir "results/purple/cobalt/${prefix}", mode: 'copy'
+process COBALT {
+    tag "${meta.id}"
+    label 'process_medium'
 
-    conda (params.conda_enabled ? "bioconda::bioconductor-copynumber" : null)
+    conda "${moduleDir}/environment.yml"
+    container "${ workflow.containerEngine == 'singularity' && !task.ext.singularity_pull_docker_container ?
+        'https://depot.galaxyproject.org/singularity/hmftools-cobalt:1.16--hdfd78af_0' :
+        'biocontainers/hmftools-cobalt:1.16--hdfd78af_0' }"
 
     input:
-    tuple val(meta), path(bams)
+    tuple val(meta), path(tumor_bam), path(normal_bam), path(tumor_bai), path(normal_bai)
+    path gc_profile
+    path diploid_regions
+    path target_region_normalisation
 
     output:
-    tuple val(meta), path("cobalt/*"), emit: tsv
+    tuple val(meta), path('cobalt/'), emit: cobalt_dir
+    path 'versions.yml'             , emit: versions
+
+    when:
+    task.ext.when == null || task.ext.when
 
     script:
+    def args = task.ext.args ?: ''
 
-    def prefix = "${meta.id}"
-    
-        if (!params.normal_tumor) {
-        """
-        [ ! -f  ${prefix}.bam ] && ln -s $bams ${prefix}_T.bam
-        java -jar -Xmx8G $params.tool_dir/cnv_tools/cobalt.jar \
-            -tumor ${prefix}_T \
-            -tumor_bam ${prefix}_T.bam \
-            -output_dir cobalt/${prefix} \
-            -threads $task.cpus \
-            -gc_profile $params.organism_cobalt
-            -tumor-only-diploid-bed $params.organism_cobalt_tumor
+    def reference_arg = meta.containsKey('normal_id') ? "-reference ${meta.normal_id}" : ''
+    def reference_bam_arg = normal_bam ? "-reference_bam ${normal_bam}" : ''
 
-        """
-    } else {
-        """
-        [ ! -f  ${prefix}_N.bam ] && ln -s ${bams[0]} ${prefix}_N.bam
-        [ ! -f  ${prefix}_T.bam ] && ln -s ${bams[1]} ${prefix}_T.bam
-        java -jar -Xmx8G $params.tool_dir/cnv_tools/cobalt.jar \
-            -reference ${prefix}_N \
-            -reference_bam ${prefix}_N.bam \
-            -tumor ${prefix}_T \
-            -tumor_bam ${prefix}_T.bam \
-            -output_dir amber/${prefix} \
-            -threads $task.cpus \
-            -gc_profile $params.organism_cobalt
-        """
-    }
+    def diploid_regions_arg = diploid_regions ? "-tumor_only_diploid_bed ${diploid_regions}" : ''
+    def target_region_arg = target_region_normalisation ? "-target_region ${target_region_normalisation}" : ''
 
-    // TODO: include the threads to the process and the code
+    """
+    cobalt \\
+        -Xmx${Math.round(task.memory.bytes * 0.95)} \\
+        ${args} \\
+        -tumor ${meta.tumor_id} \\
+        -tumor_bam ${tumor_bam} \\
+        ${reference_arg} \\
+        ${reference_bam_arg} \\
+        -threads ${task.cpus} \\
+        -gc_profile ${gc_profile} \\
+        ${diploid_regions_arg} \\
+        ${target_region_arg} \\
+        -output_dir cobalt/
+
+    cat <<-END_VERSIONS > versions.yml
+    "${task.process}":
+        cobalt: \$(cobalt -version | sed 's/^.* //')
+    END_VERSIONS
+    """
+
+    stub:
+    """
+    mkdir -p cobalt/
+    touch cobalt/placeholder
+
+    echo -e '${task.process}:\\n  stub: noversions\\n' > versions.yml
+    """
 }

@@ -1,26 +1,15 @@
 nextflow.enable.dsl = 2
 
-// Check if the specified input samplesheet exists
-if (file(params.input).exists()) { ch_input = file(params.input) } else { exit 1, 'Input samplesheet not found in the directory!'}
-
 // Get input information from samplesheet
 inputs = Utils.processInput(params.input)
 
 // Validate inputs and potentially references
-/*
-include { AMBER_ANALYSIS } from './subworkflows/amber_analysis.nf'
-include { COBALT_ANALYSIS } from './subworkflows/cobalt_analysis.nf'
-include { GRIDSS_ANALYSIS } from './subworkflows/gridss_analysis.nf'
-include { GRIPSS_ANALYSIS } from './subworkflows/gripss_analysis.nf'
-include { PURPLE_CALL } from './subworkflows/purple_call.nf'
 
-Still need to figure out this as there is already some modules that 
-are available and we could use them instead of creating new ones.
-
-But as they're in nf-core and we're not using their notation, the
-input channels should be modified accordingly in order to work.
-
-*/
+include { CONTROL_FREEC } from "./modules/control_freec/main"
+include { BED_PREPARATION } from "./modules/bed_preparation/main"
+include { COHORT_PREPARATION } from "./modules/cohort_preparation/main"
+include { CNVKIT_ANALYSIS } from "./subworkflows/cnvkit/main"
+include { JABCONTOOL_ANALYSIS } from "./subworkflows/jabcontool/main.nf"
 
 /*
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -30,8 +19,8 @@ input channels should be modified accordingly in order to work.
 
 // Load the reference data from the paths in config file
 
-organism_fasta = params.organism_fasta ? Channel.fromPath(params.organism_fasta).collect() : Channel.empty()
-organism_fasta_fai = params.organism_fasta ? Channel.fromPath(params.organism_fasta + '.fai').collect() : Channel.empty()
+ch_organism_fasta = params.organism_fasta ? Channel.fromPath(params.organism_fasta).collect() : Channel.empty()
+ch_organism_fasta_fai = params.organism_fasta ? Channel.fromPath(params.organism_fasta + '.fai').collect() : Channel.empty()
 organism_dna_panel = params.organism_dna_panel ? Channel.fromPath(params.organism_dna_panel).collect() : Channel.empty()
 organism_cytoband = params.organism_cytoband ? Channel.fromPath(params.organism_cytoband).collect() : Channel.empty()
 
@@ -43,44 +32,34 @@ workflow TARGETED {
     // channel: [ meta, []]
     ch_inputs = Channel.fromList(inputs)
 
+    BED_PREPARATION (
+        ch_organism_fasta,
+        ch_organism_fasta_fai
+    )
 
+    ch_binned_genome = BED_PREPARATION.out.binned_genome
+    ch_gc_profile = BED_PREPARATION.out.gc_profile
 
-/*
-workflow CNV_ANALYSIS {
+    def ch_cohort_input = params.cohort_data ? Channel.fromPath(params.cohort_data) : Channel.empty()
 
-    AMBER_ANALYSIS {
-        ch_input_bams
-    }
-
-    ch_input_bams = INPUT_CHECK.out.samples
-
-    PREPROCESSING {
-        ch_organism_fasta
-        ch_organism_fai
-    }
-
-    def ch_cohort_input = params.use_cohort_data ? file(params.cohort_data) : Channel.empty()
-
-    if (params.use_cohort_data) {
+    if (!ch_cohort_input.empty) {
         COHORT_PREPROCESS (
             ch_cohort_input
         )
     }
 
-    def ch_wgs_preprocess = params.lib_ROI == "wgs" ? PREPROCESSING.out.preprocessed : Channel.empty()
-
     if (params.lib_ROI == "wgs") {
 
-        PURPLE_ANALYSIS {
+        PURPLE_ANALYSIS (
             ch_input_bams
-        }
+        )
 
         ch_purple_results = PURPLE_ANALYSIS.out.ch_purple_outputs
 
-        CONTROL_FREEC {
+        CONTROL_FREEC (
             ch_input_bams
             ch_wgs_preprocess
-        }
+        )
         ch_control_freec_results = CONTROL_FREEC.out.var_call
 
     } else {
@@ -89,19 +68,6 @@ workflow CNV_ANALYSIS {
             ch_input_bams
         )
 
-
-
     }
 
-    def ch_cohort_data = params.use_cohort_data ? COHORT_PREPROCESS.out.cohort_data : Channel.empty()
-
-    JABCONTOOL_ANALYSIS {
-        ch_input_bams
-        ch_wgs_preprocess
-        ch_cohort_data
-    }
-
-
-
-}
-*/
+ }
