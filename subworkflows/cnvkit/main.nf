@@ -46,22 +46,25 @@ workflow CNVKIT_ANALYSIS {
 
     ch_coverage = GET_COVERAGE_CNVKIT.out.coverage
 
-    def (ch_tumor_coverage, ch_normal_coverage) = ch_coverage
-        .map { tuple ->
-            def tumor = [tuple[1], tuple[2]]
-            def normal = [tuple[3], tuple[4]]
-            return [tumor, normal]
-        }
-        .transpose()
+    // Map tumor coverage files
+    ch_tumor_coverage = ch_coverage.map { tuple -> 
+        [tuple[1], tuple[2]] // Extract tumor target and antitarget files
+    }
 
+    // Map normal coverage files
+    ch_normal_coverage = ch_coverage.map { tuple -> 
+        [tuple[3], tuple[4]] // Extract normal target and antitarget files
+    }
+
+    // Flatten and collect tumor and normal coverage files into separate lists
     ch_tumor_coverage_files = ch_tumor_coverage.flatten().collect()
     ch_normal_coverage_files = ch_normal_coverage.flatten().collect()
 
     REFERENCE_CNVKIT (
-        ch_reference_fasta
-        ch_tumor_coverage_files
-        ch_normal_coverage_files
-        ch_prepared_regions
+        ch_reference_fasta,
+        ch_tumor_coverage_files,
+        ch_normal_coverage_files,
+        ch_prepared_regions,
         sample_number
     )
 

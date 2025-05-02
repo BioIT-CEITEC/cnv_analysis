@@ -1,0 +1,180 @@
+may.-02 11:46:56.788 [main] DEBUG nextflow.cli.Launcher - $> nextflow run main.nf -with-conda
+may.-02 11:46:56.831 [main] DEBUG nextflow.cli.CmdRun - N E X T F L O W  ~  version 24.10.6
+may.-02 11:46:56.842 [main] DEBUG nextflow.plugin.PluginsFacade - Setting up plugin manager > mode=prod; embedded=false; plugins-dir=/Users/alejandromedaglia/.nextflow/plugins; core-plugins: nf-amazon@2.9.3,nf-azure@1.10.2,nf-cloudcache@0.4.2,nf-codecommit@0.2.2,nf-console@1.1.4,nf-google@1.15.4,nf-tower@1.9.3,nf-wave@1.7.5
+may.-02 11:46:56.856 [main] INFO  o.pf4j.DefaultPluginStatusProvider - Enabled plugins: []
+may.-02 11:46:56.857 [main] INFO  o.pf4j.DefaultPluginStatusProvider - Disabled plugins: []
+may.-02 11:46:56.858 [main] INFO  org.pf4j.DefaultPluginManager - PF4J version 3.12.0 in 'deployment' mode
+may.-02 11:46:56.865 [main] INFO  org.pf4j.AbstractPluginManager - No plugins
+may.-02 11:46:56.895 [main] DEBUG nextflow.cli.CmdRun - Applied DSL=2 from script declaration
+may.-02 11:46:56.904 [main] DEBUG nextflow.cli.CmdRun - Launching `main.nf` [cheesy_poincare] DSL2 - revision: 2eefce38c8
+may.-02 11:46:56.905 [main] DEBUG nextflow.plugin.PluginsFacade - Plugins default=[]
+may.-02 11:46:56.905 [main] DEBUG nextflow.plugin.PluginsFacade - Plugins resolved requirement=[]
+may.-02 11:46:56.936 [main] DEBUG nextflow.Session - Session UUID: 1667db58-021b-4d3c-beb3-1b30496b8610
+may.-02 11:46:56.936 [main] DEBUG nextflow.Session - Run name: cheesy_poincare
+may.-02 11:46:56.936 [main] DEBUG nextflow.Session - Executor pool size: 8
+may.-02 11:46:56.941 [main] DEBUG nextflow.file.FilePorter - File porter settings maxRetries=3; maxTransfers=50; pollTimeout=null
+may.-02 11:46:56.945 [main] DEBUG nextflow.util.ThreadPoolBuilder - Creating thread pool 'FileTransfer' minSize=10; maxSize=24; workQueue=LinkedBlockingQueue[-1]; allowCoreThreadTimeout=false
+may.-02 11:46:56.960 [main] DEBUG nextflow.cli.CmdRun - 
+  Version: 24.10.6 build 5937
+  Created: 23-04-2025 16:53 UTC (18:53 GMT+02:00)
+  System: Mac OS X 15.3.2
+  Runtime: Groovy 4.0.23 on OpenJDK 64-Bit Server VM 17.0.13+11-LTS
+  Encoding: UTF-8 (UTF-8)
+  Process: 72268@employee-30-216.eduroam.muni.cz [100.66.30.216]
+  CPUs: 8 - Mem: 16 GB (71.8 MB) - Swap: 7 GB (788.4 MB)
+may.-02 11:46:56.968 [main] DEBUG nextflow.Session - Work-dir: /Users/alejandromedaglia/Documents/nf-core/cnv_analysis/work [Mac OS X]
+may.-02 11:46:56.979 [main] DEBUG nextflow.executor.ExecutorFactory - Extension executors providers=[]
+may.-02 11:46:56.984 [main] DEBUG nextflow.Session - Observer factory: DefaultObserverFactory
+may.-02 11:46:56.996 [main] DEBUG nextflow.cache.CacheFactory - Using Nextflow cache factory: nextflow.cache.DefaultCacheFactory
+may.-02 11:46:57.001 [main] DEBUG nextflow.util.CustomThreadPool - Creating default thread pool > poolSize: 9; maxThreads: 1000
+may.-02 11:46:57.027 [main] DEBUG nextflow.Session - Session start
+may.-02 11:46:57.030 [main] DEBUG nextflow.Session - Using default localLib path: /Users/alejandromedaglia/Documents/nf-core/cnv_analysis/lib
+may.-02 11:46:57.031 [main] DEBUG nextflow.Session - Adding to the classpath library: /Users/alejandromedaglia/Documents/nf-core/cnv_analysis/lib
+may.-02 11:46:57.236 [main] DEBUG nextflow.script.ScriptRunner - > Launching execution
+may.-02 11:46:57.241 [main] DEBUG n.secret.LocalSecretsProvider - Secrets store: /Users/alejandromedaglia/.nextflow/secrets/store.json
+may.-02 11:46:57.244 [main] DEBUG nextflow.secret.SecretsLoader - Discovered secrets providers: [nextflow.secret.LocalSecretsProvider@74f827ad] - activable => nextflow.secret.LocalSecretsProvider@74f827ad
+may.-02 11:46:57.957 [main] WARN  nextflow.script.ScriptBinding - Access to undefined parameter `organism_fasta` -- Initialise it to a default value eg. `params.organism_fasta = some_value`
+may.-02 11:46:57.970 [main] WARN  nextflow.script.ScriptBinding - Access to undefined parameter `organism_dna_panel` -- Initialise it to a default value eg. `params.organism_dna_panel = some_value`
+may.-02 11:46:57.971 [main] WARN  nextflow.script.ScriptBinding - Access to undefined parameter `organism_cytoband` -- Initialise it to a default value eg. `params.organism_cytoband = some_value`
+may.-02 11:46:57.971 [main] WARN  nextflow.script.ScriptBinding - Access to undefined parameter `input` -- Initialise it to a default value eg. `params.input = some_value`
+may.-02 11:46:57.971 [main] WARN  nextflow.script.ScriptBinding - Access to undefined parameter `normal_tumor` -- Initialise it to a default value eg. `params.normal_tumor = some_value`
+may.-02 11:46:57.975 [main] DEBUG nextflow.script.ScriptRunner - Parsed script files:
+  Script_7413d3e719e29992: /Users/alejandromedaglia/Documents/nf-core/cnv_analysis/./workflows/targeted.nf
+  Script_721c06c2828b12cf: /Users/alejandromedaglia/Documents/nf-core/cnv_analysis/./workflows/../modules/control_freec/main.nf
+  Script_9af1c7beac249fe7: /Users/alejandromedaglia/Documents/nf-core/cnv_analysis/./workflows/../subworkflows/cnvkit/../../modules/cnvkit/plotting/main.nf
+  Script_df7a9a71f39775c6: /Users/alejandromedaglia/Documents/nf-core/cnv_analysis/./workflows/../subworkflows/cnvkit/../../modules/vardict/main.nf
+  Script_ed9b58ca2b5243cf: /Users/alejandromedaglia/Documents/nf-core/cnv_analysis/main.nf
+  Script_f5658002712961c6: /Users/alejandromedaglia/Documents/nf-core/cnv_analysis/./workflows/../subworkflows/cnvkit/../../modules/cnvkit/prepare_regions/main.nf
+  Script_76b17c307348e36a: /Users/alejandromedaglia/Documents/nf-core/cnv_analysis/./workflows/../subworkflows/jabcontool/main.nf
+  Script_e3635f8055f9481c: /Users/alejandromedaglia/Documents/nf-core/cnv_analysis/./workflows/../modules/preprocessing/cohort_preparation/main.nf
+  Script_f567743ef7e999d5: /Users/alejandromedaglia/Documents/nf-core/cnv_analysis/./workflows/../subworkflows/cnvkit/../../modules/cnvkit/fix_and_segment/main.nf
+  Script_50c213ffa921861b: /Users/alejandromedaglia/Documents/nf-core/cnv_analysis/./workflows/../subworkflows/cnvkit/main.nf
+  Script_51c8b3ef91be2af1: /Users/alejandromedaglia/Documents/nf-core/cnv_analysis/./workflows/../subworkflows/jabcontool/../../modules/jabcontool/coverage/main.nf
+  Script_a43c70149757441d: /Users/alejandromedaglia/Documents/nf-core/cnv_analysis/./workflows/../subworkflows/cnvkit/../../modules/cnvkit/call/main.nf
+  Script_2391ffde30697b86: /Users/alejandromedaglia/Documents/nf-core/cnv_analysis/./workflows/../subworkflows/jabcontool/../../modules/jabcontool/AF_calculation/main.nf
+  Script_c7a3df0b25bcd4a0: /Users/alejandromedaglia/Documents/nf-core/cnv_analysis/./workflows/../subworkflows/cnvkit/../../modules/cnvkit/reference_preparation/main.nf
+  Script_3bc42681f025c3a7: /Users/alejandromedaglia/Documents/nf-core/cnv_analysis/./workflows/../subworkflows/jabcontool/../../modules/jabcontool/call/main.nf
+  Script_8238694515bff7fe: /Users/alejandromedaglia/Documents/nf-core/cnv_analysis/./workflows/../modules/preprocessing/bed_preparation/main.nf
+  Script_adaa0484dc3a058c: /Users/alejandromedaglia/Documents/nf-core/cnv_analysis/./workflows/../subworkflows/cnvkit/../../modules/cnvkit/coverage/main.nf
+may.-02 11:46:57.975 [main] DEBUG nextflow.Session - Session aborted -- Cause: Cannot invoke method groupBy() on null object
+may.-02 11:46:57.979 [main] DEBUG nextflow.Session - 
+Thread[Thread-1,5,main]
+  java.base@17.0.13/jdk.internal.misc.Unsafe.park(Native Method)
+  java.base@17.0.13/java.util.concurrent.locks.LockSupport.parkNanos(LockSupport.java:252)
+  java.base@17.0.13/java.util.concurrent.locks.AbstractQueuedSynchronizer$ConditionObject.awaitNanos(AbstractQueuedSynchronizer.java:1679)
+  java.base@17.0.13/java.util.concurrent.LinkedBlockingDeque.pollFirst(LinkedBlockingDeque.java:515)
+  java.base@17.0.13/java.util.concurrent.LinkedBlockingDeque.poll(LinkedBlockingDeque.java:677)
+  app//nextflow.util.SimpleAgent.run(SimpleAgent.groovy:89)
+  java.base@17.0.13/jdk.internal.reflect.NativeMethodAccessorImpl.invoke0(Native Method)
+  java.base@17.0.13/jdk.internal.reflect.NativeMethodAccessorImpl.invoke(NativeMethodAccessorImpl.java:77)
+  java.base@17.0.13/jdk.internal.reflect.DelegatingMethodAccessorImpl.invoke(DelegatingMethodAccessorImpl.java:43)
+  java.base@17.0.13/java.lang.reflect.Method.invoke(Method.java:569)
+  app//org.codehaus.groovy.reflection.CachedMethod.invoke(CachedMethod.java:343)
+  app//groovy.lang.MetaMethod.doMethodInvoke(MetaMethod.java:328)
+  app//groovy.lang.MetaClassImpl.doInvokeMethod(MetaClassImpl.java:1333)
+  app//groovy.lang.MetaClassImpl.invokeMethod(MetaClassImpl.java:1088)
+  app//groovy.lang.MetaClassImpl.invokeMethodClosure(MetaClassImpl.java:1017)
+  app//groovy.lang.MetaClassImpl.doInvokeMethod(MetaClassImpl.java:1207)
+  app//groovy.lang.MetaClassImpl.invokeMethod(MetaClassImpl.java:1088)
+  app//groovy.lang.MetaClassImpl.invokeMethod(MetaClassImpl.java:1007)
+  app//groovy.lang.Closure.call(Closure.java:433)
+  app//groovy.lang.Closure.call(Closure.java:412)
+  app//groovy.lang.Closure.run(Closure.java:505)
+  java.base@17.0.13/java.lang.Thread.run(Thread.java:840)
+
+Thread[Common-Cleaner,8,InnocuousThreadGroup]
+  java.base@17.0.13/java.lang.Object.wait(Native Method)
+  java.base@17.0.13/java.lang.ref.ReferenceQueue.remove(ReferenceQueue.java:155)
+  java.base@17.0.13/jdk.internal.ref.CleanerImpl.run(CleanerImpl.java:140)
+  java.base@17.0.13/java.lang.Thread.run(Thread.java:840)
+  java.base@17.0.13/jdk.internal.misc.InnocuousThread.run(InnocuousThread.java:162)
+
+Thread[Reference Handler,10,system]
+  java.base@17.0.13/java.lang.ref.Reference.waitForReferencePendingList(Native Method)
+  java.base@17.0.13/java.lang.ref.Reference.processPendingReferences(Reference.java:253)
+  java.base@17.0.13/java.lang.ref.Reference$ReferenceHandler.run(Reference.java:215)
+
+Thread[AnsiLogObserver,5,main]
+  java.base@17.0.13/java.lang.Object.wait(Native Method)
+  app//nextflow.trace.AnsiLogObserver.render0(AnsiLogObserver.groovy:185)
+  java.base@17.0.13/jdk.internal.reflect.NativeMethodAccessorImpl.invoke0(Native Method)
+  java.base@17.0.13/jdk.internal.reflect.NativeMethodAccessorImpl.invoke(NativeMethodAccessorImpl.java:77)
+  java.base@17.0.13/jdk.internal.reflect.DelegatingMethodAccessorImpl.invoke(DelegatingMethodAccessorImpl.java:43)
+  java.base@17.0.13/java.lang.reflect.Method.invoke(Method.java:569)
+  app//org.codehaus.groovy.reflection.CachedMethod.invoke(CachedMethod.java:343)
+  app//groovy.lang.MetaMethod.doMethodInvoke(MetaMethod.java:328)
+  app//groovy.lang.MetaClassImpl.doInvokeMethod(MetaClassImpl.java:1333)
+  app//groovy.lang.MetaClassImpl.invokeMethod(MetaClassImpl.java:1088)
+  app//groovy.lang.MetaClassImpl.invokeMethodClosure(MetaClassImpl.java:1017)
+  app//groovy.lang.MetaClassImpl.doInvokeMethod(MetaClassImpl.java:1207)
+  app//groovy.lang.MetaClassImpl.invokeMethod(MetaClassImpl.java:1088)
+  app//groovy.lang.MetaClassImpl.invokeMethod(MetaClassImpl.java:1007)
+  app//groovy.lang.Closure.call(Closure.java:433)
+  app//groovy.lang.Closure.call(Closure.java:412)
+  app//groovy.lang.Closure.run(Closure.java:505)
+  java.base@17.0.13/java.lang.Thread.run(Thread.java:840)
+
+Thread[main,5,main]
+  java.base@17.0.13/java.lang.Thread.dumpThreads(Native Method)
+  java.base@17.0.13/java.lang.Thread.getAllStackTraces(Thread.java:1671)
+  app//nextflow.util.SysHelper.dumpThreads(SysHelper.groovy:188)
+  app//nextflow.Session.abort(Session.groovy:800)
+  app//nextflow.script.ScriptRunner.execute(ScriptRunner.groovy:149)
+  app//nextflow.cli.CmdRun.run(CmdRun.groovy:376)
+  app//nextflow.cli.Launcher.run(Launcher.groovy:503)
+  app//nextflow.cli.Launcher.main(Launcher.groovy:658)
+
+Thread[Notification Thread,9,system]
+
+Thread[Signal Dispatcher,9,system]
+
+Thread[Finalizer,8,system]
+  java.base@17.0.13/java.lang.Object.wait(Native Method)
+  java.base@17.0.13/java.lang.ref.ReferenceQueue.remove(ReferenceQueue.java:155)
+  java.base@17.0.13/java.lang.ref.ReferenceQueue.remove(ReferenceQueue.java:176)
+  java.base@17.0.13/java.lang.ref.Finalizer$FinalizerThread.run(Finalizer.java:172)
+
+may.-02 11:46:57.982 [main] ERROR nextflow.cli.Launcher - @unknown
+java.lang.NullPointerException: Cannot invoke method groupBy() on null object
+	at org.codehaus.groovy.runtime.NullObject.invokeMethod(NullObject.java:113)
+	at org.codehaus.groovy.vmplugin.v8.IndyGuardsFiltersAndSignatures.invokeGroovyObjectInvoker(IndyGuardsFiltersAndSignatures.java:151)
+	at org.codehaus.groovy.vmplugin.v8.IndyInterface.fromCache(IndyInterface.java:321)
+	at Utils.parseInputVC(Utils.groovy:9)
+	at org.codehaus.groovy.vmplugin.v8.IndyInterface.fromCache(IndyInterface.java:321)
+	at Script_7413d3e719e29992.runScript(Script_7413d3e719e29992:25)
+	at org.codehaus.groovy.vmplugin.v8.IndyInterface.fromCache(IndyInterface.java:321)
+	at nextflow.script.BaseScript.run0(BaseScript.groovy:159)
+	at org.codehaus.groovy.vmplugin.v8.IndyInterface.fromCache(IndyInterface.java:321)
+	at nextflow.script.BaseScript.run(BaseScript.groovy:209)
+	at nextflow.script.ScriptParser.runScript(ScriptParser.groovy:236)
+	at nextflow.script.ScriptParser.runScript(ScriptParser.groovy:222)
+	at nextflow.script.IncludeDef.memoizedMethodPriv$loadModule0PathMapSession(IncludeDef.groovy:142)
+	at nextflow.script.IncludeDef.access$0(IncludeDef.groovy)
+	at nextflow.script.IncludeDef$__clinit__closure2.doCall(IncludeDef.groovy)
+	at java.base/jdk.internal.reflect.NativeMethodAccessorImpl.invoke0(Native Method)
+	at java.base/jdk.internal.reflect.NativeMethodAccessorImpl.invoke(NativeMethodAccessorImpl.java:77)
+	at java.base/jdk.internal.reflect.DelegatingMethodAccessorImpl.invoke(DelegatingMethodAccessorImpl.java:43)
+	at java.base/java.lang.reflect.Method.invoke(Method.java:569)
+	at org.codehaus.groovy.reflection.CachedMethod.invoke(CachedMethod.java:343)
+	at groovy.lang.MetaMethod.doMethodInvoke(MetaMethod.java:328)
+	at org.codehaus.groovy.runtime.metaclass.ClosureMetaClass.invokeMethod(ClosureMetaClass.java:279)
+	at groovy.lang.MetaClassImpl.invokeMethod(MetaClassImpl.java:1007)
+	at groovy.lang.Closure.call(Closure.java:433)
+	at org.codehaus.groovy.runtime.memoize.Memoize$MemoizeFunction.lambda$call$0(Memoize.java:137)
+	at org.codehaus.groovy.runtime.memoize.ConcurrentCommonCache.getAndPut(ConcurrentCommonCache.java:137)
+	at org.codehaus.groovy.runtime.memoize.ConcurrentCommonCache.getAndPut(ConcurrentCommonCache.java:113)
+	at org.codehaus.groovy.runtime.memoize.Memoize$MemoizeFunction.call(Memoize.java:136)
+	at nextflow.script.IncludeDef.loadModule0(IncludeDef.groovy)
+	at nextflow.script.IncludeDef.load0(IncludeDef.groovy:114)
+	at org.codehaus.groovy.vmplugin.v8.IndyInterface.fromCache(IndyInterface.java:321)
+	at Script_ed9b58ca2b5243cf.runScript(Script_ed9b58ca2b5243cf:16)
+	at org.codehaus.groovy.vmplugin.v8.IndyInterface.fromCache(IndyInterface.java:321)
+	at nextflow.script.BaseScript.run0(BaseScript.groovy:159)
+	at org.codehaus.groovy.vmplugin.v8.IndyInterface.fromCache(IndyInterface.java:321)
+	at nextflow.script.BaseScript.run(BaseScript.groovy:209)
+	at nextflow.script.ScriptParser.runScript(ScriptParser.groovy:236)
+	at nextflow.script.ScriptRunner.run(ScriptRunner.groovy:243)
+	at nextflow.script.ScriptRunner.execute(ScriptRunner.groovy:138)
+	at nextflow.cli.CmdRun.run(CmdRun.groovy:376)
+	at nextflow.cli.Launcher.run(Launcher.groovy:503)
+	at nextflow.cli.Launcher.main(Launcher.groovy:658)

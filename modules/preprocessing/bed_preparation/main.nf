@@ -1,4 +1,4 @@
-process PREPROCESSING {
+process BED_PREPARATION {
 
     input:
     path reference_fasta

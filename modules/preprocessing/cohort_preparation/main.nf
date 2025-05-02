@@ -1,4 +1,4 @@
-process COHORT_PREPROCESS {
+process COHORT_PREPARATION {
 
     publishDir "cohort_data/"
 

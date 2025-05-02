@@ -14,7 +14,6 @@ data, references and config differs.
 */
 
 include { TARGETED } from './workflows/targeted'
-include { WGS     } from './workflows/wgs'
 
 /*
 -----------------------------------------------------------------------
@@ -24,11 +23,7 @@ include { WGS     } from './workflows/wgs'
 
 workflow CNV_ANALYSIS {
 
-    if (params.lib_ROI === "wgs") {
-        WGS()
-    } else {
-        TARGETED()
-    }
+   TARGETED()
 }
 
 /*

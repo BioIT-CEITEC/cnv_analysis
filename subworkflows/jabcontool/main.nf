@@ -2,7 +2,7 @@ include { COVERAGE_CALC } from "../../modules/jabcontool/coverage/main.nf"
 include { SNP_AF_CALC } from "../../modules/jabcontool/AF_calculation/main.nf"
 include { JABCONTOOL_CALL } from "../../modules/jabcontool/call/main.nf"
 
-workflow JABCONTOOL {
+workflow JABCONTOOL_ANALYSIS {
 
     take:
     ch_input_bams

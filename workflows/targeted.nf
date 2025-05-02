@@ -1,15 +1,13 @@
 nextflow.enable.dsl = 2
 
-// Get input information from samplesheet
-inputs = Utils.processInput(params.input)
 
 // Validate inputs and potentially references
 
-include { CONTROL_FREEC } from "./modules/control_freec/main"
-include { BED_PREPARATION } from "./modules/bed_preparation/main"
-include { COHORT_PREPARATION } from "./modules/cohort_preparation/main"
-include { CNVKIT_ANALYSIS } from "./subworkflows/cnvkit/main"
-include { JABCONTOOL_ANALYSIS } from "./subworkflows/jabcontool/main.nf"
+include { CONTROL_FREEC } from "../modules/control_freec/main.nf"
+include { BED_PREPARATION } from "../modules/preprocessing/bed_preparation/main.nf"
+include { COHORT_PREPARATION } from "../modules/preprocessing/cohort_preparation/main.nf"
+include { CNVKIT_ANALYSIS } from "../subworkflows/cnvkit/main.nf"
+include { JABCONTOOL_ANALYSIS } from "../subworkflows/jabcontool/main.nf"
 
 /*
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -18,6 +16,7 @@ include { JABCONTOOL_ANALYSIS } from "./subworkflows/jabcontool/main.nf"
 */
 
 // Load the reference data from the paths in config file
+params = Utils.load_organism(params)
 
 ch_organism_fasta = params.organism_fasta ? Channel.fromPath(params.organism_fasta).collect() : Channel.empty()
 ch_organism_fasta_fai = params.organism_fasta ? Channel.fromPath(params.organism_fasta + '.fai').collect() : Channel.empty()
@@ -40,11 +39,10 @@ workflow TARGETED {
     ch_binned_genome = BED_PREPARATION.out.binned_genome
     ch_gc_profile = BED_PREPARATION.out.gc_profile
 
-    def ch_cohort_input = params.cohort_data ? Channel.fromPath(params.cohort_data) : Channel.empty()
-
-    if (!ch_cohort_input.empty) {
+/*
+    if (!cohort_data_channel.empty) {
         COHORT_PREPROCESS (
-            ch_cohort_input
+            cohort_data_channel
         )
     }
 
@@ -57,7 +55,7 @@ workflow TARGETED {
         ch_purple_results = PURPLE_ANALYSIS.out.ch_purple_outputs
 
         CONTROL_FREEC (
-            ch_input_bams
+            ch_input_bams,
             ch_wgs_preprocess
         )
         ch_control_freec_results = CONTROL_FREEC.out.var_call
@@ -69,5 +67,5 @@ workflow TARGETED {
         )
 
     }
-
- }
+*/
+}
