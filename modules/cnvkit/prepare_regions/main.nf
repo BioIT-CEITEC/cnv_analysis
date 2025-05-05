@@ -2,7 +2,7 @@ process PREPARE_REGIONS_CNVKIT {
 
     publishDir "structural_varcalls/all_samples/cnvkit", mode: 'copy'
 
-    conda "../${moduleDir}/env.yaml" 
+    conda "${moduleDir}/../env.yaml"
 
     input:
     path reference_fasta // channel to the reference fasta file
@@ -13,19 +13,23 @@ process PREPARE_REGIONS_CNVKIT {
     tuple path("results/target.bed"), path("results/antitarget.bed"), emit: prepared_regions
 
     script:
+    
+      def panel = lib_ROI.toString().replace('.bed', '') 
 
         """
         mkdir -p results
         cnvkit.py access ${reference_fasta} -o reference_bed.bed
-        cnvkit.py autobin ./*.bam -t ${lib_ROI} -g reference_bed.bed
-        mv ${lib_ROI}.target.bed results/target.bed
-        mv ${lib_ROI}.antitarget.bed results/antitarget.bed
+        cnvkit.py autobin *.bam -t ${lib_ROI} -g reference_bed.bed
+        mv ${panel}.target.bed results/target.bed
+        mv ${panel}.antitarget.bed results/antitarget.bed
+        
         """
 
     stub:
         """
         mkdir -p results
-        touch target.bed
-        touch antitarget.bed
+        touch results/target.bed
+        touch results/antitarget.bed
         """
+        
 }

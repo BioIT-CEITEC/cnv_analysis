@@ -1,20 +1,29 @@
 process GET_COVERAGE_CNVKIT {
-
     tag "${meta.donor}"
     publishDir "structural_varcalls/${meta.donor}/cnvkit", mode: 'copy'
 
-    conda "../${moduleDir}/env.yaml" 
+    conda "${moduleDir}/../env.yaml"
 
     input:
-    tuple val(meta), path(bam_tumor), path(bam_bai_tumor), path(bam_normal), path(bam_bai_normal) // mandatory [ [meta],[bam_tumor],[bam_bai_tumor],[bam_normal],[bam_bai_normal] ]
-    tuple path(target), path(antitarget) // target and antitarget bed file produced in prepare_regions_cnvkit process
+    tuple val(meta), path(bam_tumor), path(bam_bai_tumor), path(bam_normal), path(bam_bai_normal)
+    tuple path(target), path(antitarget)
 
     output:
-    tuple val(meta), tuple path("coverage/*.tumor.targetcoverage.cnn"), path("coverage/*.tumor.antitargetcoverage.cnn"), path("coverage/*.normal.targetcoverage.cnn", optional: true), path("coverage/*.normal.antitargetcoverage.cnn", optional: true), emit: coverage 
+    tuple val(meta), 
+          path("coverage/${meta.donor}.tumor.targetcoverage.cnn"), 
+          path("coverage/${meta.donor}.tumor.antitargetcoverage.cnn"), 
+          path("coverage/${meta.donor}.normal.targetcoverage.cnn"),
+          path("coverage/${meta.donor}.normal.antitargetcoverage.cnn"),
+          emit: coverage 
 
     script:
-
-    def normal_cmd = params.normal_tumor ? "cnvkit.py coverage ${bam_normal} ${target} -o coverage/${meta.donor}.normal.targetcoverage.cnn && cnvkit.py coverage ${bam_normal} ${antitarget} -o coverage/${meta.donor}.normal.antitargetcoverage.cnn" : ""
+    def normal_cmd = params.normal_tumor ? """
+        cnvkit.py coverage ${bam_normal} ${target} -o coverage/${meta.donor}.normal.targetcoverage.cnn
+        cnvkit.py coverage ${bam_normal} ${antitarget} -o coverage/${meta.donor}.normal.antitargetcoverage.cnn
+    """ : """
+        touch coverage/${meta.donor}.normal.targetcoverage.cnn
+        touch coverage/${meta.donor}.normal.antitargetcoverage.cnn
+    """
 
     """
     mkdir -p coverage

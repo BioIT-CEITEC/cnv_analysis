@@ -23,7 +23,7 @@ ch_organism_fasta_fai = params.organism_fasta ? Channel.fromPath(params.organism
 organism_dna_panel = params.organism_dna_panel ? Channel.fromPath(params.organism_dna_panel).collect() : Channel.empty()
 organism_cytoband = params.organism_cytoband ? Channel.fromPath(params.organism_cytoband).collect() : Channel.empty()
 
-inputs = Utils.parseInputVC(params.input, params.normal_tumor, log)
+inputs = Utils.parseInputVC(params.new_samples, params.normal_tumor, log)
 
 workflow TARGETED {
 

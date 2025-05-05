@@ -1,11 +1,12 @@
 process CNVKIT_CALL {
 
+    tag "${meta.donor}"
     publishDir "structural_varcalls/${meta.donor}/cnvkit", mode: 'copy'
 
-    conda "../${moduleDir}/env.yaml" 
+    conda "${moduleDir}/../env.yaml" 
 
     input:
-    tuple path(fixed_cov), path(segmented_cov)
+    tuple val(meta), path(fixed_cov), path(segmented_cov)
 
     output:
     path("call/CNV_calls.cns"), emit: cnvkit_calls

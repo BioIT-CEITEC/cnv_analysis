@@ -1,6 +1,7 @@
 process REFERENCE_CNVKIT {
 
     publishDir "structural_varcalls/reference/cnvkit", mode: 'copy'
+    conda "${moduleDir}/../env.yaml"
 
     input:
     path reference_fasta // channel to the reference fasta file
@@ -14,9 +15,9 @@ process REFERENCE_CNVKIT {
 
     script:
 
-    def coverage_files = params.tumor_normal ? normal_coverage : tumor_coverage
+    def coverage_files = params.normal_tumor ? normal_coverage : tumor_coverage
 
-    if (params.tumor_normal || sample_number) {
+    if (params.normal_tumor || sample_number) {
 
         """
         mkdir -p reference

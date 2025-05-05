@@ -2,7 +2,7 @@ process FIX_AND_SEGMENT_CNVKIT {
 
     tag "${meta.donor}"
 
-    conda "../${moduleDir}/env.yaml" 
+    conda "${moduleDir}/../env.yaml"
 
     input:
     tuple val(meta), path(tumor_target), path(tumor_antitarget), path(normal_target), path(normal_antitarget) // mandatory [ [meta],[target],[antitarget] ] target and antitarget files produced in the coverage process

@@ -3,7 +3,7 @@ import nextflow.splitter.SplitterEx
 
 class Utils {
 
-public static parseInputVC(inputSh, normalTumor, log) {
+public static parseInputVC(inputSh, normalTumor, log, projectDir) {
 
     def groupedInputs = inputSh
         .groupBy { it['donor'] }
@@ -16,13 +16,13 @@ public static parseInputVC(inputSh, normalTumor, log) {
             def patientInputs = [:]
             if (normalTumor) {
                 if (meta.tumor_id && meta.normal_id) {
-                    patientInputs = [ meta, ["mapped/${meta.tumor_id}.bam"], ["mapped/${meta.tumor_id}.bam.bai"], ["mapped/${meta.normal_id}.bam"], ["mapped/${meta.normal_id}.bam.bai"] ]
+                    patientInputs = [ meta, ["${projectDir}/mapped/${meta.tumor_id}.bam"], ["${projectDir}/mapped/${meta.tumor_id}.bam.bai"], ["${projectDir}/mapped/${meta.normal_id}.bam"], ["${projectDir}/mapped/${meta.normal_id}.bam.bai"] ]
                 } else {
                     log.warn "Missing normal-tumor pair for patient_id: ${meta.donor}"
                     patientInputs = [ [], [], [], [], [] ]
                 }
             } else {
-                patientInputs = [ meta, ["mapped/${meta.tumor_id}.bam"], ["mapped/${meta.tumor_id}.bam.bai"], [], [] ]
+                patientInputs = [ meta, ["${projectDir}/mapped/${meta.tumor_id}.bam"], ["${projectDir}/mapped/${meta.tumor_id}.bam.bai"], [], [] ]
             }
             return patientInputs
         }
