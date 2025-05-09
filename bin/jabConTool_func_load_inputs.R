@@ -103,17 +103,24 @@ get_cov_tab <- function(sample_tab,panel_intervals,cohort_tab,join_intervals_dis
 
 get_snp_tab <- function(sample_tab,panel_snps_filename,panel_intervals,individual_cov_threshold = 10,max_pos_cov_threshold = 20){
   snp_tab <- fread_vector_of_files(sample_tab$snp_tab_filenames,sample_tab$sample)
+  print("loaded snp tab")
   setnames(snp_tab,c("sample","chr","pos","A","C","G","T","cov"))
+  print("changed snp tab names")
   snp_tab <- snp_tab[cov > 0]
+  print("filtered snp tab names")
   panel_snps <- fread(panel_snps_filename)
-
+  print("loaded snp panel tsv file")
+  
   setnames(panel_snps,c("chr","pos","ref","alt","BAF"))
   #genetics law
   panel_snps[,pop_HET_probability := 2*BAF*(1-BAF)]
+  print(colnames(panel_snps))
 
-  panel_snps <- foverlaps(setkey(panel_snps[,.(chr,pos,pos2 = pos,alt,pop_HET_probability)]), panel_intervals, by.x=c("chr","pos","pos2"), by.y=c("chr","start","end"), nomatch = 0)
+  
 
-  panel_snps[,c("start","end","region_name","pos2") := NULL]
+
+  panel_snps <- foverlaps(panel_snps[, .(chr,pos,pos2=pos,alt,pop_HET_probability)], setkey(panel_intervals, chr,start,end), by.x=c("chr","pos","pos2"), by.y=c("chr","start","end"), nomatch=0)
+  panel_snps[,c("start","end","pos2") := NULL]
   setorder(panel_snps,region_id,-pop_HET_probability)
   panel_snps <- unique(panel_snps,by = c("chr","pos"))
 
@@ -156,10 +163,11 @@ load_and_prefilter_sample_data <- function(sample_tab,
   normalization_sample_type <- tail(sort(sample_tab$type),1)
 
   panel_intervals <- load_panel_intervals(panel_intervals_filename,library_type)
+  print("loaded panel intevals")
   cov_tab <- get_cov_tab(sample_tab,panel_intervals,cohort_tab)
-  
+  print("loaded cov tab")
   if(library_type == "wgs"){
-    
+    print("no wgs")
     if(cytoband_file != "no_cytoband"){
       centromere_tab <- fread(cytoband_file)
 
@@ -197,14 +205,20 @@ load_and_prefilter_sample_data <- function(sample_tab,
   }
   
   if(nchar(GC_normalization_file) > 0 & GC_normalization_file != "no_GC_norm"){
+    
     GC_bin_content_tab <- fread(GC_normalization_file)
+    print("loaded GC bin content")
     setnames(GC_bin_content_tab, c("chr","start","gc","usable_bases_ratio"))
     GC_bin_content_tab <- GC_bin_content_tab[usable_bases_ratio > usable_bases_ratio_threshold]
+    print("GC bases ratio filtered")
     GC_bin_content_tab[,usable_bases_ratio := NULL]
+    print("GC bin content finished")
     
-    
+    print(head(cov_tab))
+    print(head(GC_bin_content_tab))
     cov_tab <- merge.data.table(cov_tab,GC_bin_content_tab,by = c("chr","start"))
     cov_tab[,c("intercept","a") := as.list(lm(cov ~ gc,.SD)$coefficients),by = .(sample)]
+    print(cov_tab)
     cov_tab[,cov_norm := cov / (a  * gc + intercept) * mean(cov)]
     
     cov_tab[,gc_hist_bin := cut(gc,seq(0,1,0.005))]

@@ -5,12 +5,8 @@ library(mclust)
 library(tictoc)
 
 # # develop and test
-script_dir <- dirname(rstudioapi::getSourceEditorContext()$path)
-setwd(paste0(script_dir,"/../../.."))
-args <- readLines(con = "logs/all_samples/jabCoNtool/cnv_computation.log_Rargs")
-args <- strsplit(args,split = " ")[[1]]
-args <- sub("data/ceitec_cfg2","share/share",args)
-
+working_dir<- getwd()
+script_dir <- paste0(working_dir, "/../../../bin/")
 
 #run as Rscript
 # script_dir <- dirname(sub("--file=", "", commandArgs()[grep("--file=", commandArgs())]))
@@ -18,11 +14,10 @@ args <- sub("data/ceitec_cfg2","share/share",args)
 
 source(paste0(script_dir,"/jabConTool_func_load_inputs.R"))
 source(paste0(script_dir,"/estimate_tumorload.R"))
-
 #TODO sex chromosome estimation
 
 #set_constants
-sample_regex <<- ".*/(.*)/jabCoNtool.*"
+sample_regex <<- "(.*)_.*.region_coverage.tsv"
 
 
 min_corelation_threshold <<- 0.9
@@ -40,6 +35,7 @@ dist_transition_treshold <<- 50000
 
 compute_snp_based_nloglike <- function(snp_tab,cn_het_var_count_table,complex_FP_probability = 0.005){
 
+  print("starting computing snp_based_nloglike")
   # if(all(snp_tab$TL == 1)){
   #   cn_het_var_count_table <- cn_het_var_count_table[-1]
   # }
@@ -54,6 +50,7 @@ compute_snp_based_nloglike <- function(snp_tab,cn_het_var_count_table,complex_FP
                                       het_var_count = rep(cn_het_var_count_table$het_var_count,nrow(snp_tab)),
                                       het_var_count_prob = rep(cn_het_var_count_table$het_var_count_prob,nrow(snp_tab)),
                                       cn_count = rep(cn_het_var_count_table$cn_count,nrow(snp_tab)))
+  print("created snp_based_cn_nloglike data table")
   snp_based_cn_nloglike[,expected_het_ratio := ((1 - TL) + TL * het_var_count) / (2 * (1 - TL) + TL * cn_count)]
   snp_based_cn_nloglike[,snp_prob := dbeta(expected_het_ratio,alt_count + 1,ref_count + 1)]
   snp_based_cn_nloglike[,hom_0_prob := pbeta(0.1,alt_count + 1,ref_count + 1,lower.tail = T)]
@@ -491,22 +488,43 @@ predict_CNVs <- function(sample_tab,cov_tab,snp_tab,library_type,trans_mat_list,
 
 
 
-run_all <- function(args){
-  out_filename <- args[1]
-  panel_intervals_filename <- args[2]
-  panel_snps_filename <- args[3] #filename or "no_use_snps"
-  calling_type <- args[4] #tumor_only, tumor_normal, germline
-  library_type <- args[5] #wgs, panel
-  GC_normalization_file <- args[6] #filename or "no_GC_norm"
-  cytoband_file <- args[7] #filename or "no_cytoband"
-  cohort_data_filename <- args[8] #filename or "no_previous_cohort_data"
-  prior_est_tumor_ratio <- as.logical(args[9])
+run_all <- function(args) {
+  
+  ## ── 1.  first ten fixed arguments, unchanged ────────────────────────────
+  out_filename            <- args[1]
+  panel_intervals_filename<- args[2]
+  panel_snps_filename     <- args[3]
+  calling_type            <- args[4]   # "tumor_only" | "tumor_normal" | "germline"
+  library_type            <- args[5]   # "wgs" | "panel"
+  GC_normalization_file   <- args[6]
+  cytoband_file           <- args[7]
+  cohort_data_filename    <- args[8]
+  prior_est_tumor_ratio   <- as.logical(args[9])
   max_CNV_frequency_in_cohort <- as.numeric(args[10]) / 100
-
-  dir.create(dirname(out_filename),recursive = T,showWarnings = F)
-
-  #set defuault copy number and error probability if not set in params
-  #TODO add to params (full vector or just non normal probability) for now is null
+  
+  ## ── 2.  everything *after* the ten fixed args ───────────────────────────
+  tail_args <- args[-(1:10)]
+  print(tail_args)
+  cov_pos  <- match("cov",       tail_args)
+  print(cov_pos)
+  norm_pos <- match("norm_cov",  tail_args)   # NA if keyword not present
+  print(norm_pos)
+  if (is.na(cov_pos))
+    stop("Keyword 'cov' not found in the extra arguments")
+  
+  ## tumour-coverage block  (always present)
+  tumor_cov_tab_filenames <- if (!is.na(norm_pos))
+    tail_args[(cov_pos + 1):(norm_pos - 1)]
+  else  tail_args[(cov_pos + 1):length(tail_args)]
+  
+  print(tumor_cov_tab_filenames)
+  
+  ## normal-coverage block  (only in tumour/normal mode)
+  normal_cov_tab_filenames <- if (!is.na(norm_pos))
+    tail_args[(norm_pos + 1):length(tail_args)]
+  else  character(0)     # empty vector when not provided
+  print(normal_cov_tab_filenames)
+  
   default_cn_rel_prob_vec <- NULL
   if(is.null(default_cn_rel_prob_vec)){
     default_cn_rel_prob_vec <- c(1,2,500,2,1,0.5,2)
@@ -516,20 +534,28 @@ run_all <- function(args){
   if(is.null(complex_FP_probability)){
     complex_FP_probability <- (1 - max(default_cn_rel_prob_vec)) / 6
   }
-
-  #create sample table
-  if(calling_type == "tumor_normal"){
-    tumor_cov_tab_filenames <- args[(which(args == "cov") + 1):(which(args == "norm_cov") - 1)]
-    normal_cov_tab_filenames <- args[(which(args == "norm_cov") + 1):length(args)]
-    sample_tab <- data.table(cov_tab_filenames = c(tumor_cov_tab_filenames,normal_cov_tab_filenames),
-                             type = c(rep("call",length(tumor_cov_tab_filenames)),rep("normal",length(normal_cov_tab_filenames))))
-    sample_tab[,sample := gsub(sample_regex,"\\1",cov_tab_filenames)]
-    sample_tab[type == "normal",sample := paste0(sample,"_norm")]
-  } else {
-    sample_tab <- data.table(cov_tab_filenames = args[(which(args == "cov") + 1):length(args)],
-                             type = c(rep("call",length(cov_tab_filenames))))
-    sample_tab[,sample := gsub(sample_regex,"\\1",cov_tab_filenames)]
+  ## ── 3.  build the sample table exactly as before ────────────────────────
+  if (calling_type == "tumor_normal") {
+    
+    sample_tab <- data.table(
+      cov_tab_filenames = c(tumor_cov_tab_filenames,
+                            normal_cov_tab_filenames),
+      type = c(rep("call",   length(tumor_cov_tab_filenames)),
+               rep("normal", length(normal_cov_tab_filenames)))
+    )
+    sample_tab[, sample := gsub(sample_regex, "\\1", cov_tab_filenames)]
+    sample_tab[type == "normal", sample := paste0(sample, "_norm")]
+    
+  } else {                             
+    
+    cov_tab_filenames <- tumor_cov_tab_filenames    
+    sample_tab <- data.table(
+      cov_tab_filenames = cov_tab_filenames,
+      type              = rep("call", length(cov_tab_filenames))
+    )
+    sample_tab[, sample := gsub(sample_regex, "\\1", cov_tab_filenames)]
   }
+  print(sample_tab)
 
   if(panel_snps_filename != "no_use_snps"){
     sample_tab[,snp_tab_filenames := gsub(".region_coverage.tsv",".snpAF.tsv",cov_tab_filenames)]
@@ -634,12 +660,12 @@ run_all <- function(args){
 
 #run as Rscript
 
-# args <- commandArgs(trailingOnly = T)
-# print("start")
-# timestamp()
-# run_all(args)
-# print("end")
-# timestamp()
+ args <- commandArgs(trailingOnly = T)
+ print("start")
+ timestamp()
+ run_all(args)
+ print("end")
+ timestamp()
 
 
 

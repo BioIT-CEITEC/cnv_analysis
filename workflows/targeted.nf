@@ -17,15 +17,24 @@ include { JABCONTOOL_ANALYSIS } from "../subworkflows/jabcontool/main.nf"
 
 // Load the reference data from the paths in config file
 params = Utils.load_organism(params)
+Utils.set_data_tags(params)
+Utils.loadSample(params)
 
 ch_organism_fasta = params.organism_fasta ? Channel.fromPath(params.organism_fasta).collect() : Channel.empty()
 ch_organism_fasta_fai = params.organism_fasta ? Channel.fromPath(params.organism_fasta + '.fai').collect() : Channel.empty()
-organism_dna_panel = params.organism_dna_panel ? Channel.fromPath(params.organism_dna_panel).collect() : Channel.empty()
-organism_cytoband = params.organism_cytoband ? Channel.fromPath(params.organism_cytoband).collect() : Channel.empty()
+ch_organism_dict = params.organism_dict ? Channel.fromPath(params.organism_dict).collect() : Channel.empty()
+ch_organism_dna_panel = params.organism_dna_panel ? Channel.fromPath(params.organism_dna_panel).collect() : Channel.empty()
+ch_organism_cytoband = params.organism_cytoband ? Channel.fromPath(params.organism_cytoband).collect() : Channel.empty()
+ch_organism_snps = params.organism_snps_panel ? Channel.fromPath(params.organism_snps_panel).collect() : Channel.empty()
 
-inputs = Utils.parseInputVC(params.new_samples, params.normal_tumor, log)
+
+
+inputs = Utils.parseInputVC(params.new_samples, params.normal_tumor, projectDir, log)
+
 
 workflow TARGETED {
+
+    ch_cohort_data = Channel.empty()
 
     // Create the channel from the parseInputVC function
     // channel: [ meta, []]
@@ -33,39 +42,41 @@ workflow TARGETED {
 
     BED_PREPARATION (
         ch_organism_fasta,
-        ch_organism_fasta_fai
+        ch_organism_dict
     )
 
     ch_binned_genome = BED_PREPARATION.out.binned_genome
     ch_gc_profile = BED_PREPARATION.out.gc_profile
 
-/*
-    if (!cohort_data_channel.empty) {
-        COHORT_PREPROCESS (
-            cohort_data_channel
-        )
-    }
+    CNVKIT_ANALYSIS (
 
-    if (params.lib_ROI == "wgs") {
+    ch_inputs,
+    ch_organism_dna_panel,
+    ch_organism_fasta,
+    ch_organism_fasta_fai
 
-        PURPLE_ANALYSIS (
-            ch_input_bams
-        )
+    )
 
-        ch_purple_results = PURPLE_ANALYSIS.out.ch_purple_outputs
+    JABCONTOOL_ANALYSIS (
+    ch_inputs,
+    ch_organism_fasta,
+    ch_organism_fasta_fai,
+    ch_organism_snps,
+    ch_organism_dna_panel,
+    ch_organism_cytoband,
+    ch_gc_profile,
+    ch_cohort_data
 
-        CONTROL_FREEC (
-            ch_input_bams,
-            ch_wgs_preprocess
-        )
-        ch_control_freec_results = CONTROL_FREEC.out.var_call
+    )
 
-    } else {
+    CONTROL_FREEC (
+    ch_inputs,
+    ch_organism_fasta,
+    ch_organism_fasta_fai,
+    ch_organism_snps,
+    ch_binned_genome,
+    ch_gc_profile
 
-        CNVKIT_ANALYSIS (
-            ch_input_bams
-        )
+    )
 
-    }
-*/
 }
