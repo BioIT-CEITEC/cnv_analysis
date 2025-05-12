@@ -15,7 +15,7 @@ workflow JABCONTOOL_ANALYSIS {
     ch_cohort_data
 
     main:
-    ch_region_bed = params.tumor_normal_paired ? ch_binned_genome : ch_organism_dna_panel
+    ch_region_bed = params.normal_tumor ? ch_binned_genome : ch_organism_dna_panel
 
     COVERAGE_CALC (
         ch_input_bams,

@@ -119,6 +119,11 @@
         "type": "bool",
         "default": true
       },
+      "AF_threshold": {
+        "label": "Allelic frequency threshold for CNV calling.",
+        "type": "string",
+        "default": "0.5"
+      },
       "purple_diploid_regions": {
         "label": "Use purple diploid regions for variant calling.",
         "type": "bool",

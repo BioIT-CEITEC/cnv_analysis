@@ -1,5 +1,7 @@
 process BED_PREPARATION {
 
+   conda "${moduleDir}/env.yaml"
+
     input:
     path reference_fasta
     path reference_index
@@ -12,7 +14,7 @@ process BED_PREPARATION {
     """
     mkdir -p preprocessed
 
-    Rscript get_binned_bed_from_dict.R \
+    Rscript ${projectDir}/bin/get_binned_bed_from_dict.R \
         ${reference_index} \
         preprocessed/binned_genome_${params.wgs_bin_size}.bed \
         ${params.wgs_bin_size}
@@ -21,7 +23,7 @@ process BED_PREPARATION {
         -bed preprocessed/binned_genome_${params.wgs_bin_size}.bed \
         > GC_profile_${params.wgs_bin_size}.cnp.tmp
 
-    Rscript get_binned_gc_content.R \
+    Rscript ${projectDir}/bin/get_binned_gc_content.R \
         GC_profile_${params.wgs_bin_size}.cnp.tmp \
         preprocessed/GC_profile_${params.wgs_bin_size}.cnp
     """
