@@ -25,3 +25,4 @@ process SNP_AF_CALC {
     touch ${meta.donor}_T.snpAF.tsv
     touch ${meta.donor}_N.snpAF.tsv
     """
+}

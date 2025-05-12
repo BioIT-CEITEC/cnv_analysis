@@ -13,7 +13,9 @@ script_dir <- paste0(working_dir, "/../../../bin/")
 
 
 source(paste0(script_dir,"/jabConTool_func_load_inputs.R"))
+print("sourced first script")
 source(paste0(script_dir,"/estimate_tumorload.R"))
+print("sourced second script")
 #TODO sex chromosome estimation
 
 #set_constants
@@ -696,5 +698,4 @@ run_all <- function(args) {
 #   setcolorder(cohort_snp_tab,names(snp_tab))
 #   snp_tab <- rbind(snp_tab,cohort_snp_tab)
 # }
-
 

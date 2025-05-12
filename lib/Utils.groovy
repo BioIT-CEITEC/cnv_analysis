@@ -99,7 +99,7 @@ public static parseInputVC(inputSh, normalTumor, projectDir, log) {
         conf.new_release = !(conf.containsKey('release')) || conf.release == "UNK_UNK" ? organism_data.release : conf.release.split("_")[-1]
 
         conf.kegg_code = organism_data.kegg_code
-        conf.reference_dir = "${conf.globalResources}/references/${conf.organism}/${conf.assembly}"
+        conf.reference_dir = conf.reference_dir = "${conf.globalResources.replace('base/references_backup','resources')}/references/${conf.organism}/${conf.assembly}"
         conf.organism_fasta = "${conf.reference_dir}/seq/${conf.assembly}.fa"
         conf.organism_ucsc = "${conf.reference_dir}/seq/${conf.assembly}.fa.fai.ucsc"
         conf.organism_gtf = "${conf.reference_dir}/annot/${conf.new_release}/${conf.assembly}.gtf"
