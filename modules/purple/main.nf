@@ -20,11 +20,11 @@ process PURPLE {
 
 
     script:
-    
+
     def genome_ver = params.assembly.replace("GRCh","")
 
     """
-    
+
     purple \\
         -Xmx16G \\
         -reference ${meta.donor}_N \\

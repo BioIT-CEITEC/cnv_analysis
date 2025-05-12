@@ -13,7 +13,7 @@ process COVERAGE_CALC {
 
     script:
 
-    def normal_flag = params.tumor_normal_paired ? "bedtools coverage -sorted -a ${organism_reference} -b ${normal_bam} -o ${reference_index} > ${meta.donor}_N.region_coverage.tsv" : "touch ${meta.donor}_N.region.coverage.tsv"
+    def normal_flag = params.normal_tumor ? "bedtools coverage -sorted -a ${organism_reference} -b ${normal_bam} -o ${reference_index} > ${meta.donor}_N.region_coverage.tsv" : "touch ${meta.donor}_N.region.coverage.tsv"
 
     """
     bedtools coverage -sorted -a ${organism_reference} -b ${tumor_bam} -g ${reference_index} > ${meta.donor}_T.region_coverage.tsv
