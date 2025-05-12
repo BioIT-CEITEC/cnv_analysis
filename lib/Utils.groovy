@@ -3,37 +3,70 @@ import nextflow.splitter.SplitterEx
 
 class Utils {
 
-public static parseInputVC(inputSh, normalTumor, log, projectDir) {
-
+public static parseInputVC(inputSh, normalTumor, projectDir, log) {
+  
     def groupedInputs = inputSh
-        .groupBy { it['donor'] }
+        .groupBy { entry ->
+            entry.donor ?: entry.sample_name
+        }
         .collect { donor, entries ->
-            def meta = [
-                donor: donor,
-                tumor_id: entries.find { it.tumor_normal == 'tumor' }?.sample_name,
-                normal_id: entries.find { it.tumor_normal == 'normal' }?.sample_name
-            ]
-            def patientInputs = [:]
             if (normalTumor) {
+                
+                def meta = [
+                    donor    : donor,
+                    tumor_id : entries.find { it.tumor_normal == 'tumor' }?.sample_name,
+                    normal_id: entries.find { it.tumor_normal == 'normal' }?.sample_name
+                ]
                 if (meta.tumor_id && meta.normal_id) {
-                    patientInputs = [ meta, ["${projectDir}/mapped/${meta.tumor_id}.bam"], ["${projectDir}/mapped/${meta.tumor_id}.bam.bai"], ["${projectDir}/mapped/${meta.normal_id}.bam"], ["${projectDir}/mapped/${meta.normal_id}.bam.bai"] ]
+                    return [
+                        meta,
+                        ["${projectDir}/mapped/${meta.normal_id}.bam"],
+                        ["${projectDir}/mapped/${meta.normal_id}.bam.bai"],
+                        ["${projectDir}/mapped/${meta.tumor_id}.bam"],
+                        ["${projectDir}/mapped/${meta.tumor_id}.bam.bai"]
+                    ]
                 } else {
-                    log.warn "Missing normal-tumor pair for patient_id: ${meta.donor}"
-                    patientInputs = [ [], [], [], [], [] ]
+                    log.warn "Missing normal-tumor pair for donor: ${donor}"
+                    return [[:], [], [], [], []]
                 }
             } else {
-                patientInputs = [ meta, ["${projectDir}/mapped/${meta.tumor_id}.bam"], ["${projectDir}/mapped/${meta.tumor_id}.bam.bai"], [], [] ]
+                
+                def entry = entries.first()
+                def meta = [
+                    donor        : donor,
+                    sample_name  : entry.sample_name,
+                    tumor_normal : entry.tumor_normal,
+                    index        : entry.index
+                ]
+                
+                return [
+                    meta,
+                    ["${projectDir}/mapped/${meta.sample_name}.bam"],
+                    ["${projectDir}/mapped/${meta.sample_name}.bam.bai"],
+                    [],
+                    []
+                ]
             }
-            return patientInputs
         }
     return groupedInputs
 }
 
+    public static List<Map> loadSample(Map conf) {
+        List<Map> samplesList = []
+        conf.samples.each { key, value ->
+            Map<String, Object> row = value
+            row['index'] = key
+            samplesList << row
+        }
+        conf.new_samples = samplesList
+        return samplesList
+    }
+
     public static set_data_tags(conf) {
-        conf.read_pair_tags = conf.is_paired ? ['_R1', '_R2'] : ['']
-        conf.read_pair_qc_tags = conf.is_paired ? ['R1', 'R2'] : ['SE']
+        conf.read_pair_tags = conf.is_paired ? ['_R1','_R2'] : ['']
+        conf.read_pair_qc_tags = conf.is_paired ? ['R1','R2'] : ['SE']
         conf.paired_tags = conf.is_paired ? 'PE' : 'SE'
-        conf.read_pair_dmtex_tags = conf.is_paired ? ['_R1', '_R2'] : ['_R1']
+        conf.read_pair_dmtex_tags = conf.is_paired ? ['_R1','_R2'] : ['_R1']
         return conf
     }
 
@@ -70,6 +103,12 @@ public static parseInputVC(inputSh, normalTumor, log, projectDir) {
         conf.organism_fasta = "${conf.reference_dir}/seq/${conf.assembly}.fa"
         conf.organism_ucsc = "${conf.reference_dir}/seq/${conf.assembly}.fa.fai.ucsc"
         conf.organism_gtf = "${conf.reference_dir}/annot/${conf.new_release}/${conf.assembly}.gtf"
+        conf.organism_hetsites = "${conf.reference_dir}/tool_data/PURPLE/${conf.assembly}.tsv.gz"
+        conf.organism_germline_hotspots = "${conf.reference_dir}/tool_data/PURPLE/${conf.assembly}_germ_hotspots.vcf.gz"
+        conf.organism_germline_dels = "${conf.reference_dir}/tool_data/PURPLE/${conf.assembly}_germline_del.csv"
+        conf.organism_germline_driverpanel = "${conf.reference_dir}/tool_data/PURPLE/${conf.assembly}_driver_panel.tsv"
+        conf.organism_gc_profile = "${conf.reference_dir}/tool_data/PURPLE/${conf.assembly}_GC_profile.cnp"
+        conf.organism_diploid_regions = "${conf.reference_dir}/tool_data/PURPLE/${conf.assembly}_diploid_regions.bed.gz"
         conf.organism_gtf_cellranger = "${conf.reference_dir}/annot/${conf.new_release}/${conf.assembly}_cellranger.gtf"
         conf.organism_cds_fasta = "${conf.reference_dir}/annot/${conf.new_release}/${conf.assembly}.cds.fa"
         conf.organism_cdna_fasta = "${conf.reference_dir}/annot/${conf.new_release}/${conf.assembly}.cdna.fa"
@@ -107,7 +146,7 @@ public static parseInputVC(inputSh, normalTumor, log, projectDir) {
         if (conf.containsKey('lib_ROI')) {
             load_lib_ROI(conf)
             conf.organism_dna_panel = "${conf.reference_dir}/others/DNA_ROI/${conf.panel}/${conf.panel}.bed"
-            conf.organism_snps_panel = "${conf.reference_dir}/others/snp/${conf.panel}/${conf.panel}_snps.bed"
+            conf.organism_snps_panel = "${conf.reference_dir}/others/snp/${conf.panel}/${conf.panel}_snps.tsv"
             conf.organism_interval_list = "${conf.reference_dir}/others/DNA_ROI/${conf.panel}/${conf.panel}.interval_list"
         }
     }

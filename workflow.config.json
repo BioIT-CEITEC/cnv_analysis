@@ -1,9 +1,11 @@
 {
   "workflow_description": {
-    "name":"structural_var_call",
+    "name":"germ_cnv_sv_calling",
     "version": 1.0,
-    "label":"Structural variant calling 3",
+    "label":"Germline CNV and structural variant calling",
     "type":"var_call",
+    "management_system": "nextflow",
+    "entry_point": false,
     "run_parameters": {
       "cpu": 31,
       "memory": 65
@@ -57,6 +59,11 @@
           "tumor_only": "Somatic tumor-only",
           "tumor_normal": "Somatic tumor-normal pair"
         }
+      },
+      "normal_tumor": {
+        "label": "Germline analysis (normal only)",
+        "type": "bool",
+        "default": false
       }
     },
     "detailed": {

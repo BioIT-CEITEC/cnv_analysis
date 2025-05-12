@@ -8,6 +8,7 @@ include { BED_PREPARATION } from "../modules/preprocessing/bed_preparation/main.
 include { COHORT_PREPARATION } from "../modules/preprocessing/cohort_preparation/main.nf"
 include { CNVKIT_ANALYSIS } from "../subworkflows/cnvkit/main.nf"
 include { JABCONTOOL_ANALYSIS } from "../subworkflows/jabcontool/main.nf"
+include { PURPLE_ANALYSIS } from "../subworkflows/purple/main.nf"
 
 /*
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -26,8 +27,13 @@ ch_organism_dict = params.organism_dict ? Channel.fromPath(params.organism_dict)
 ch_organism_dna_panel = params.organism_dna_panel ? Channel.fromPath(params.organism_dna_panel).collect() : Channel.empty()
 ch_organism_cytoband = params.organism_cytoband ? Channel.fromPath(params.organism_cytoband).collect() : Channel.empty()
 ch_organism_snps = params.organism_snps_panel ? Channel.fromPath(params.organism_snps_panel).collect() : Channel.empty()
-
-
+ch_heterozygous_sites = params.organism_hetsites ? Channel.fromPath(params.organism_hetsites).collect() : Channel.empty()
+ch_gc_content = params.organism_gc_profile ? Channel.fromPath(params.organism_gc_profile).collect() : Channel.empty()
+ch_diploid_regions = params.purple_diploid_regions ? Channel.fromPath(params.organism_diploid_regions).collect() : Channel.empty
+ch_organism_germline_hotspots = params.organism_germline_hotspots ? Channel.fromPath(params.organism_germline_hotspots).collect() : Channel.empty()
+ch_organism_driver_panel = params.organism_germline_driverpanel ? Channel.fromPath(params.organism_germline_driverpanel).collect() : Channel.empty()
+ch_organism_germline_dels = params.organism_germline_dels ? Channel.fromPath(params.organism_germline_dels).collect() : Channel.empty()
+ch_organism_vep = params.organism_vep_dir ? Channel.fromPath(params.organism_vep_dir).collect() : Channel.empty()
 
 inputs = Utils.parseInputVC(params.new_samples, params.normal_tumor, projectDir, log)
 
@@ -57,6 +63,8 @@ workflow TARGETED {
 
     )
 
+    ch_vcfs = CNVKIT_ANALYSIS.out.ch_vardict_vcfs
+
     JABCONTOOL_ANALYSIS (
     ch_inputs,
     ch_organism_fasta,
@@ -76,6 +84,23 @@ workflow TARGETED {
     ch_organism_snps,
     ch_binned_genome,
     ch_gc_profile
+
+    )
+
+    PURPLE_ANALYSIS (
+    ch_inputs,
+    ch_heterozygous_sites,
+    ch_organism_dna_panel,
+    ch_gc_content,
+    ch_diploid_regions,
+    ch_vcfs,
+    ch_organism_fasta,
+    ch_organism_fasta_fai,
+    ch_organism_dict,
+    ch_organism_germline_hotspots,
+    ch_organism_driver_panel,
+    ch_organism_germline_dels,
+    ch_organism_vep
 
     )
 
