@@ -1,11 +1,12 @@
 process VARDICT_CALL {
 
-    publishDir "structural_varcalls/$meta.id/cnkvit", mode: 'copy'
+    publishDir "structural_varcalls/${meta.donor}/cnkvit", mode: 'copy'
     tag "${meta.donor}"
 
     input:
     tuple val(meta), path(tumor_bam), path(tumor_bai), path(normal_bam), path(normal_bai)
     path reference_fasta
+    path reference_fasta_fai
     path organism_dna_panel
 
 
