@@ -119,6 +119,11 @@
         "type": "bool",
         "default": true
       },
+      "purple_diploid_regions": {
+        "label": "Use purple diploid regions for variant calling.",
+        "type": "bool",
+        "default": true
+      },
       "use_manta": {
         "label": "Use Manta for variant calling.",
         "type": "bool",
