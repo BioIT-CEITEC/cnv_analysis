@@ -15,9 +15,7 @@
       "mapped/{sample}.bam*"
     ],
     "outputs":[
-      "structural_varcalls/*",
-      "final_CNV_results/*",
-      "reports/final_SV_report.html"
+      "structural_varcalls/*"
     ],
     "inputs_optional":[
       "cohort_data/cohort_cnv_info.tar.gz"
