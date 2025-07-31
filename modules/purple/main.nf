@@ -1,5 +1,6 @@
 process PURPLE {
     tag "${meta.donor}"
+    publishDir "structural_varcalls/${meta.donor}/purple", mode: 'copy'
 
     conda "${moduleDir}/environment.yml"
 
