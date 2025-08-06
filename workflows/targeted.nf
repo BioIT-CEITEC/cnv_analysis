@@ -9,6 +9,8 @@ include { COHORT_PREPARATION } from "../modules/preprocessing/cohort_preparation
 include { CNVKIT_ANALYSIS } from "../subworkflows/cnvkit/main.nf"
 include { JABCONTOOL_ANALYSIS } from "../subworkflows/jabcontool/main.nf"
 include { PURPLE_ANALYSIS } from "../subworkflows/purple/main.nf"
+include { GATK_ANALYSIS } from "../subworkflows/gatk/main.nf"
+include { DELLY_ANALYSIS } from "../subworkflows/delly/main.nf"
 
 /*
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -18,7 +20,7 @@ include { PURPLE_ANALYSIS } from "../subworkflows/purple/main.nf"
 
 // Load the reference data from the paths in config file
 params = Utils.load_organism(params)
-//Utils.set_data_tags(params)
+Utils.set_data_tags(params)
 Utils.loadSample(params)
 
 ch_organism_fasta = params.organism_fasta ? Channel.fromPath(params.organism_fasta).collect() : Channel.empty()
@@ -34,18 +36,28 @@ ch_organism_germline_hotspots = params.organism_germline_hotspots ? Channel.from
 ch_organism_driver_panel = params.organism_germline_driverpanel ? Channel.fromPath(params.organism_germline_driverpanel).collect() : Channel.empty()
 ch_organism_germline_dels = params.organism_germline_dels ? Channel.fromPath(params.organism_germline_dels).collect() : Channel.empty()
 ch_organism_vep = params.organism_vep_dir ? Channel.fromPath(params.organism_vep_dir).collect() : Channel.empty()
+ch_organism_ploidy_priors = params.organism_ploidy_priors ? Channel.fromPath(params.organism_ploidy_priors).collect() : Channel.empty()
+ch_organism_excluded_sites = params.organism_excluded_sites ? Channel.fromPath(params.organism_excluded_sites).collect() : Channel.empty()
+ch_organism_delly_map = params.organism_delly_map ? Channel.fromPath(params.organism_delly_map).collect() : Channel.empty()
+
 
 inputs = Utils.parseInputVC(params.new_samples, params.normal_tumor, projectDir, log)
 
 
 workflow TARGETED {
-
+    
     ch_cohort_data = Channel.empty()
 
-    // Create the channel from the parseInputVC function
-    // channel: [ meta, []]
-    ch_inputs = Channel.fromList(inputs)
-
+    ch_inputs_pre_index = Channel.fromList(inputs)
+      
+    def counter = 0
+    ch_inputs = ch_inputs_pre_index
+      .map { meta, normal_bam, normal_bai, tumor_bam, tumor_bai ->
+        def newMeta = meta + [index_gatk: counter++]
+        return [newMeta, normal_bam, normal_bai, tumor_bam, tumor_bai]
+      
+      }
+    
     BED_PREPARATION (
         ch_organism_fasta,
         ch_organism_dict
@@ -53,18 +65,16 @@ workflow TARGETED {
 
     ch_binned_genome = BED_PREPARATION.out.binned_genome
     ch_gc_profile = BED_PREPARATION.out.gc_profile
-
+    
     CNVKIT_ANALYSIS (
-
     ch_inputs,
     ch_organism_dna_panel,
     ch_organism_fasta,
     ch_organism_fasta_fai
-
     )
-
+    
     ch_vcfs = CNVKIT_ANALYSIS.out.ch_vardict_vcfs
-
+    
     JABCONTOOL_ANALYSIS (
     ch_inputs,
     ch_organism_fasta,
@@ -74,9 +84,8 @@ workflow TARGETED {
     ch_organism_cytoband,
     ch_gc_profile,
     ch_cohort_data
-
     )
-
+    
     CONTROL_FREEC (
     ch_inputs,
     ch_organism_fasta,
@@ -84,9 +93,17 @@ workflow TARGETED {
     ch_organism_snps,
     ch_binned_genome,
     ch_gc_profile
-
     )
-
+    
+    GATK_ANALYSIS(
+    ch_inputs,
+    ch_organism_fasta,
+    ch_organism_fasta_fai,
+    ch_organism_dna_panel,
+    ch_organism_dict,
+    ch_organism_ploidy_priors
+    )
+    
     PURPLE_ANALYSIS (
     ch_inputs,
     ch_heterozygous_sites,
@@ -101,7 +118,14 @@ workflow TARGETED {
     ch_organism_driver_panel,
     ch_organism_germline_dels,
     ch_organism_vep
-
     )
-
+    
+    DELLY_ANALYSIS(
+    ch_inputs,
+    ch_organism_fasta,
+    ch_organism_fasta_fai,
+    ch_organism_excluded_sites,
+    ch_organism_delly_map
+    )
+    
 }
