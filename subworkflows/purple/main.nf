@@ -18,32 +18,30 @@ workflow PURPLE_ANALYSIS {
   ch_organism_driver_panel
   ch_organism_germline_dels
   ch_organism_vep
-
+  
   main:
-
+  
   AMBER (
     ch_input_bams,
     ch_heterozygous_sites,
     ch_region_bed
   )
-
-
+  
+  
   COBALT (
     ch_input_bams,
     ch_gc_profile,
     ch_diploid_regions,
     ch_region_bed
   )
-
+  
   ch_purple_input = AMBER.out.amber_dir
     .join(COBALT.out.cobalt_dir)        // [ meta, amber, cobalt ]
     .join(ch_vcfs)           // [ meta, amber, cobalt, normal_vcf, tumor_vcf ]
-    .map { meta, amber, cobalt, normal_vcf, tumor_vcf ->
-        tuple(meta, amber, cobalt, normal_vcf, tumor_vcf)
-  }
 
+  
   ch_purple_input.view()
-
+  
   PURPLE (
     ch_purple_input,
     ch_organism_fasta,
@@ -54,7 +52,7 @@ workflow PURPLE_ANALYSIS {
     ch_organism_driver_panel,
     ch_organism_vep,
     ch_organism_germline_dels
-
+    
   )
-
+  
 }

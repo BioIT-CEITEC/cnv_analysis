@@ -45,19 +45,19 @@ inputs = Utils.parseInputVC(params.new_samples, params.normal_tumor, projectDir,
 
 
 workflow TARGETED {
-    
+
     ch_cohort_data = Channel.empty()
 
     ch_inputs_pre_index = Channel.fromList(inputs)
-      
+
     def counter = 0
     ch_inputs = ch_inputs_pre_index
       .map { meta, normal_bam, normal_bai, tumor_bam, tumor_bai ->
         def newMeta = meta + [index_gatk: counter++]
         return [newMeta, normal_bam, normal_bai, tumor_bam, tumor_bai]
-      
+
       }
-    
+
     BED_PREPARATION (
         ch_organism_fasta,
         ch_organism_dict
@@ -65,16 +65,16 @@ workflow TARGETED {
 
     ch_binned_genome = BED_PREPARATION.out.binned_genome
     ch_gc_profile = BED_PREPARATION.out.gc_profile
-    
+
     CNVKIT_ANALYSIS (
     ch_inputs,
     ch_organism_dna_panel,
     ch_organism_fasta,
     ch_organism_fasta_fai
     )
-    
+
     ch_vcfs = CNVKIT_ANALYSIS.out.ch_vardict_vcfs
-    
+
     JABCONTOOL_ANALYSIS (
     ch_inputs,
     ch_organism_fasta,
@@ -85,7 +85,7 @@ workflow TARGETED {
     ch_gc_profile,
     ch_cohort_data
     )
-    
+
     CONTROL_FREEC (
     ch_inputs,
     ch_organism_fasta,
@@ -94,7 +94,7 @@ workflow TARGETED {
     ch_binned_genome,
     ch_gc_profile
     )
-    
+
     GATK_ANALYSIS(
     ch_inputs,
     ch_organism_fasta,
@@ -103,7 +103,7 @@ workflow TARGETED {
     ch_organism_dict,
     ch_organism_ploidy_priors
     )
-    
+
     PURPLE_ANALYSIS (
     ch_inputs,
     ch_heterozygous_sites,
@@ -119,7 +119,7 @@ workflow TARGETED {
     ch_organism_germline_dels,
     ch_organism_vep
     )
-    
+
     DELLY_ANALYSIS(
     ch_inputs,
     ch_organism_fasta,
@@ -127,5 +127,5 @@ workflow TARGETED {
     ch_organism_excluded_sites,
     ch_organism_delly_map
     )
-    
+
 }
