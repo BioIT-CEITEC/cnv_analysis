@@ -99,9 +99,12 @@ public static parseInputVC(inputSh, normalTumor, projectDir, log) {
         conf.new_release = !(conf.containsKey('release')) || conf.release == "UNK_UNK" ? organism_data.release : conf.release.split("_")[-1]
 
         conf.kegg_code = organism_data.kegg_code
-        conf.reference_dir = "${conf.globalResources.replace('base/references_backup','resources')}/references/${conf.organism}/${conf.assembly}"
+        conf.reference_dir = "${conf.globalResources}/references/${conf.organism}/${conf.assembly}"
         conf.organism_fasta = "${conf.reference_dir}/seq/${conf.assembly}.fa"
+        conf.organism_ploidy_priors = "${conf.reference_dir}/seq/${conf.assembly}.ploidy_priors.tsv"
+        conf.organism_excluded_sites = "${conf.reference_dir}/seq/${conf.assembly}.excl"
         conf.organism_ucsc = "${conf.reference_dir}/seq/${conf.assembly}.fa.fai.ucsc"
+        conf.organism_delly_map = "${conf.reference_dir}/seq/${conf.assembly}_map.fa"
         conf.organism_gtf = "${conf.reference_dir}/annot/${conf.new_release}/${conf.assembly}.gtf"
         conf.organism_hetsites = "${conf.reference_dir}/tool_data/PURPLE/${conf.assembly}.tsv.gz"
         conf.organism_germline_hotspots = "${conf.reference_dir}/tool_data/PURPLE/${conf.assembly}_germ_hotspots.vcf.gz"

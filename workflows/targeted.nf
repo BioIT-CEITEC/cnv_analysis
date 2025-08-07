@@ -127,5 +127,4 @@ workflow TARGETED {
     ch_organism_excluded_sites,
     ch_organism_delly_map
     )
-
 }
