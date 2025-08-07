@@ -20,7 +20,7 @@ include { DELLY_ANALYSIS } from "../subworkflows/delly/main.nf"
 
 // Load the reference data from the paths in config file
 params = Utils.load_organism(params)
-Utils.set_data_tags(params)
+//Utils.set_data_tags(params)
 Utils.loadSample(params)
 
 ch_organism_fasta = params.organism_fasta ? Channel.fromPath(params.organism_fasta).collect() : Channel.empty()
