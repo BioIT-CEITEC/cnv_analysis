@@ -13,7 +13,7 @@ process PREPARE_REGIONS_CNVKIT {
     tuple path("results/target.bed"), path("results/antitarget.bed"), emit: prepared_regions
 
     script:
-    
+
       def panel = lib_ROI.toString().replace('.bed', '') 
 
         """
@@ -22,7 +22,6 @@ process PREPARE_REGIONS_CNVKIT {
         cnvkit.py autobin *.bam -t ${lib_ROI} -g reference_bed.bed
         mv ${panel}.target.bed results/target.bed
         mv ${panel}.antitarget.bed results/antitarget.bed
-        
         """
 
     stub:
@@ -31,5 +30,4 @@ process PREPARE_REGIONS_CNVKIT {
         touch results/target.bed
         touch results/antitarget.bed
         """
-        
 }

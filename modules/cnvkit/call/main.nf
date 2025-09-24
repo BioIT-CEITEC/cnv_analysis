@@ -9,13 +9,16 @@ process CNVKIT_CALL {
     tuple val(meta), path(fixed_cov), path(segmented_cov)
 
     output:
-    path("call/CNV_calls.cns"), emit: cnvkit_calls
+    tuple val(meta), path("call/*.cns"), path("call/${meta.donor}_preannot_calls.bed"), path("call/${meta.donor}_CNV_calls.bed"), path("call/*.vcf"), path("call/*.tsv"), emit: cnvkit_calls
 
     script:
 
     """
     mkdir -p call
-    cnvkit.py call -y -m clonal ${segmented_cov} -o call/CNV_calls.cns --purity 0.5
+    cnvkit.py call ${segmented_cov} -m threshold -o call/${meta.donor}_CNV_calls.cns
+    cnvkit.py export bed call/${meta.donor}_CNV_calls.cns --show all -o call/${meta.donor}_CNV_calls.bed
+    cnvkit.py export vcf call/${meta.donor}_CNV_calls.cns -i ${meta.donor} -o call/${meta.donor}_CNV_calls.vcf
+    python3 vcf2tsv.py call/${meta.donor}_CNV_calls.vcf call/${meta.donor}_preannot_calls.tsv call/${meta.donor}_preannot_calls.bed
     """
 
     stub:

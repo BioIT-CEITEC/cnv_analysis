@@ -1,33 +1,30 @@
-process GERMLINE_VARCALLS_GATK {
-    
+process CNV_VARCALLS_GATK {
+
     publishDir "structural_varcalls/all_samples/gatk", mode: 'copy'
     conda "${moduleDir}/../env.yaml"
+    tag "${meta.id}"
 
     input:
-    path interval_list // channel to the reference fasta file
-    path read_counts
-    path annotated_intervals // channel to the regions of interest bed file
+    tuple val(meta), val(read_counts)
     path ploidy_calls
-    
+    path cohort_data
+
     output:
-    path("cohort_data/*"), emit: germline_varcalls_gatk
-    
+    tuple val(meta), path("germline_calls/*"), emit: germline_calls
+
     script:
-    
+
         """
         mkdir -p cohort_data
-        
+
         gatk GermlineCNVCaller \\
-          --run-mode COHORT \\
-          -L ${interval_list} \\
-          -I ${read_counts.join(" -I ")} \\
+          --run-mode CASE \\
           --contig-ploidy-calls ploidy-calls/ \\
-          --annotated-intervals ${annotated_intervals} \\
-          --interval-merging-rule OVERLAPPING_ONLY \\
-          --output cohort_data \\
-          --output-prefix cohort \\
+          --model cohort-model \\
+          --output germline_calls \\
+          --output-prefix germline \\
           --verbosity DEBUG
-        
+
         """
 
     stub:
@@ -36,5 +33,5 @@ process GERMLINE_VARCALLS_GATK {
         touch cohort_data/target.bed
         touch cohort_data/antitarget.bed
         """
-        
+
 }

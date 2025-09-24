@@ -33,14 +33,14 @@ workflow CNVKIT_ANALYSIS {
         ch_regions_of_interest,
         ch_all_bam_files
     )
-    
+
     ch_prepared_regions = PREPARE_REGIONS_CNVKIT.out.prepared_regions
 
     GET_COVERAGE_CNVKIT (
         ch_input_bams,
         ch_prepared_regions
     )
-    
+
     if (!params.normal_tumor) {
         ch_input_bams
             .count()
@@ -49,15 +49,14 @@ workflow CNVKIT_ANALYSIS {
     } else {
         sample_number = Channel.value(true)
     }
-    
+
     ch_coverage = GET_COVERAGE_CNVKIT.out.coverage
-    
+
 
     // Map tumor coverage files
     ch_normal_coverage = ch_coverage.map { tuple -> 
         [tuple[1], tuple[2]] // Extract tumor target and antitarget files
     }
-    
 
     // Map normal coverage files
     ch_tumor_coverage = ch_coverage.map { tuple -> 
@@ -75,30 +74,28 @@ workflow CNVKIT_ANALYSIS {
         ch_prepared_regions,
         sample_number
     )
-    
+
     ch_cnvkit_ref = REFERENCE_CNVKIT.out.cnvkit_reference
 
     FIX_AND_SEGMENT_CNVKIT(
         ch_coverage,
         ch_cnvkit_ref
     )
-    
+
     ch_cnkvkit_segments = FIX_AND_SEGMENT_CNVKIT.out.cnvkit_segments
 
 
-      VARDICT_CALL (
-          ch_input_bams,
-          ch_reference_fasta,
-          ch_reference_fasta_fai,
-          ch_regions_of_interest
-      )
-      
-    
-        CNVKIT_CALL (
-        ch_cnkvkit_segments
+    VARDICT_CALL (
+        ch_input_bams,
+        ch_reference_fasta,
+        ch_reference_fasta_fai,
+        ch_regions_of_interest
     )
-    
+
+    CNVKIT_CALL (
+      ch_cnkvkit_segments
+    )
+
     emit:
     ch_vardict_vcfs = VARDICT_CALL.out.vcfs
-    
 }

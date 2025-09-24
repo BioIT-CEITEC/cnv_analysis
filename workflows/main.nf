@@ -44,7 +44,7 @@ ch_organism_delly_map = params.organism_delly_map ? Channel.fromPath(params.orga
 inputs = Utils.parseInputVC(params.new_samples, params.normal_tumor, projectDir, log)
 
 
-workflow TARGETED {
+workflow MAIN_WF {
 
     ch_cohort_data = Channel.empty()
 
@@ -120,11 +120,14 @@ workflow TARGETED {
     ch_organism_vep
     )
 
+
+  if (params.organism_dna_panel == 'wgs') {
     DELLY_ANALYSIS(
-    ch_inputs,
-    ch_organism_fasta,
-    ch_organism_fasta_fai,
-    ch_organism_excluded_sites,
-    ch_organism_delly_map
+      ch_inputs,
+      ch_organism_fasta,
+      ch_organism_fasta_fai,
+      ch_organism_excluded_sites,
+      ch_organism_delly_map
     )
+  }
 }

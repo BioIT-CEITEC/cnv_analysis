@@ -10,14 +10,12 @@ process CNV_CALLS_DELLY {
     path reference_fasta_fai
     path map_file // channel to the reference fasta fil
     tuple path(sv_calls), path(vcf), path(vcf_index)
-    
-  
 
     output:
     tuple val(meta), path("${meta.donor}.cnvs.bcf"), path("${meta.donor}.cnvs.bcf.csi"), emit: cnv_calls_delly
-    
+
     script:
-    
+
         """
         delly cnv \\
           -i 100000 -j 100000 -w 100000 \\
@@ -34,5 +32,4 @@ process CNV_CALLS_DELLY {
         touch results/target.bed
         touch results/antitarget.bed
         """
-        
 }

@@ -13,7 +13,7 @@ built-in functions that are not being used here as the way of loading
 data, references and config differs.
 */
 
-include { TARGETED } from './workflows/targeted'
+include { MAIN_WF } from './workflows/main'
 
 /*
 -----------------------------------------------------------------------
@@ -23,7 +23,7 @@ include { TARGETED } from './workflows/targeted'
 
 workflow CNV_ANALYSIS {
 
-   TARGETED()
+   MAIN_WF()
 }
 
 /*
