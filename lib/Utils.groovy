@@ -106,6 +106,7 @@ public static parseInputVC(inputSh, normalTumor, projectDir, log) {
         conf.organism_ucsc = "${conf.reference_dir}/seq/${conf.assembly}.fa.fai.ucsc"
         conf.organism_delly_map = "${conf.reference_dir}/seq/${conf.assembly}_map.fa"
         conf.organism_gtf = "${conf.reference_dir}/annot/${conf.new_release}/${conf.assembly}.gtf"
+        conf.organism_gtf_tsv = "${conf.reference_dir}/annot/${conf.new_release}/${conf.assembly}.tsv"
         conf.organism_hetsites = "${conf.reference_dir}/tool_data/PURPLE/${conf.assembly}.tsv.gz"
         conf.organism_germline_hotspots = "${conf.reference_dir}/tool_data/PURPLE/${conf.assembly}_germ_hotspots.vcf.gz"
         conf.organism_germline_dels = "${conf.reference_dir}/tool_data/PURPLE/${conf.assembly}_germline_del.csv"

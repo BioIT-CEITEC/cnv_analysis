@@ -13,6 +13,7 @@ workflow CNVKIT_ANALYSIS {
     ch_regions_of_interest
     ch_reference_fasta
     ch_reference_fasta_fai
+    ch_reference_gtf_tsv
 
     main:
 
@@ -94,6 +95,12 @@ workflow CNVKIT_ANALYSIS {
 
     CNVKIT_CALL (
       ch_cnkvkit_segments
+    )
+    ch_cnvkit_varcall = CNVKIT_CALL.out.cnvkit_calls
+
+    CNVKIT_CLASSIFY_AND_ANNOTATE(
+        ch_cnvkit_varcall,
+        ch_reference_gtf_tsv
     )
 
     emit:

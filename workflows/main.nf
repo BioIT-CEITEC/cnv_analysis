@@ -39,24 +39,27 @@ ch_organism_vep = params.organism_vep_dir ? Channel.fromPath(params.organism_vep
 ch_organism_ploidy_priors = params.organism_ploidy_priors ? Channel.fromPath(params.organism_ploidy_priors).collect() : Channel.empty()
 ch_organism_excluded_sites = params.organism_excluded_sites ? Channel.fromPath(params.organism_excluded_sites).collect() : Channel.empty()
 ch_organism_delly_map = params.organism_delly_map ? Channel.fromPath(params.organism_delly_map).collect() : Channel.empty()
+ch_organism_gtf_tsv = conf.organism_gtf_tsv ? Channel.fromPath(conf.organism_gtf_tsv).collect() : Channel.empty()
 
 
 inputs = Utils.parseInputVC(params.new_samples, params.normal_tumor, projectDir, log)
 
+// Assign deterministic 0-based indices once (simplest approach) preserving original list order
+inputs.eachWithIndex { item, i ->
+  // item structure: [ meta, normal_bam, normal_bai, tumor_bam, tumor_bai ]
+  item[0].index_gatk = i
+}
+
 
 workflow MAIN_WF {
 
-    ch_cohort_data = Channel.empty()
+   ch_cohort_data = Channel.empty()
 
-    ch_inputs_pre_index = Channel.fromList(inputs)
+  ch_inputs_pre_index = Channel.fromList(inputs)
+  // Channel already has meta.index_gatk set; no further mapping needed
+  ch_inputs = ch_inputs_pre_index
 
-    def counter = 0
-    ch_inputs = ch_inputs_pre_index
-      .map { meta, normal_bam, normal_bai, tumor_bam, tumor_bai ->
-        def newMeta = meta + [index_gatk: counter++]
-        return [newMeta, normal_bam, normal_bai, tumor_bam, tumor_bai]
-
-      }
+  ch_inputs.view()
 
     BED_PREPARATION (
         ch_organism_fasta,
@@ -70,7 +73,8 @@ workflow MAIN_WF {
     ch_inputs,
     ch_organism_dna_panel,
     ch_organism_fasta,
-    ch_organism_fasta_fai
+    ch_organism_fasta_fai,
+    ch_organism_gtf_tsv
     )
 
     ch_vcfs = CNVKIT_ANALYSIS.out.ch_vardict_vcfs
