@@ -1,7 +1,7 @@
 process AMBER {
     tag "${meta.donor}"
 
-    conda "${moduleDir}/environment.yml"
+    conda "${moduleDir}/env.yml"
 
     input:
     tuple val(meta), path(normal_bam), path(normal_bai), path(tumor_bam), path(tumor_bai)

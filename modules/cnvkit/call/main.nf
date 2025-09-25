@@ -18,7 +18,7 @@ process CNVKIT_CALL {
     cnvkit.py call ${segmented_cov} -m threshold -o call/${meta.donor}_CNV_calls.cns
     cnvkit.py export bed call/${meta.donor}_CNV_calls.cns --show all -o call/${meta.donor}_CNV_calls.bed
     cnvkit.py export vcf call/${meta.donor}_CNV_calls.cns -i ${meta.donor} -o call/${meta.donor}_CNV_calls.vcf
-    python3 vcf2tsv.py call/${meta.donor}_CNV_calls.vcf call/${meta.donor}_preannot_calls.tsv call/${meta.donor}_preannot_calls.bed
+    vcf2tsv.py call/${meta.donor}_CNV_calls.vcf call/${meta.donor}_preannot_calls.tsv call/${meta.donor}_preannot_calls.bed
     """
 
     stub:

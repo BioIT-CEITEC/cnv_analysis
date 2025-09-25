@@ -1,7 +1,7 @@
 process COBALT {
     tag "${meta.donor}"
 
-    conda "${moduleDir}/environment.yml"
+    conda "${moduleDir}/env.yml"
 
 
     input:

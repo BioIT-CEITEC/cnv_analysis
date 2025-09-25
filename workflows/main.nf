@@ -39,7 +39,7 @@ ch_organism_vep = params.organism_vep_dir ? Channel.fromPath(params.organism_vep
 ch_organism_ploidy_priors = params.organism_ploidy_priors ? Channel.fromPath(params.organism_ploidy_priors).collect() : Channel.empty()
 ch_organism_excluded_sites = params.organism_excluded_sites ? Channel.fromPath(params.organism_excluded_sites).collect() : Channel.empty()
 ch_organism_delly_map = params.organism_delly_map ? Channel.fromPath(params.organism_delly_map).collect() : Channel.empty()
-ch_organism_gtf_tsv = conf.organism_gtf_tsv ? Channel.fromPath(conf.organism_gtf_tsv).collect() : Channel.empty()
+ch_organism_gtf_tsv = params.organism_gtf_tsv ? Channel.fromPath(params.organism_gtf_tsv).collect() : Channel.empty()
 
 
 inputs = Utils.parseInputVC(params.new_samples, params.normal_tumor, projectDir, log)
