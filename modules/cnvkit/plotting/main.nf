@@ -1,7 +1,7 @@
 process DIAGRAM_AND_SCATTER_CNVKIT {
 
-    tag "${meta.donor}"
-    publishDir "structural_varcalls/${meta.donor}/cnvkit", mode: 'copy'
+    tag "${meta.sample_name}"
+    publishDir "structural_varcalls/${meta.sample_name}/cnvkit", mode: 'copy'
 
     conda "${moduleDir}/../env.yaml"
 

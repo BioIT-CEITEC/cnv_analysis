@@ -1,10 +1,10 @@
 process SNP_AF_CALC {
 
-    tag "${meta.donor}"
+    tag "${meta.sample_name}"
     conda "${moduleDir}/env.yaml"
 
     input:
-    tuple val(meta), path(normal_bam), path(normal_bai), path(tumor_bam), path(tumor_bai)
+    tuple val(meta), path(bam), path(bai)
     path reference_fasta
     path reference_index
     path reference_snps
@@ -14,15 +14,14 @@ process SNP_AF_CALC {
 
     script:
 
-    def tumor_call = params.normal_tumor ? "alleleCounter -r ${reference_fasta} -l ${reference_snps} -b ${tumor_bam} -o ${meta.donor}_T.snpAF.tsv" : "touch ${meta.donor}_T.snpAF.tsv"
+    //def hasNormals = params.panel_of_normals ?: false
+    //def tumor_call = hasNormals ? "alleleCounter -r ${reference_fasta} -l ${reference_snps} -b ${tumor_bam} -o ${meta.donor}_T.snpAF.tsv" : "touch ${meta.donor}_T.snpAF.tsv"
 
     """
-    alleleCounter -r ${reference_fasta} -l ${reference_snps} -b ${normal_bam} -o ${meta.donor}_N.snpAF.tsv
-    ${tumor_call}
+    alleleCounter -r ${reference_fasta} -l ${reference_snps} -b ${bam} -o ${meta.sample_name}.snpAF.tsv
     """
     stub:
     """
-    touch ${meta.donor}_T.snpAF.tsv
-    touch ${meta.donor}_N.snpAF.tsv
+    touch ${meta.sample_name}.snpAF.tsv
     """
 }

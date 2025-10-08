@@ -14,7 +14,7 @@ process FILTER_INTERVALS_GATK {
     script:
 
       def panel = lib_ROI.toString().replace('.bed', '') 
-      
+
         """
         gatk FilterIntervals \\
           -L ${interval_list} \\
@@ -23,7 +23,7 @@ process FILTER_INTERVALS_GATK {
           -imr OVERLAPPING_ONLY \\
           -O ${panel}.gc.filtered.interval_list
 
-        
+
         """
 
     stub:
@@ -32,5 +32,4 @@ process FILTER_INTERVALS_GATK {
         touch results/target.bed
         touch results/antitarget.bed
         """
-        
 }

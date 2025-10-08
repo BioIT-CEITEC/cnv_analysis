@@ -1,11 +1,11 @@
 process COBALT {
-    tag "${meta.donor}"
+    tag "${meta.sample_name}"
 
     conda "${moduleDir}/env.yml"
 
 
     input:
-    tuple val(meta), path(normal_bam), path(normal_bai), path(tumor_bam), path(tumor_bai)
+    tuple val(meta), path(normal_bam), path(normal_bai)
     path gc_profile
     path diploid_regions
     path organism_panel
@@ -21,13 +21,12 @@ def target_region_arg = params.lib_ROI != "wgs" ? "-target_regions_bed ${organis
     """
     cobalt \\
         -Xmx16G \\
-        -reference ${meta.donor}_N \\
+        -reference ${meta.sample_name}_N \\
         -reference_bam ${normal_bam} \\
         -gc_profile ${gc_profile} \\
         -output_dir cobalt/
 
     """
-
     stub:
     """
     mkdir -p cobalt/

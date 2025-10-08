@@ -3,7 +3,7 @@ process JABCONTOOL_CALL {
     conda "${moduleDir}/env.yaml"
 
     input:
-    tuple path(normal_cov), path(normal_snps), path(tumor_cov), path(tumor_snps)
+    tuple path(normal_cov), path(normal_snps)
     path organism_regions
     path gc_profile
     path organism_cytoband
@@ -20,7 +20,7 @@ process JABCONTOOL_CALL {
     def gc_profile_flag = params.jabCoNtool_normalize_to_GC ? "${gc_profile}" : "no_GC_norm"
     def use_cytoband = params.jabCoNtool_remove_centromeres ? "${organism_cytoband}" : "no_cytoband"
     def wgs_or_roi = params.lib_ROI == "wgs" ? "wgs" : "panel"
-    def cov_flag = params.calling_type == "tumor_normal" ? "cov ${tumor_cov} norm_cov ${normal_cov}" : "cov ${normal_cov}"
+    //def cov_flag = params.calling_type == "tumor_normal" ? "cov ${tumor_cov} norm_cov ${normal_cov}" : "cov ${normal_cov}"
 
     """
     mkdir -p results
@@ -34,7 +34,7 @@ process JABCONTOOL_CALL {
         ${cohort_flag} \
         ${params.jabCoNtool_predict_TL} \
         ${params.max_CNV_occurance_in_cohort} \
-        ${cov_flag}
+        cov ${normal_cov} 
     """
 
     stub:

@@ -12,18 +12,17 @@ process PREPARE_REGIONS_GATK {
     path("*.interval_list"), emit: prepared_regions_gatk
 
     script:
-    
+
       def panel = lib_ROI.toString().replace('.bed', '') 
       def flags = panel != "wgs" ? "-L ${lib_ROI} --bin-length 0" : "--padding 0"  
-        
+
         """
         gatk PreprocessIntervals \\
           -O ${panel}.interval_list \\
           -R ${reference_fasta} \\
           -imr OVERLAPPING_ONLY \\
           ${flags} \\
-          
-        
+
         """
 
     stub:
@@ -32,5 +31,4 @@ process PREPARE_REGIONS_GATK {
         touch results/target.bed
         touch results/antitarget.bed
         """
-        
 }

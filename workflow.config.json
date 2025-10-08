@@ -51,13 +51,11 @@
         "type": "enum",
         "default": "germline",
         "list": {
-          "germline": "Germline",
-          "tumor_only": "Somatic tumor-only",
-          "tumor_normal": "Somatic tumor-normal pair"
+          "germline": "Germline"
         }
       },
-      "normal_tumor": {
-        "label": "Germline analysis (normal only)",
+      "panel_of_normals": {
+        "label": "Provide control samples (panel of normals)",
         "type": "bool",
         "default": false
       }
@@ -155,13 +153,13 @@
         "type": "string",
         "default": ""
       },
-      "tumor_normal": {
-        "label": "Tumor or normal",
+      "sample_type": {
+        "label": "Sample type (role)",
         "type": "enum",
-        "default": "normal",
+        "default": "sample",
         "list": {
-          "tumor": "tumor",
-          "normal": "normal"
+          "sample": "Sample (study subject)",
+          "control": "Control (reference panel)"
         }
       }
     }

@@ -1,11 +1,10 @@
 process CONTROL_FREEC {
-    tag "${meta.donor}"
-    publishDir "structural_varcalls/${meta.donor}/control_freec", mode: 'copy'
+    tag "${meta.sample_name}"
+    publishDir "structural_varcalls/${meta.sample_name}/control_freec", mode: 'copy'
     conda "${moduleDir}/env.yaml"
 
     input:
-    tuple val(meta), path(tumor_bam), path(tumor_bam_bai), path(normal_bam), path(normal_bam_bai)
-    path reference_fasta
+    tuple val(meta), path(bam), path(bam_bai)
     path reference_index
     path snps_bed
     path(binned_bed)
@@ -14,12 +13,7 @@ process CONTROL_FREEC {
     output:
     tuple val(meta), path("control_freec/*.CNV_varcalls.tsv"),  path("control_freec/config.txt"), emit: var_call
 
-        script:
-
-    def normal_config = params.normal_tumor ? """
-    filedata = filedata.replace('#normal_X__', '')
-    filedata = filedata.replace('X_input_control_bam_X', '${normal_bam}')
-    """ : ""
+    script:
 
     """
     mkdir -p control_freec
@@ -35,15 +29,13 @@ process CONTROL_FREEC {
     filedata = filedata.replace('X_ref_fai_X', '${reference_index}')
     filedata = filedata.replace('X_GC_profile_file_X', '${gc_profile}')
     filedata = filedata.replace('X_output_dir_X', 'control_freec/')
-    filedata = filedata.replace('X_input_bam_X', '${tumor_bam}')
-
-    ${normal_config}
+    filedata = filedata.replace('X_input_bam_X', '${bam}')
 
     with open('control_freec/config.txt', 'w') as file:
         file.write(filedata)
     CODE
 
     freec -conf control_freec/config.txt
-    mv control_freec/${meta.donor}.bam_CNVs control_freec/${meta.donor}.CNV_varcalls.tsv
+    mv control_freec/${meta.sample_name}.bam_CNVs control_freec/${meta.sample_name}.CNV_varcalls.tsv
     """
 }

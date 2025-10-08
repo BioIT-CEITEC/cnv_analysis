@@ -1,7 +1,7 @@
 process CNVKIT_CLASSIFY_AND_ANNOTATE {
 
-    tag "${meta.donor}"
-    publishDir "structural_varcalls/${meta.donor}/cnvkit", mode: 'copy'
+    tag "${meta.sample_name}"
+    publishDir "structural_varcalls/${meta.sample_name}/cnvkit", mode: 'copy'
 
     conda "${moduleDir}/../env.yaml" 
 
@@ -19,7 +19,7 @@ process CNVKIT_CLASSIFY_AND_ANNOTATE {
     """
     mkdir -p annotate
     python3 ${moduleDir}/ClassifyCNV.py --infile ${preannot_bed} --outdir classify --GenomeBuild ${genomeBuild} --precise
-    Rscript ${moduleDir}/cnvAnnotateCNVkit.R ${preannot_tsv} classify/Scoresheet.txt ${annotation_tsv} annotate/${meta.donor}_final_CNVs_annotated.tsv annotate/${meta.donor}_final_CNVs_annotated.xlsx
+    Rscript ${moduleDir}/cnvAnnotateCNVkit.R ${preannot_tsv} classify/Scoresheet.txt ${annotation_tsv} annotate/${meta.sample_name}_final_CNVs_annotated.tsv annotate/${meta.sample_name}_final_CNVs_annotated.xlsx
     """
 
     stub:

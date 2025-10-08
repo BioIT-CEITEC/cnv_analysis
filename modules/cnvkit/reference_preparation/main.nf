@@ -15,9 +15,10 @@ process REFERENCE_CNVKIT {
 
     script:
 
-    def coverage_files = params.normal_tumor ? normal_coverage : tumor_coverage
+    def hasNormals = params.panel_of_normals ?: false
+    def coverage_files = hasNormals ? normal_coverage : tumor_coverage
 
-    if (params.normal_tumor || sample_number) {
+    if (hasNormals || sample_number) {
 
         """
         mkdir -p reference

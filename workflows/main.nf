@@ -42,24 +42,22 @@ ch_organism_delly_map = params.organism_delly_map ? Channel.fromPath(params.orga
 ch_organism_gtf_tsv = params.organism_gtf_tsv ? Channel.fromPath(params.organism_gtf_tsv).collect() : Channel.empty()
 
 
-inputs = Utils.parseInputVC(params.new_samples, params.normal_tumor, projectDir, log)
+def panelMode = params.panel_of_normals ?: false
 
-// Assign deterministic 0-based indices once (simplest approach) preserving original list order
-inputs.eachWithIndex { item, i ->
-  // item structure: [ meta, normal_bam, normal_bai, tumor_bam, tumor_bai ]
-  item[0].index_gatk = i
-}
+def inputData = Utils.parseInputVC(params.new_samples, panelMode, projectDir, log)
 
+// Extract samples and controls
+def samples = inputData.samples
+def controls = inputData.controls
 
 workflow MAIN_WF {
 
    ch_cohort_data = Channel.empty()
 
-  ch_inputs_pre_index = Channel.fromList(inputs)
-  // Channel already has meta.index_gatk set; no further mapping needed
-  ch_inputs = ch_inputs_pre_index
+  ch_samples = Channel.fromList(samples)
+  ch_controls = controls.isEmpty() ? Channel.empty() : Channel.fromList(controls)
 
-  ch_inputs.view()
+
 
     BED_PREPARATION (
         ch_organism_fasta,
@@ -70,7 +68,7 @@ workflow MAIN_WF {
     ch_gc_profile = BED_PREPARATION.out.gc_profile
 
     CNVKIT_ANALYSIS (
-    ch_inputs,
+    ch_samples,
     ch_organism_dna_panel,
     ch_organism_fasta,
     ch_organism_fasta_fai,
@@ -80,7 +78,7 @@ workflow MAIN_WF {
     ch_vcfs = CNVKIT_ANALYSIS.out.ch_vardict_vcfs
 
     JABCONTOOL_ANALYSIS (
-    ch_inputs,
+    ch_samples,
     ch_organism_fasta,
     ch_organism_fasta_fai,
     ch_organism_snps,
@@ -91,7 +89,7 @@ workflow MAIN_WF {
     )
 
     CONTROL_FREEC (
-    ch_inputs,
+    ch_samples,
     ch_organism_fasta,
     ch_organism_fasta_fai,
     ch_organism_snps,
@@ -100,7 +98,7 @@ workflow MAIN_WF {
     )
 
     GATK_ANALYSIS(
-    ch_inputs,
+    ch_samples,
     ch_organism_fasta,
     ch_organism_fasta_fai,
     ch_organism_dna_panel,
@@ -109,7 +107,7 @@ workflow MAIN_WF {
     )
 
     PURPLE_ANALYSIS (
-    ch_inputs,
+    ch_samples,
     ch_heterozygous_sites,
     ch_organism_dna_panel,
     ch_gc_content,
@@ -127,7 +125,7 @@ workflow MAIN_WF {
 
   if (params.organism_dna_panel == 'wgs') {
     DELLY_ANALYSIS(
-      ch_inputs,
+      ch_samples,
       ch_organism_fasta,
       ch_organism_fasta_fai,
       ch_organism_excluded_sites,

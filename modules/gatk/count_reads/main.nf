@@ -1,9 +1,9 @@
 process COUNT_READS_GATK {
-    tag "${meta.donor}"
+    tag "${meta.sample_name}"
     conda "${moduleDir}/../env.yaml"
 
     input:
-    tuple val(meta), path(normal_bam), path(normal_bai), path(tumor_bam), path(tumor_bai)
+    tuple val(meta), path(normal_bam), path(normal_bai)
     path reference_fasta // channel to the reference fasta file
     path reference_fasta_fai
     path lib_ROI // channel to the regions of interest bed file
@@ -14,7 +14,7 @@ process COUNT_READS_GATK {
     tuple val(meta), path("*.tsv"), emit: read_counts_gatk
 
     script:
-    
+
 
         """
       gatk CollectReadCounts \
@@ -23,9 +23,8 @@ process COUNT_READS_GATK {
               -imr OVERLAPPING_ONLY \
               -I ${normal_bam} \
               --format TSV \
-              -O ${meta.donor}.tsv
-          
-        
+              -O ${meta.sample_name}.tsv
+
         """
 
     stub:
@@ -34,7 +33,5 @@ process COUNT_READS_GATK {
         touch results/target.bed
         touch results/antitarget.bed
         """
-        
-}    
-    
-    
+
+}

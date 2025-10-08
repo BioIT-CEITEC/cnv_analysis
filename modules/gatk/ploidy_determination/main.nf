@@ -6,7 +6,7 @@ process GERMLINE_PLOIDY_DETERMINATION_GATK {
     path qc_filtered_intervals
     path read_counts
     path ploidy_priors
-    
+ 
 
     output:
     path("model/*"), emit: ploidy_model_gatk
@@ -24,7 +24,7 @@ process GERMLINE_PLOIDY_DETERMINATION_GATK {
           --output model/ \\
           --output-prefix ploidy \\
           --verbosity DEBUG
-        
+
         """
 
     stub:
@@ -33,7 +33,6 @@ process GERMLINE_PLOIDY_DETERMINATION_GATK {
         touch results/target.bed
         touch results/antitarget.bed
         """
-        
 }
 
 

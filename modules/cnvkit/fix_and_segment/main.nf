@@ -1,11 +1,11 @@
 process FIX_AND_SEGMENT_CNVKIT {
 
-    tag "${meta.donor}"
+    tag "${meta.sample_name}"
 
     conda "${moduleDir}/../env.yaml"
 
     input:
-    tuple val(meta), path(tumor_target), path(tumor_antitarget), path(normal_target), path(normal_antitarget) // mandatory [ [meta],[target],[antitarget] ] target and antitarget files produced in the coverage process
+    tuple val(meta), path(target), path(antitarget)
     path cnvkit_reference // mandatory path to the reference file "normal_reference.cnn" produced at reference process
 
     output:
@@ -14,8 +14,8 @@ process FIX_AND_SEGMENT_CNVKIT {
     script:
     """
     mkdir -p segmented
-    cnvkit.py fix ${tumor_target} \
-        ${tumor_antitarget} \
+    cnvkit.py fix ${target} \
+        ${antitarget} \
         ${cnvkit_reference} \
         -o segmented/fixed_cov.cnr
 

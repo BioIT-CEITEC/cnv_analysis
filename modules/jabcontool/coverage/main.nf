@@ -1,28 +1,27 @@
 process COVERAGE_CALC {
 
-    tag "${meta.donor}"
+    tag "${meta.sample_name}"
     conda "${moduleDir}/env.yaml"
 
     input:
-    tuple val(meta), path(normal_bam), path(normal_bai), path(tumor_bam), path(tumor_bai)
+    tuple val(meta), path(bam), path(bam_bai)
     path organism_reference
     path reference_index
 
     output:
-    tuple val(meta), path("${meta.donor}_N.region_coverage.tsv"), path("${meta.donor}_T.region.coverage.tsv", optional: true), emit: region_coverage
+    tuple val(meta), path("${meta.sample_name}_N.region_coverage.tsv"), emit: region_coverage
 
     script:
 
-    def tumor_flag = params.normal_tumor ? "bedtools coverage -sorted -a ${organism_reference} -b ${tumor_bam} -o ${reference_index} > ${meta.donor}_T.region_coverage.tsv" : "touch ${meta.donor}_T.region.coverage.tsv"
+    //def hasNormals = params.panel_of_normals ?: false
+    //def tumor_flag = hasNormals ? "bedtools coverage -sorted -a ${organism_reference} -b ${tumor_bam} -o ${reference_index} > ${meta.sample_name}_T.region_coverage.tsv" : "touch ${meta.sample_name}_T.region.coverage.tsv"
 
     """
-    bedtools coverage -sorted -a ${organism_reference} -b ${normal_bam} -g ${reference_index} > ${meta.donor}_N.region_coverage.tsv
-    ${tumor_flag}
+    bedtools coverage -sorted -a ${organism_reference} -b ${bam} -g ${reference_index} > ${meta.sample_name}.region_coverage.tsv
     """
 
     stub:
     """
-    touch ${meta.donor}_N.region_coverage.tsv
-    touch ${meta.donor}_T.region_coverage.tsv
+    touch ${meta.sample_name}.region_coverage.tsv
     """
 }

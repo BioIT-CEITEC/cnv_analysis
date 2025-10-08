@@ -3,52 +3,48 @@ import nextflow.splitter.SplitterEx
 
 class Utils {
 
-public static parseInputVC(inputSh, normalTumor, projectDir, log) {
+public static parseInputVC(inputSh, panelOfNormals, projectDir, log) {
   
-    def groupedInputs = inputSh
-        .groupBy { entry ->
-            entry.donor ?: entry.sample_name
+    // Always process samples
+    def samples = inputSh.findAll { it.sample_type == 'sample' }
+    
+    // Process samples - always present
+    def samplesList = samples.collect { entry ->
+        def meta = [
+            sample_name  : entry.sample_name,
+            sample_type  : entry.sample_type
+        ]
+        
+        def bamPath = "mapped/${meta.sample_name}.bam"
+        def baiPath = "mapped/${meta.sample_name}.bam.bai"
+        
+        return [meta, bamPath, baiPath]
+    }
+    
+    // Process controls - only if panel_of_normals is true
+    def controlsList = []
+    if (panelOfNormals) {
+        def controls = inputSh.findAll { it.sample_type == 'control' }
+        
+        if (controls.isEmpty()) {
+            log.warn "Panel of normals mode enabled but no control samples found!"
         }
-        .collect { donor, entries ->
-            if (normalTumor) {
-                
-                def meta = [
-                    donor    : donor,
-                    tumor_id : entries.find { it.tumor_normal == 'tumor' }?.sample_name,
-                    normal_id: entries.find { it.tumor_normal == 'normal' }?.sample_name
-                ]
-                if (meta.tumor_id && meta.normal_id) {
-                    return [
-                        meta,
-                        ["${projectDir}/mapped/${meta.normal_id}.bam"],
-                        ["${projectDir}/mapped/${meta.normal_id}.bam.bai"],
-                        ["${projectDir}/mapped/${meta.tumor_id}.bam"],
-                        ["${projectDir}/mapped/${meta.tumor_id}.bam.bai"]
-                    ]
-                } else {
-                    log.warn "Missing normal-tumor pair for donor: ${donor}"
-                    return [[:], [], [], [], []]
-                }
-            } else {
-                
-                def entry = entries.first()
-                def meta = [
-                    donor        : donor,
-                    sample_name  : entry.sample_name,
-                    tumor_normal : entry.tumor_normal,
-                    index        : entry.index
-                ]
-                
-                return [
-                    meta,
-                    ["${projectDir}/mapped/${meta.sample_name}.bam"],
-                    ["${projectDir}/mapped/${meta.sample_name}.bam.bai"],
-                    [],
-                    []
-                ]
-            }
+        
+        controlsList = controls.collect { entry ->
+            def meta = [
+                sample_name  : entry.sample_name,
+                sample_type  : entry.sample_type
+            ]
+            
+            def bamPath = "mapped/${meta.sample_name}.bam"
+            def baiPath = "mapped/${meta.sample_name}.bam.bai"
+            
+            return [meta, bamPath, baiPath]
         }
-    return groupedInputs
+    }
+    
+    // Return both lists as a map
+    return [samples: samplesList, controls: controlsList]
 }
 
     public static List<Map> loadSample(Map conf) {

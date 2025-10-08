@@ -15,55 +15,48 @@ workflow JABCONTOOL_ANALYSIS {
     ch_cohort_data
 
     main:
-    ch_region_bed = params.normal_tumor ? ch_binned_genome : ch_organism_dna_panel
+    def tumorNormal = params.tumor_normal
+    ch_region_bed = tumorNormal ? ch_binned_genome : ch_organism_dna_panel
 
     COVERAGE_CALC (
         ch_input_bams,
         ch_region_bed,
         ch_reference_fasta_fai
     )
-    
     SNP_AF_CALC(
         ch_input_bams,
         ch_reference_fasta,
         ch_reference_fasta_fai,
         ch_organism_snps
     )
-      
     COVERAGE_CALC.out.region_coverage
     .join( SNP_AF_CALC.out.snpAF )            // single synchronisation
-    .multiMap { meta, tumor_cov, normal_cov, tumor_snp, normal_snp ->
+    .multiMap { meta, normal_cov, normal_snp ->
 
         // one key/value pair per output channel
-        tumor_cov   : tumor_cov 
-        tumor_snps  : tumor_snp
+ 
         normal_cov  : normal_cov
         normal_snps : normal_snp
     }
     .set { ch_all }  
 
-        
-def tumor_cov_collected = ch_all.tumor_cov.toList()
-def tumor_snps_collected = ch_all.tumor_snps.toList()
-def normal_cov_collected = ch_all.normal_cov.toList() 
+
+def normal_cov_collected = ch_all.normal_cov.toList()
 def normal_snps_collected = ch_all.normal_snps.toList()
 
-def combined_channel = tumor_cov_collected
-    .concat(tumor_snps_collected)
-    .concat(normal_cov_collected)
+def combined_channel = normal_cov_collected
+    .concat(normal_snps_collected)
     .concat(normal_snps_collected)
     .toList()
-    .map { tumor_covs, tumor_snps, normal_covs, normal_snps ->
-        return [tumor_covs, tumor_snps, normal_covs, normal_snps]
+    .map { normal_covs, normal_snps ->
+        return [normal_covs, normal_snps]
     }
-    
+
     JABCONTOOL_CALL (
         combined_channel,
         ch_region_bed,
         ch_gc_profile,
         ch_organism_cytoband,
         ch_organism_snps
-        
         )
-    
 }

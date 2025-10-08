@@ -1,43 +1,35 @@
 process GET_COVERAGE_CNVKIT {
-    tag "${meta.donor}"
-    publishDir "structural_varcalls/${meta.donor}/cnvkit", mode: 'copy'
+    tag "${meta.sample_name}"
+    publishDir "structural_varcalls/$meta.sample_name/cnvkit", mode: 'copy'
 
     conda "${moduleDir}/../env.yaml"
 
     input:
-    tuple val(meta), path(bam_tumor), path(bam_bai_tumor), path(bam_normal), path(bam_bai_normal)
+    tuple val(meta), path(bam), path(bam_bai)
     tuple path(target), path(antitarget)
 
     output:
     tuple val(meta), 
-          path("coverage/${meta.donor}.tumor.targetcoverage.cnn"), 
-          path("coverage/${meta.donor}.tumor.antitargetcoverage.cnn"), 
-          path("coverage/${meta.donor}.normal.targetcoverage.cnn"),
-          path("coverage/${meta.donor}.normal.antitargetcoverage.cnn"),
+          path("coverage/${meta.sample_name}.tumor.targetcoverage.cnn"), 
+          path("coverage/${meta.sample_name}.tumor.antitargetcoverage.cnn"), 
+          path("coverage/${meta.sample_name}.normal.targetcoverage.cnn"),
+          path("coverage/${meta.sample_name}.normal.antitargetcoverage.cnn"),
           emit: coverage 
 
     script:
-    def normal_cmd = params.normal_tumor ? """
-        cnvkit.py coverage ${bam_normal} ${target} -o coverage/${meta.donor}.normal.targetcoverage.cnn
-        cnvkit.py coverage ${bam_normal} ${antitarget} -o coverage/${meta.donor}.normal.antitargetcoverage.cnn
-    """ : """
-        touch coverage/${meta.donor}.normal.targetcoverage.cnn
-        touch coverage/${meta.donor}.normal.antitargetcoverage.cnn
-    """
 
     """
     mkdir -p coverage
-    cnvkit.py coverage ${bam_tumor} ${target} -o coverage/${meta.donor}.tumor.targetcoverage.cnn
-    cnvkit.py coverage ${bam_tumor} ${antitarget} -o coverage/${meta.donor}.tumor.antitargetcoverage.cnn
-    ${normal_cmd}
+    cnvkit.py coverage ${bam} ${target} -o coverage/${meta.sample_name}.tumor.targetcoverage.cnn
+    cnvkit.py coverage ${bam} ${antitarget} -o coverage/${meta.sample_name}.tumor.antitargetcoverage.cnn
     """
 
     stub:
     """
     mkdir -p coverage
-    touch coverage/${meta.donor}.tumor.targetcoverage.cnn
-    touch coverage/${meta.donor}.tumor.antitargetcoverage.cnn
-    touch coverage/${meta.donor}.normal.targetcoverage.cnn
-    touch coverage/${meta.donor}.normal.antitargetcoverage.cnn
+    touch coverage/${meta.sample_name}.tumor.targetcoverage.cnn
+    touch coverage/${meta.sample_name}.tumor.antitargetcoverage.cnn
+    touch coverage/${meta.sample_name}.normal.targetcoverage.cnn
+    touch coverage/${meta.sample_name}.normal.antitargetcoverage.cnn
     """
 }

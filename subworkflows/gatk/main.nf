@@ -4,7 +4,7 @@ include { COUNT_READS_GATK } from "../../modules/gatk/count_reads/main.nf"
 include { FILTER_INTERVALS_GATK } from "../../modules/gatk/filter_intervals/main.nf"
 include { GERMLINE_PLOIDY_DETERMINATION_GATK } from "../../modules/gatk/ploidy_determination/main.nf"
 include { COHORT_GENERATION_GATK } from "../../modules/gatk/cohort_generation/main.nf"
-include { GERMLINE_VARCALLS_GATK } from "../../modules/gatk/cnv_varcalls/main.nf"
+include { CNV_VARCALLS_GATK } from "../../modules/gatk/cnv_varcalls/main.nf"
 include { POSTPROCESSING_CNV_GATK } from "../../modules/gatk/cnv_postprocessing/main.nf"
 
 workflow GATK_ANALYSIS {
@@ -82,19 +82,19 @@ workflow GATK_ANALYSIS {
     ch_cohort_data = COHORT_GENERATION_GATK.out.cohort_model.collect()
     ch_read_counts_gatk = COUNT_READS_GATK.out.read_counts_gatk
 
-    GERMLINE_VARCALLS_GATK(
+    CNV_VARCALLS_GATK(
       ch_read_counts_gatk,
       ch_ploidy_determination,
       ch_cohort_data
     )
 
   // Do not collect germline calls into a value-only channel; keep tuple with meta
-  ch_germline_calls = GERMLINE_VARCALLS_GATK.out.germline_calls
+  ch_germline_calls = CNV_VARCALLS_GATK.out.germline_calls
 
   ch_postproc_input = normal_bam
     .join(ch_germline_calls)
-    .map { meta, normal_bam_path, normal_bai_path, tumor_bam_path, tumor_bai_path, germline_calls_path ->
-      return [ meta, normal_bam_path, normal_bai_path, tumor_bam_path, tumor_bai_path, germline_calls_path ]
+    .map { meta, normal_bam_path, normal_bai_path, germline_calls_path ->
+      return [ meta, normal_bam_path, normal_bai_path, germline_calls_path ]
     }
 
   POSTPROCESSING_CNV_GATK(

@@ -1,12 +1,12 @@
 process PURPLE {
-    tag "${meta.donor}"
-    publishDir "structural_varcalls/${meta.donor}/purple", mode: 'copy'
+    tag "${meta.sample_name}"
+    publishDir "structural_varcalls/${meta.sample_name}/purple", mode: 'copy'
 
     conda "${moduleDir}/env.yml"
 
 
     input:
-    tuple val(meta), path(amber), path(cobalt), path(normal_vcf), path(tumor_vcf)
+    tuple val(meta), path(amber), path(cobalt), path(normal_vcf)
     path genome_fasta
     path genome_fai
     path genome_dict
@@ -28,7 +28,7 @@ process PURPLE {
 
     purple \\
         -Xmx16G \\
-        -reference ${meta.donor}_N \\
+        -reference ${meta.sample_name} \\
         -amber ${amber} \\
         -cobalt ${cobalt} \\
         -gc_profile ${gc_profile} \\
@@ -46,17 +46,7 @@ process PURPLE {
     stub:
     """
     mkdir purple/
-    touch purple/${meta.tumor_id}.purple.cnv.gene.tsv
-    touch purple/${meta.tumor_id}.purple.cnv.somatic.tsv
-    touch purple/${meta.tumor_id}.purple.driver.catalog.germline.tsv
-    touch purple/${meta.tumor_id}.purple.driver.catalog.somatic.tsv
-    touch purple/${meta.tumor_id}.purple.germline.vcf.gz
-    touch purple/${meta.tumor_id}.purple.germline.vcf.gz
-    touch purple/${meta.tumor_id}.purple.purity.tsv
-    touch purple/${meta.tumor_id}.purple.qc
-    touch purple/${meta.tumor_id}.purple.somatic.vcf.gz
-    touch purple/${meta.tumor_id}.purple.sv.germline.vcf.gz
-    touch purple/${meta.tumor_id}.purple.sv.vcf.gz
-
+    touch purple/${meta.sample_name}.purple.cnv.gene.tsv
+    touch purple/${meta.sample_name}.purple.cnv.somatic.tsv
     """
 }

@@ -1,25 +1,25 @@
 process CNV_CALLS_DELLY {
 
-    publishDir "structural_varcalls/$meta.donor/delly", mode: 'copy'
-    tag "Sample: ${meta.donor}"
+    publishDir "structural_varcalls/$meta.sample_name/delly", mode: 'copy'
+    tag "Sample: ${meta.sample_name}"
     conda "${moduleDir}/../env.yaml"
 
     input:
-    tuple val(meta), path(normal_bam), path(normal_bai), path(tumor_bam), path(tumor_bai)
+    tuple val(meta), path(normal_bam), path(normal_bai)
     path reference_fasta
     path reference_fasta_fai
     path map_file // channel to the reference fasta fil
     tuple path(sv_calls), path(vcf), path(vcf_index)
 
     output:
-    tuple val(meta), path("${meta.donor}.cnvs.bcf"), path("${meta.donor}.cnvs.bcf.csi"), emit: cnv_calls_delly
+    tuple val(meta), path("${meta.sample_name}.cnvs.bcf"), path("${meta.sample_name}.cnvs.bcf.csi"), emit: cnv_calls_delly
 
     script:
 
         """
         delly cnv \\
           -i 100000 -j 100000 -w 100000 \\
-          -o ${meta.donor}.cnvs.bcf \\
+          -o ${meta.sample_name}.cnvs.bcf \\
           -g ${reference_fasta} \\
           -m ${map_file} \\
           -l ${sv_calls} \\
