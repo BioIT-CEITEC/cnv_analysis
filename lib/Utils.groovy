@@ -15,8 +15,9 @@ public static parseInputVC(inputSh, panelOfNormals, projectDir, log) {
             sample_type  : entry.sample_type
         ]
         
-        def bamPath = "mapped/${meta.sample_name}.bam"
-        def baiPath = "mapped/${meta.sample_name}.bam.bai"
+        // Return absolute paths so Nextflow can stage files from work directories
+        def bamPath = "${projectDir}/mapped/${meta.sample_name}.bam"
+        def baiPath = "${projectDir}/mapped/${meta.sample_name}.bam.bai"
         
         return [meta, bamPath, baiPath]
     }
@@ -36,9 +37,9 @@ public static parseInputVC(inputSh, panelOfNormals, projectDir, log) {
                 sample_type  : entry.sample_type
             ]
             
-            def bamPath = "mapped/${meta.sample_name}.bam"
-            def baiPath = "mapped/${meta.sample_name}.bam.bai"
-            
+            def bamPath = "${projectDir}/mapped/${meta.sample_name}.bam"
+            def baiPath = "${projectDir}/mapped/${meta.sample_name}.bam.bai"
+
             return [meta, bamPath, baiPath]
         }
     }
@@ -149,5 +150,7 @@ public static parseInputVC(inputSh, panelOfNormals, projectDir, log) {
             conf.organism_snps_panel = "${conf.reference_dir}/others/snp/${conf.panel}/${conf.panel}_snps.tsv"
             conf.organism_interval_list = "${conf.reference_dir}/others/DNA_ROI/${conf.panel}/${conf.panel}.interval_list"
         }
+
+        return conf
     }
 }

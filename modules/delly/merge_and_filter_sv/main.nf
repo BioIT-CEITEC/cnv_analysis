@@ -1,6 +1,5 @@
 process MERGE_AND_FILTER_SV_DELLY {
 
-    publishDir "structural_varcalls/all_samples/delly", mode: 'copy'
     tag "Merging and filtering SV calls"
     conda "${moduleDir}/../env.yaml"
 

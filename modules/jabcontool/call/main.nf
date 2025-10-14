@@ -10,8 +10,8 @@ process JABCONTOOL_CALL {
     path organism_snps
 
     output:
-    path("results/final_CNV_probs.tsv"), emit: final_CNV_probs
-    path("results/cohort_info_tab.tsv"), emit: cohort_info_tab
+    path("calls/final_CNV_probs.tsv"), emit: final_CNV_probs
+    path("calls/cohort_info_tab.tsv"), emit: cohort_info_tab
 
     script:
 
@@ -23,8 +23,8 @@ process JABCONTOOL_CALL {
     //def cov_flag = params.calling_type == "tumor_normal" ? "cov ${tumor_cov} norm_cov ${normal_cov}" : "cov ${normal_cov}"
 
     """
-    mkdir -p results
-    Rscript ${projectDir}/bin/jabConTool_main.R results/final_CNV_probs.tsv \
+    mkdir -p calls
+    Rscript ${projectDir}/bin/jabConTool_main.R calls/final_CNV_probs.tsv \
         ${organism_regions} \
         ${snp_bed} \
         ${params.calling_type} \

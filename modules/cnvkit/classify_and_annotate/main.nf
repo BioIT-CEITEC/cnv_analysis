@@ -1,7 +1,7 @@
 process CNVKIT_CLASSIFY_AND_ANNOTATE {
 
     tag "${meta.sample_name}"
-    publishDir "structural_varcalls/${meta.sample_name}/cnvkit", mode: 'copy'
+    publishDir "structural_varcalls/cnvkit", mode: 'copy'
 
     conda "${moduleDir}/../env.yaml" 
 

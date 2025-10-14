@@ -13,7 +13,8 @@ built-in functions that are not being used here as the way of loading
 data, references and config differs.
 */
 
-include { MAIN_WF } from './workflows/main'
+include { PANEL_WES } from './workflows/PANEL.nf'
+include { WGS } from './workflows/WGS.nf'
 
 /*
 -----------------------------------------------------------------------
@@ -23,7 +24,11 @@ include { MAIN_WF } from './workflows/main'
 
 workflow CNV_ANALYSIS {
 
-   MAIN_WF()
+    if (params.lib_ROI == 'wgs') {
+        WGS()
+    } else {
+        PANEL_WES()
+    }
 }
 
 /*

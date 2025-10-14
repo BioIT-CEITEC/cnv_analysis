@@ -21,7 +21,7 @@ def target_region_arg = params.lib_ROI != "wgs" ? "-target_regions_bed ${organis
     """
     cobalt \\
         -Xmx16G \\
-        -reference ${meta.sample_name}_N \\
+        -reference ${meta.sample_name} \\
         -reference_bam ${normal_bam} \\
         -gc_profile ${gc_profile} \\
         -output_dir cobalt/

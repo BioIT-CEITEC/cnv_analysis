@@ -19,7 +19,7 @@ process AMBER {
     """
     amber \\
         -Xmx16G \\
-        -reference ${meta.sample_name}_N \\
+        -reference ${meta.sample_name} \\
         -reference_bam ${normal_bam} \\
         ${target_regions_bed_arg} \\
         -ref_genome_version ${genome_ver} \\

@@ -1,6 +1,5 @@
 process PREPARE_REGIONS_DELLY {
 
-    publishDir "structural_varcalls/$meta.sample_name/delly", mode: 'copy'
     tag "Sample: ${meta.sample_name}"
     conda "${moduleDir}/../env.yaml"
 

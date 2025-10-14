@@ -11,9 +11,9 @@ process ANNOTATE_REGIONS_GATK {
 
     output:
     path("*.annotated.tsv"), emit: annotated_regions_gatk
-    
+
     script:
-    
+
       def panel = lib_ROI.toString().replace('.bed', '') 
 
         """
@@ -22,8 +22,7 @@ process ANNOTATE_REGIONS_GATK {
           -R ${reference_fasta} \\
           -imr OVERLAPPING_ONLY \\
           -L ${prepared_regions} \\
-          
-        
+
         """
 
     stub:
@@ -32,5 +31,4 @@ process ANNOTATE_REGIONS_GATK {
         touch results/target.bed
         touch results/antitarget.bed
         """
-        
 }

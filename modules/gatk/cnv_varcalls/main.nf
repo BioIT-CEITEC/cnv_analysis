@@ -2,7 +2,7 @@ process CNV_VARCALLS_GATK {
 
     publishDir "structural_varcalls/all_samples/gatk", mode: 'copy'
     conda "${moduleDir}/../env.yaml"
-    tag "${meta.id}"
+    tag "${meta.sample_name}"
 
     input:
     tuple val(meta), val(read_counts)
@@ -18,6 +18,7 @@ process CNV_VARCALLS_GATK {
         mkdir -p cohort_data
 
         gatk GermlineCNVCaller \\
+         -I ${read_counts} \\
           --run-mode CASE \\
           --contig-ploidy-calls ploidy-calls/ \\
           --model cohort-model \\

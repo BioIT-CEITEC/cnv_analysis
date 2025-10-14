@@ -1,6 +1,5 @@
 process MERGE_REGIONS_DELLY {
 
-    publishDir "structural_varcalls/all_samples/delly", mode: 'copy'
     tag "Merging prepared regions..."
     conda "${moduleDir}/../env.yaml"
 
@@ -9,9 +8,9 @@ process MERGE_REGIONS_DELLY {
 
     output:
     path("dellySV.bcf"), emit: merged_regions_delly
-    
+
     script:
-    
+
         """
         delly merge \\
           -o dellySV.bcf \\
@@ -24,5 +23,4 @@ process MERGE_REGIONS_DELLY {
         touch results/target.bed
         touch results/antitarget.bed
         """
-        
 }

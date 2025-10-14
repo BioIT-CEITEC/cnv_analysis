@@ -9,7 +9,7 @@ process COVERAGE_CALC {
     path reference_index
 
     output:
-    tuple val(meta), path("${meta.sample_name}_N.region_coverage.tsv"), emit: region_coverage
+    tuple val(meta), path("${meta.sample_name}.region_coverage.tsv"), emit: region_coverage
 
     script:
 

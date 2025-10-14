@@ -1,0 +1,156 @@
+nextflow.enable.dsl = 2
+
+
+// Validate inputs and potentially references
+
+include { CONTROL_FREEC } from "../modules/control_freec/main.nf"
+include { BED_PREPARATION } from "../modules/preprocessing/bed_preparation/main.nf"
+include { COHORT_PREPARATION } from "../modules/preprocessing/cohort_preparation/main.nf"
+include { CNVKIT_ANALYSIS } from "../subworkflows/cnvkit/main.nf"
+include { JABCONTOOL_ANALYSIS } from "../subworkflows/jabcontool/main.nf"
+include { PURPLE_ANALYSIS } from "../subworkflows/purple/main.nf"
+include { GATK_ANALYSIS } from "../subworkflows/gatk/main.nf"
+include { DELLY_ANALYSIS } from "../subworkflows/delly/main.nf"
+include { CNMOPS_ANALYSIS } from "../subworkflows/cnMOPS/main.nf"
+
+/*
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    REFERENCE CONFIG LOADING
+~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+*/
+
+// Load the reference data from the paths in config file
+params = Utils.load_organism(params)
+//Utils.set_data_tags(params)
+Utils.loadSample(params)
+
+ch_organism_fasta = params.organism_fasta ? Channel.fromPath(params.organism_fasta).collect() : Channel.empty()
+ch_organism_fasta_fai = params.organism_fasta ? Channel.fromPath(params.organism_fasta + '.fai').collect() : Channel.empty()
+ch_organism_dict = params.organism_dict ? Channel.fromPath(params.organism_dict).collect() : Channel.empty()
+ch_organism_dna_panel = params.organism_dna_panel ? Channel.fromPath(params.organism_dna_panel).collect() : Channel.empty()
+ch_organism_cytoband = params.organism_cytoband ? Channel.fromPath(params.organism_cytoband).collect() : Channel.empty()
+ch_organism_snps = params.organism_snps_panel ? Channel.fromPath(params.organism_snps_panel).collect() : Channel.empty()
+ch_heterozygous_sites = params.organism_hetsites ? Channel.fromPath(params.organism_hetsites).collect() : Channel.empty()
+ch_gc_content = params.organism_gc_profile ? Channel.fromPath(params.organism_gc_profile).collect() : Channel.empty()
+ch_diploid_regions = params.organism_diploid_regions ? Channel.fromPath(params.organism_diploid_regions).collect() : Channel.empty
+ch_organism_germline_hotspots = params.organism_germline_hotspots ? Channel.fromPath(params.organism_germline_hotspots).collect() : Channel.empty()
+ch_organism_driver_panel = params.organism_germline_driverpanel ? Channel.fromPath(params.organism_germline_driverpanel).collect() : Channel.empty()
+ch_organism_germline_dels = params.organism_germline_dels ? Channel.fromPath(params.organism_germline_dels).collect() : Channel.empty()
+ch_organism_vep = params.organism_vep_dir ? Channel.fromPath(params.organism_vep_dir).collect() : Channel.empty()
+ch_organism_ploidy_priors = params.organism_ploidy_priors ? Channel.fromPath(params.organism_ploidy_priors).collect() : Channel.empty()
+ch_organism_excluded_sites = params.organism_excluded_sites ? Channel.fromPath(params.organism_excluded_sites).collect() : Channel.empty()
+ch_organism_delly_map = params.organism_delly_map ? Channel.fromPath(params.organism_delly_map).collect() : Channel.empty()
+ch_organism_gtf_tsv = params.organism_gtf_tsv ? Channel.fromPath(params.organism_gtf_tsv).collect() : Channel.empty()
+
+
+def panelMode = params.panel_of_normals ?: false
+
+def inputData = Utils.parseInputVC(params.new_samples, panelMode, projectDir, log)
+
+// Extract samples and controls
+def samples = inputData.samples
+def controls = inputData.controls
+
+workflow WGS {
+
+   ch_cohort_data = Channel.empty()
+
+  // Create channels of tuples (meta, bam, bai) where bam/bai are wrapped with file()
+  ch_samples = Channel.fromList(samples)
+    .map { meta, bamPath, baiPath -> tuple(meta, file(bamPath), file(baiPath)) }
+
+  ch_controls = controls.isEmpty() ? Channel.empty() : Channel.fromList(controls)
+    .map { meta, bamPath, baiPath -> tuple(meta, file(bamPath), file(baiPath)) }
+
+
+
+    BED_PREPARATION (
+        ch_organism_fasta,
+        ch_organism_dict
+    )
+
+    ch_binned_genome = BED_PREPARATION.out.binned_genome
+    ch_gc_profile = BED_PREPARATION.out.gc_profile
+
+    CNVKIT_ANALYSIS (
+    ch_samples,
+    ch_organism_dna_panel,
+    ch_organism_fasta,
+    ch_organism_fasta_fai,
+    ch_organism_gtf_tsv
+    )
+
+    ch_vcfs = CNVKIT_ANALYSIS.out.ch_vardict_vcfs
+
+    JABCONTOOL_ANALYSIS (
+    ch_samples,
+    ch_organism_fasta,
+    ch_organism_fasta_fai,
+    ch_organism_snps,
+    ch_organism_dna_panel,
+    ch_organism_cytoband,
+    ch_gc_profile,
+    ch_cohort_data
+    )
+
+    CONTROL_FREEC (
+    ch_samples,
+    ch_organism_fasta,
+    ch_organism_fasta_fai,
+    ch_organism_snps,
+    ch_binned_genome,
+    ch_gc_profile
+    )
+
+    GATK_ANALYSIS(
+    ch_samples,
+    ch_organism_fasta,
+    ch_organism_fasta_fai,
+    ch_organism_dna_panel,
+    ch_organism_dict,
+    ch_organism_ploidy_priors
+    )
+
+    PURPLE_ANALYSIS (
+    ch_samples,
+    ch_heterozygous_sites,
+    ch_organism_dna_panel,
+    ch_gc_content,
+    ch_diploid_regions,
+    ch_vcfs,
+    ch_organism_fasta,
+    ch_organism_fasta_fai,
+    ch_organism_dict,
+    ch_organism_germline_hotspots,
+    ch_organism_driver_panel,
+    ch_organism_germline_dels,
+    ch_organism_vep
+    )
+ 
+    ch_all_bam_control_files = ch_controls
+        .map { meta, bam, bai -> bam }
+        .collect()
+        .map { bam_files -> [bam_files] }
+        .concat(
+            ch_controls
+                .map { meta, bam, bai -> bai }
+                .collect()
+                .map { bai_files -> [bai_files] }
+        )
+        .collect()
+        .map { lists -> tuple(lists[0], lists[1]) }
+
+  CNMOPS_ANALYSIS (
+    ch_samples,
+    ch_all_bam_control_files,
+    ch_organism_dna_panel
+    )
+
+  DELLY_ANALYSIS(
+    ch_samples,
+    ch_organism_fasta,
+    ch_organism_fasta_fai,
+    ch_organism_excluded_sites,
+    ch_organism_delly_map
+  )
+}

@@ -1,3 +1,8 @@
+
+
+#
+# functions for loading data
+#
 fread_vector_of_files <- function(file_list,sample_names){
   list_of_tabs <- lapply(file_list,fread)
   names(list_of_tabs) <- sample_names

@@ -1,6 +1,6 @@
 process PURPLE {
     tag "${meta.sample_name}"
-    publishDir "structural_varcalls/${meta.sample_name}/purple", mode: 'copy'
+    publishDir "structural_varcalls/purple/${meta.sample_name}", mode: 'copy'
 
     conda "${moduleDir}/env.yml"
 
@@ -17,7 +17,7 @@ process PURPLE {
     path germline_del_freq
 
     output:
-    tuple val(meta), path('purple/'), emit: purple_dir
+    tuple val(meta), path("purple/*"), emit: purple_dir
 
 
     script:
@@ -25,6 +25,7 @@ process PURPLE {
     def genome_ver = params.assembly.replace("GRCh","")
 
     """
+    mkdir -p purple_${meta.sample_name}
 
     purple \\
         -Xmx16G \\
@@ -45,8 +46,8 @@ process PURPLE {
 
     stub:
     """
-    mkdir purple/
-    touch purple/${meta.sample_name}.purple.cnv.gene.tsv
-    touch purple/${meta.sample_name}.purple.cnv.somatic.tsv
+    mkdir -p purple_${meta.sample_name}
+    touch purple_${meta.sample_name}/${meta.sample_name}.purple.cnv.gene.tsv
+    touch purple_${meta.sample_name}/${meta.sample_name}.purple.cnv.somatic.tsv
     """
 }

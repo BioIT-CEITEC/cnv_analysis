@@ -1,6 +1,6 @@
 process CNV_CALLS_DELLY {
 
-    publishDir "structural_varcalls/$meta.sample_name/delly", mode: 'copy'
+    publishDir "structural_varcalls/delly", mode: 'copy'
     tag "Sample: ${meta.sample_name}"
     conda "${moduleDir}/../env.yaml"
 
@@ -17,9 +17,10 @@ process CNV_CALLS_DELLY {
     script:
 
         """
+        mkdir -p calls
         delly cnv \\
           -i 100000 -j 100000 -w 100000 \\
-          -o ${meta.sample_name}.cnvs.bcf \\
+          -o calls/${meta.sample_name}.cnvs.bcf \\
           -g ${reference_fasta} \\
           -m ${map_file} \\
           -l ${sv_calls} \\

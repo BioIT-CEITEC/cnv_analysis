@@ -1,17 +1,18 @@
 process CONTROL_FREEC {
     tag "${meta.sample_name}"
-    publishDir "structural_varcalls/${meta.sample_name}/control_freec", mode: 'copy'
+    publishDir "structural_varcalls/", mode: 'copy'
     conda "${moduleDir}/env.yaml"
 
     input:
     tuple val(meta), path(bam), path(bam_bai)
+    path reference_fasta
     path reference_index
     path snps_bed
     path(binned_bed)
     path(gc_profile)
 
     output:
-    tuple val(meta), path("control_freec/*.CNV_varcalls.tsv"),  path("control_freec/config.txt"), emit: var_call
+    tuple val(meta), path("control_freec/*.CNV_varcalls.tsv"),  path("control_freec/config.txt"), path("control_freec/*_ratio.txt"), emit: var_call
 
     script:
 

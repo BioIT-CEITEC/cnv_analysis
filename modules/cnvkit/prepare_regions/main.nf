@@ -1,7 +1,5 @@
 process PREPARE_REGIONS_CNVKIT {
 
-    publishDir "structural_varcalls/all_samples/cnvkit", mode: 'copy'
-
     conda "${moduleDir}/../env.yaml"
 
     input:

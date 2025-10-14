@@ -10,7 +10,7 @@ process SNP_AF_CALC {
     path reference_snps
 
     output:
-    tuple val(meta), path("${meta.donor}_N.snpAF.tsv"), path("${meta.donor}_T.snpAF.tsv", optional: true), emit: snpAF
+    tuple val(meta), path("${meta.sample_name}.snpAF.tsv"), emit: snpAF
 
     script:
 

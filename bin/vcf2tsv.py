@@ -1,14 +1,15 @@
 #!/usr/bin/env python3
-
-import sys
-import csv
-import gzip
-import os
+import sys, csv, gzip, os, collections
 
 def parse_info(info_field):
-    """Parse INFO field into a dictionary"""
     info_dict = {}
+    # proteger si el INFO viene vacío o con espacios
+    if not info_field:
+        return info_dict
     for entry in info_field.split(';'):
+        entry = entry.strip()
+        if not entry:
+            continue
         if '=' in entry:
             key, value = entry.split('=', 1)
             info_dict[key] = value
@@ -16,22 +17,47 @@ def parse_info(info_field):
             info_dict[entry] = True
     return info_dict
 
-def parse_vcf(vcf_path, tsv_path, bed_path=None):
+def parse_vcf(vcf_path, tsv_path, bed_path=None, debug=True):
     info_keys = set()
     records = []
     bed_records = []
+    chrom_counter = collections.Counter()
 
-    with gzip.open(vcf_path, 'rt') if vcf_path.endswith('.gz') else open(vcf_path) as vcf:
-        for line in vcf:
-            if line.startswith('#'):
+    # abrir en modo texto siempre
+    opener = gzip.open if vcf_path.endswith('.gz') else open
+    with opener(vcf_path, 'rt', newline='') as vcf:
+        for raw in vcf:
+            # normalizar espacios y finales de línea (CRLF, etc.)
+            line = raw.strip()
+            if not line:
                 continue
-            fields = line.strip().split('\t')
-            info_data = parse_info(fields[7])
+            # saltar headers aunque tengan espacios antes
+            if line.lstrip().startswith('#'):
+                continue
+
+            # usar split por tab pero si no hay, caer a split por espacios
+            fields = line.split('\t')
+            if len(fields) < 8:
+                fields = line.split()  # separador genérico (espacios/tabs)
+
+            if len(fields) < 8:
+                # línea corrupta; la ignoramos
+                if debug:
+                    sys.stderr.write(f"[WARN] línea con <8 campos: {line[:80]}...\n")
+                continue
+
+            chrom = fields[0].strip()          # puede ser '1', '2', 'GL000...' etc.
+            pos   = fields[1].strip()
+            info  = fields[7].strip()
+
+            chrom_counter[chrom] += 1
+
+            info_data = parse_info(info)
             info_keys.update(info_data.keys())
 
             record = {
-                'CHROM': fields[0],
-                'POS': fields[1],
+                'CHROM': chrom,
+                'POS': pos,
                 'ID': fields[2],
                 'REF': fields[3],
                 'ALT': fields[4],
@@ -41,54 +67,43 @@ def parse_vcf(vcf_path, tsv_path, bed_path=None):
             }
             records.append(record)
 
-            # Prepare BED fields (optional)
             if bed_path:
-                chrom = fields[0]
-                start = int(fields[1]) #- 1  # BED is 0-based
-                end = int(info_data.get('END', fields[1]))  # fallback to POS if no END
+                # BED es 0-based, end exclusivo; si no hay END, usamos POS como fin
+                try:
+                    start0 = max(0, int(pos) - 1)
+                except ValueError:
+                    start0 = 0
+                try:
+                    end = int(info_data.get('END', pos))
+                except ValueError:
+                    end = start0 + 1
                 svtype = info_data.get('SVTYPE', 'NA')
-                bed_records.append((chrom, start, end, svtype))
+                bed_records.append((chrom, start0, end, svtype))
 
-    # Write TSV
-    all_columns = ['CHROM', 'POS', 'ID', 'REF', 'ALT', 'QUAL', 'FILTER'] + sorted(info_keys)
+    # escribir TSV
+    all_columns = ['CHROM','POS','ID','REF','ALT','QUAL','FILTER'] + sorted(info_keys)
     with open(tsv_path, 'w', newline='') as out:
-        writer = csv.DictWriter(out, fieldnames=all_columns, delimiter='\t')
+        writer = csv.DictWriter(out, fieldnames=all_columns, delimiter='\t', extrasaction='ignore')
         writer.writeheader()
-        for record in records:
-            writer.writerow(record)
+        for rec in records:
+            # asegurar que todas las claves existan (aunque sea vacío)
+            for k in all_columns:
+                rec.setdefault(k, '')
+            writer.writerow(rec)
 
-    # Write BED (optional)
+    # escribir BED
     if bed_path:
         with open(bed_path, 'w') as bed:
-            for chrom, start, end, svtype in bed_records:
-                bed.write(f"{chrom}\t{start}\t{end}\t{svtype}\n")
+            for chrom, start0, end, svtype in bed_records:
+                bed.write(f"{chrom}\t{start0}\t{end}\t{svtype}\n")
 
-# if __name__ == "__main__":
-#     if 'get_ipython' in globals():
-#         # Debug/test in Spyder
-#         input_vcf = "/media/rj/SSD_500GB/CNV_OVARIA/PLAZMY/variant_calls/3418-23_plazma/cnvkit/CNV_calls.vcf"
-#         output_tsv = "/media/rj/SSD_500GB/CNV_OVARIA/PLAZMY/variant_calls/3418-23_plazma/cnvkit/CNV_calls.test.tsv"
-#         output_bed = "/media/rj/SSD_500GB/CNV_OVARIA/PLAZMY/variant_calls/3418-23_plazma/cnvkit/CNV_calls.test.bed"
-#         parse_vcf(input_vcf, output_tsv, output_bed)
-#     else:
-#         if len(sys.argv) < 3:
-#             print(f"Usage: {sys.argv[0]} input.vcf[.gz] output.tsv [output.bed]", file=sys.stderr)
-#             sys.exit(1)
+    if debug:
+        sys.stderr.write("[INFO] Cromosomas detectados y conteos:\n")
+        for chrom, cnt in chrom_counter.most_common():
+            sys.stderr.write(f"  {chrom}: {cnt}\n")
 
-#         input_vcf = sys.argv[1]
-#         output_tsv = sys.argv[2]
-#         output_bed = sys.argv[3] if len(sys.argv) > 3 else None
-
-#         parse_vcf(input_vcf, output_tsv, output_bed)
-
-        
 if __name__ == "__main__":
-        if len(sys.argv) < 3:
-            print(f"Usage: {sys.argv[0]} input.vcf[.gz] output.tsv [output.bed]", file=sys.stderr)
-            sys.exit(1)
-
-        input_vcf = sys.argv[1]
-        output_tsv = sys.argv[2]
-        output_bed = sys.argv[3] if len(sys.argv) > 3 else None
-
-        parse_vcf(input_vcf, output_tsv, output_bed)
+    if len(sys.argv) < 3:
+        print(f"Usage: {sys.argv[0]} input.vcf[.gz] output.tsv [output.bed]", file=sys.stderr)
+        sys.exit(1)
+    parse_vcf(sys.argv[1], sys.argv[2], sys.argv[3] if len(sys.argv)>3 else None)
