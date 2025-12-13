@@ -699,4 +699,3 @@ run_all <- function(args) {
 #   snp_tab <- rbind(snp_tab,cohort_snp_tab)
 # }
 
-

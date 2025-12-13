@@ -217,6 +217,7 @@ load_and_prefilter_sample_data <- function(sample_tab,
     print(head(cov_tab))
     print(head(GC_bin_content_tab))
     cov_tab <- merge.data.table(cov_tab,GC_bin_content_tab,by = c("chr","start"))
+    print(head(cov_tab))
     cov_tab[,c("intercept","a") := as.list(lm(cov ~ gc,.SD)$coefficients),by = .(sample)]
     print(cov_tab)
     cov_tab[,cov_norm := cov / (a  * gc + intercept) * mean(cov)]

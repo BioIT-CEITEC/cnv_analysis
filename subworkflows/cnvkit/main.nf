@@ -43,9 +43,7 @@ workflow CNVKIT_ANALYSIS {
         ch_prepared_regions
     )
 
-    def hasNormals = params.panel_of_normals ?: false
-
-    if (!hasNormals) {
+    if (!params.normal_tumor) {
         ch_input_bams
             .count()
             .map { sample_count -> sample_count > 4 }
@@ -56,24 +54,22 @@ workflow CNVKIT_ANALYSIS {
 
     ch_coverage = GET_COVERAGE_CNVKIT.out.coverage
 
+    // Collect all sample coverage files (target and antitarget from each sample)
+    // Output is: tuple val(meta), path(target_cov), path(antitarget_cov)
+    ch_sample_coverage_files = ch_coverage
+        .map { meta, target_cov, antitarget_cov -> 
+            [target_cov, antitarget_cov]  // Extract both coverage files
+        }
+        .collect()
+        .map { pairs -> pairs.flatten() }  // Flatten after collecting to avoid duplicates
 
-    // Map tumor coverage files
-    ch_normal_coverage = ch_coverage.map { tuple -> 
-        [tuple[1], tuple[2]] // Extract tumor target and antitarget files
-    }
-
-    // Map normal coverage files
-    ch_tumor_coverage = ch_coverage.map { tuple -> 
-        [tuple[3], tuple[4]] // Extract normal target and antitarget files
-    }
-
-    // Flatten and collect tumor and normal coverage files into separate lists
-    ch_tumor_coverage_files = ch_tumor_coverage.flatten().collect()
-    ch_normal_coverage_files = ch_normal_coverage.flatten().collect()
+    // For tumor-only mode, pass empty list for normal coverage
+    // For tumor-normal mode, the process will use the appropriate files
+    ch_normal_coverage_files = Channel.value([])  // Empty list, not empty channel
 
     REFERENCE_CNVKIT (
         ch_reference_fasta,
-        ch_tumor_coverage_files,
+        ch_sample_coverage_files,
         ch_normal_coverage_files,
         ch_prepared_regions,
         sample_number

@@ -29,31 +29,22 @@ workflow JABCONTOOL_ANALYSIS {
         ch_reference_fasta_fai,
         ch_organism_snps
     )
-    COVERAGE_CALC.out.region_coverage
-    .join( SNP_AF_CALC.out.snpAF )            // single synchronisation
-    .multiMap { meta, normal_cov, normal_snp ->
-
-        // one key/value pair per output channel
- 
-        normal_cov  : normal_cov
-        normal_snps : normal_snp
-    }
-    .set { ch_all }  
-
-
-def normal_cov_collected = ch_all.normal_cov.toList()
-def normal_snps_collected = ch_all.normal_snps.toList()
-
-def combined_channel = normal_cov_collected
-    .concat(normal_snps_collected)
-    .concat(normal_snps_collected)
-    .toList()
-    .map { normal_covs, normal_snps ->
-        return [normal_covs, normal_snps]
-    }
+    // Collect all coverage and SNP files and create a proper tuple structure
+    ch_combined = COVERAGE_CALC.out.region_coverage
+        .map { meta, cov -> cov }
+        .collect()
+        .map { cov_files -> [cov_files] }  // Wrap in list to preserve structure
+        .concat(
+            SNP_AF_CALC.out.snpAF
+                .map { meta, snp -> snp }
+                .collect()
+                .map { snp_files -> [snp_files] }  // Wrap in list to preserve structure
+        )
+        .collect()
+        .map { lists -> tuple(lists[0], lists[1]) }  // Create tuple from the two lists
 
     JABCONTOOL_CALL (
-        combined_channel,
+        ch_combined,
         ch_region_bed,
         ch_gc_profile,
         ch_organism_cytoband,
