@@ -58,6 +58,11 @@
         "label": "Provide control samples (panel of normals)",
         "type": "bool",
         "default": false
+      },
+      "tumor_normal": {
+        "label": "Samples are tumor-normal pairs",
+        "type": "bool",
+        "default": false
       }
     },
     "detailed": {
@@ -89,17 +94,17 @@
       "jabCoNtool_predict_TL": {
         "label": "Predict tumor DNA fraction in somatic samples.",
         "type": "bool",
-        "default": true
+        "default": false
       },
       "jabCoNtool_normalize_to_GC": {
         "label": "Normalize read count to GC content for WGS.",
         "type": "bool",
-        "default": true
+        "default": false
       },
       "jabCoNtool_remove_centromeres": {
         "label": "Remove centromere regions in WGS.",
         "type": "bool",
-        "default": true
+        "default": false
       },
       "max_CNV_occurance_in_cohort": {
         "label": "Maximal occurance of CNV in cohort for it not to be filtered. As ratio of cohort size in percent.",
@@ -118,16 +123,6 @@
       },
       "purple_diploid_regions": {
         "label": "Use purple diploid regions for variant calling.",
-        "type": "bool",
-        "default": true
-      },
-      "use_manta": {
-        "label": "Use Manta for variant calling.",
-        "type": "bool",
-        "default": true
-      },
-      "use_gridss": {
-        "label": "Use GRIDSS for variant calling.",
         "type": "bool",
         "default": true
       },

@@ -15,7 +15,7 @@ process GRIPSS_CALL {
 
     def prefix = "${meta.id}"
 
-        if (!params.normal_tumor) {
+        if (!params.tumor_normal) {
         """
         java -jar $params.tool_dir/cnv_tools/gripss.jar \
             -sample ${prefix}_T \

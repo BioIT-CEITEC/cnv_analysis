@@ -14,13 +14,13 @@ process AMBER_BAF_CALCULATION {
 
     script:
 
-    def normal_arg = params.normal_tumor ? "-reference \"${meta.id}_N\"" : ""
+    def normal_arg = params.tumor_normal ? "-reference \"${meta.id}_N\"" : ""
 
-    def normal_bam = params.normal_tumor ? "-reference_bam \"${meta.id}_N.bam\"" : ""
+    def normal_bam = params.tumor_normal ? "-reference_bam \"${meta.id}_N.bam\"" : ""
 
     def regions_of_interest = (params.lib_ROI && params.lib_ROI != "wgs") ? "-target_regions_bed ${ROI_bed}" : ""
 
-        if (!params.normal_tumor) {
+        if (!params.tumor_normal) {
         """
         [ ! -f  ${prefix}.bam ] && ln -s $bams ${prefix}_T.bam
         java -jar $params.tool_dir/cnv_tools/amber.jar com.hartwig.hmftools.amber.AmberApplication \

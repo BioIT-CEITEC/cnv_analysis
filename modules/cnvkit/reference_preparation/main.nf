@@ -14,7 +14,7 @@ process REFERENCE_CNVKIT {
 
     script:
 
-    def hasNormals = params.normal_tumor ?: false
+    def hasNormals = params.tumor_normal ?: false
     def coverage_files = hasNormals ? normal_coverage : sample_coverage
 
     if (hasNormals || sample_number) {

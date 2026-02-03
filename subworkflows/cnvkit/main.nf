@@ -43,7 +43,7 @@ workflow CNVKIT_ANALYSIS {
         ch_prepared_regions
     )
 
-    if (!params.normal_tumor) {
+    if (!params.tumor_normal) {
         ch_input_bams
             .count()
             .map { sample_count -> sample_count > 4 }

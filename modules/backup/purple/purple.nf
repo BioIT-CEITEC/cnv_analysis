@@ -20,7 +20,7 @@ process PURPLE_CALL {
     def amber_folder = amber[0].getParent()
     def cobalt_folder = cobalt[0].getParent()
     
-        if (!params.normal_tumor) {
+        if (!params.tumor_normal) {
         """
         java -jar $params.tool_dir/cnv_tools/purple.jar \
             -tumor ${prefix}_T  \

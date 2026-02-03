@@ -93,14 +93,14 @@ workflow PANEL_WES {
     ch_cohort_data
     )
 
-    GATK_ANALYSIS(
-    ch_samples,
-    ch_organism_fasta,
-    ch_organism_fasta_fai,
-    ch_organism_dna_panel,
-    ch_organism_dict,
-    ch_organism_ploidy_priors
-    )
+    //GATK_ANALYSIS(
+    //ch_samples,
+    //ch_organism_fasta,
+    //ch_organism_fasta_fai,
+    //ch_organism_dna_panel,
+    //ch_organism_dict,
+    //ch_organism_ploidy_priors
+    //)
  
     ch_all_bam_control_files = ch_controls
         .map { meta, bam, bai -> bam }

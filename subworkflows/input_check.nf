@@ -23,7 +23,7 @@ def process_sample_names(List input_data) {
             def tumor = entries.find { it.donor == 'tumor' }?.sample_name
             def samples = []
 
-            if (params.normal_tumor) {
+            if (params.tumor_normal) {
                 if (normal && tumor) {
                     samples = [[id:meta.id], [file("mapped/" + normal), file("mapped/" + tumor)]]
                 } else {

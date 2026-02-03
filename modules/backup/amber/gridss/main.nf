@@ -15,7 +15,7 @@ process GRIDSS_CALL {
 
     def prefix = "${meta.id}"
 
-        if (!params.normal_tumor) {
+        if (!params.tumor_normal) {
         """
         [ ! -f  ${prefix}.bam ] && ln -s $bams ${prefix}_T.bam
         gridss --jvmheap 30g \

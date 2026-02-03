@@ -14,7 +14,7 @@ process COBALT_READ_DEPTH {
 
     def prefix = "${meta.id}"
     
-        if (!params.normal_tumor) {
+        if (!params.tumor_normal) {
         """
         [ ! -f  ${prefix}.bam ] && ln -s $bams ${prefix}_T.bam
         java -jar -Xmx8G $params.tool_dir/cnv_tools/cobalt.jar \
