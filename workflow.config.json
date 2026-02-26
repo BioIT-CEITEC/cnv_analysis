@@ -54,13 +54,13 @@
           "germline": "Germline"
         }
       },
-      "panel_of_normals": {
-        "label": "Provide control samples (panel of normals)",
+      "tumor_normal": {
+        "label": "Samples are tumor-normal pairs",
         "type": "bool",
         "default": false
       },
-      "tumor_normal": {
-        "label": "Samples are tumor-normal pairs",
+      "panel_of_normals": {
+        "label": "Provide control samples (panel of normals)",
         "type": "bool",
         "default": false
       }
