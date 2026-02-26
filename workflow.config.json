@@ -71,7 +71,7 @@
         "type": "int",
         "default": 50000
       },
-      "use_gatk_cnv": {
+      "use_gatk": {
         "label": "Use GATK_cnv for variant calling.",
         "type": "bool",
         "default": true
@@ -129,6 +129,17 @@
       "use_delly": {
         "label": "Use Delly2 for variant calling.",
         "type": "bool",
+        "default": true
+      },
+      "use_exomedepth": {
+        "label": "Use ExomeDepth for variant calling.",
+        "type": "bool",
+        "default": true
+      },
+      "use_panelcnmops": {
+        "label": "Use PanelCNMOPS for variant calling.",
+        "type": "bool",
+        "info": "Only used for panel or whole-exome data.",
         "default": true
       },
       "use_cohort_data": {
