@@ -111,9 +111,15 @@ for root, _, files in os.walk(INPUT_DIR):
 
         if len(path_parts) > 1:
             folder_prefix = "_".join(path_parts[:-1])
-            out_filename = f"{folder_prefix}_{path_parts[-1]}"
+            base_name = f"{folder_prefix}_{path_parts[-1]}"
         else:
-            out_filename = path_parts[0]
+            base_name = path_parts[0]
+
+        # Split filename and extension
+        name, ext = os.path.splitext(base_name)
+
+        # Add _normalized before extension
+        out_filename = f"{name}_normalized{ext}"
 
         out_path = os.path.join(OUTPUT_DIR, out_filename)
 
