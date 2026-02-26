@@ -71,14 +71,20 @@
         "type": "int",
         "default": 50000
       },
-      "use_gatk_cnv": {
+      "use_gatk": {
         "label": "Use GATK_cnv for variant calling.",
         "type": "bool",
         "default": true
       },
-      "use_cnvkit": {
-        "label": "Use CNVkit for variant calling.",
+      "use_cnmops": {
+        "label": "Use CNMOPS for variant calling.",
         "type": "bool",
+        "default": true
+      },
+      "use_panelcnmops": {
+        "label": "Use panel CNMOPS for variant calling.",
+        "type": "bool",
+        "info": "Used only if the analysis is WES or panel",
         "default": true
       },
       "use_jabCoNtool": {
@@ -114,6 +120,7 @@
       "use_control_freec": {
         "label": "Use Control-FREEC for variant calling.",
         "type": "bool",
+        "info": "Used only if analysis is WGS",
         "default": true
       },
       "AF_threshold": {
@@ -129,7 +136,13 @@
       "use_delly": {
         "label": "Use Delly2 for variant calling.",
         "type": "bool",
-        "default": true
+        "info": "Used only if analysis is WGS",
+        "default": false
+      },
+      "use_cnvkit": {
+        "label": "Use CNVkit for variant calling.",
+        "type": "bool",
+        "default": false
       },
       "use_cohort_data": {
         "label": "Load coverage data from previous experiments for normal estimation. Need file: cohort_data/cohort_cnv_info.tar.gz",

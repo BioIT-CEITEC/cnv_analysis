@@ -12,6 +12,7 @@ include { DELLY_ANALYSIS } from "../subworkflows/delly/main.nf"
 include { CNMOPS_ANALYSIS } from "../subworkflows/cnMOPS/main.nf"
 include { PANELCNMOPS_ANALYSIS } from "../subworkflows/panelcnMOPS/main.nf"
 include { EXOMEDEPTH_ANALYSIS } from "../subworkflows/ExomeDepth/main.nf"
+include { VARIANT_NORMALIZATION } from "../modules/variantNormalization/main.nf"
 
 /*
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -42,7 +43,6 @@ ch_organism_excluded_sites = params.organism_excluded_sites ? Channel.fromPath(p
 ch_organism_delly_map = params.organism_delly_map ? Channel.fromPath(params.organism_delly_map).collect() : Channel.empty()
 ch_organism_gtf_tsv = params.organism_gtf_tsv ? Channel.fromPath(params.organism_gtf_tsv).collect() : Channel.empty()
 
-
 def panelMode = params.panel_of_normals ?: false
 
 def inputData = Utils.parseInputVC(params.new_samples, panelMode, projectDir, log)
@@ -72,35 +72,41 @@ workflow PANEL_WES {
     ch_binned_genome = BED_PREPARATION.out.binned_genome
     ch_gc_profile = BED_PREPARATION.out.gc_profile
 
-    CNVKIT_ANALYSIS (
-    ch_samples,
-    ch_organism_dna_panel,
-    ch_organism_fasta,
-    ch_organism_fasta_fai,
-    ch_organism_gtf_tsv
-    )
+    if (params.use_cnvkit) {
+        CNVKIT_ANALYSIS (
+        ch_samples,
+        ch_organism_dna_panel,
+        ch_organism_fasta,
+        ch_organism_fasta_fai,
+        ch_organism_gtf_tsv
+        )
 
-    ch_vcfs = CNVKIT_ANALYSIS.out.ch_vardict_vcfs
+        ch_vcfs = CNVKIT_ANALYSIS.out.ch_vardict_vcfs
+    }
 
-    JABCONTOOL_ANALYSIS (
-    ch_samples,
-    ch_organism_fasta,
-    ch_organism_fasta_fai,
-    ch_organism_snps,
-    ch_organism_dna_panel,
-    ch_organism_cytoband,
-    ch_gc_profile,
-    ch_cohort_data
-    )
+    if (params.use_jabcontool) {
+        JABCONTOOL_ANALYSIS (
+        ch_samples,
+        ch_organism_fasta,
+        ch_organism_fasta_fai,
+        ch_organism_snps,
+        ch_organism_dna_panel,
+        ch_organism_cytoband,
+        ch_gc_profile,
+        ch_cohort_data
+        )
+    }
 
-    GATK_ANALYSIS(
-    ch_samples,
-    ch_organism_fasta,
-    ch_organism_fasta_fai,
-    ch_organism_dna_panel,
-    ch_organism_dict,
-    ch_organism_ploidy_priors
-    )
+    if (params.use_gatk) {
+        GATK_ANALYSIS(
+        ch_samples,
+        ch_organism_fasta,
+        ch_organism_fasta_fai,
+        ch_organism_dna_panel,
+        ch_organism_dict,
+        ch_organism_ploidy_priors
+        )
+    }
  
     ch_all_bam_control_files = ch_controls
         .map { meta, bam, bai -> bam }
@@ -115,22 +121,28 @@ workflow PANEL_WES {
         .collect()
         .map { lists -> tuple(lists[0], lists[1]) }
 
-  PANELCNMOPS_ANALYSIS (
-    ch_samples,
-    ch_all_bam_control_files,
-    ch_organism_dna_panel
-    )
+  if (params.use_panelcnmops) {
+      PANELCNMOPS_ANALYSIS (
+      ch_samples,
+      ch_all_bam_control_files,
+      ch_organism_dna_panel
+      )
+  }
 
-  CNMOPS_ANALYSIS (
-    ch_samples,
-    ch_all_bam_control_files,
-    ch_organism_dna_panel
-    )
+  if (params.use_cnmops) {
+      CNMOPS_ANALYSIS (
+      ch_samples,
+      ch_all_bam_control_files,
+      ch_organism_dna_panel
+      )
+  }
 
-  EXOMEDEPTH_ANALYSIS (
-    ch_samples,
-    ch_all_bam_control_files,
-    ch_organism_dna_panel,
-    ch_organism_fasta
-    )
+  if (params.use_exomedepth) {
+      EXOMEDEPTH_ANALYSIS (
+      ch_samples,
+      ch_all_bam_control_files,
+      ch_organism_dna_panel,
+      ch_organism_fasta
+      )
+  }
 }
