@@ -81,7 +81,7 @@
         "type": "bool",
         "default": true
       },
-      "use_jabCoNtool": {
+      "use_jabcontool": {
         "label": "Use jabCoNtool for variant calling.",
         "type": "bool",
         "default": true
@@ -134,6 +134,12 @@
       "use_exomedepth": {
         "label": "Use ExomeDepth for variant calling.",
         "type": "bool",
+        "default": true
+      },
+      "use_cnmops": {
+        "label": "Use CNMOPS for variant calling.",
+        "type": "bool",
+        "info": "Only used for panel or whole-exome data.",
         "default": true
       },
       "use_panelcnmops": {
