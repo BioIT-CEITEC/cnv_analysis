@@ -50,4 +50,7 @@ workflow JABCONTOOL_ANALYSIS {
         ch_organism_cytoband,
         ch_organism_snps
         )
+
+    emit:
+    ch_jabcontool_varcalls = JABCONTOOL_CALL.out.final_CNV_probs
 }
