@@ -185,6 +185,11 @@ workflow PANEL_WES {
         )
     }
 
+    ch_all_varcalls = ch_all_varcalls
+        .flatten()
+        .filter { file -> file.toString() ==~ /(?i).*\.(tsv|cns)$/ }
+        .collect()
+
     VARIANT_NORMALIZATION(
         ch_all_varcalls
     )
