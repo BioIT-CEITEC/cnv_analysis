@@ -22,4 +22,7 @@ ch_cohort_data = PREPARE_COHORT_CNMOPS.out.cnmops_cohort
         ch_cohort_data
     )
 
+    emit:
+    ch_cnmops_varcalls = CNV_CALL_CNMOPS.out.cnmops_cnvcalls
+
 }
