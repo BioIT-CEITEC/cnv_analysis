@@ -14,10 +14,15 @@ workflow PANELCNMOPS_ANALYSIS {
         ch_cohort_bams,
         ch_regions_of_interest
     )
+
     ch_cohort_data = PREPARE_COHORT_PANELCNMOPS.out.panelcnmops_cohort
+
     CNV_CALL_PANELCNMOPS (
         ch_input_bams,
         ch_cohort_data
     )
+
+    emit:
+    ch_panelcnmops_varcalls = CNV_CALL_PANELCNMOPS.out.panelcnMOPS_cnvcalls
 
 }
