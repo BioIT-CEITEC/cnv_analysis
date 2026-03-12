@@ -24,4 +24,7 @@ workflow EXOMEDEPTH_ANALYSIS {
         ch_reference_fasta
     )
 
+    emit:
+    ch_exomeDepth_varcalls = CNV_CALL_EXOMEDEPTH.out.exomedepth_cnvcalls
+
 }
