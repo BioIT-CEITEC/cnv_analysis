@@ -145,4 +145,47 @@ workflow PANEL_WES {
       ch_organism_fasta
       )
   }
+
+    // Collect all variant caller results into a single channel (no meta)
+    ch_all_varcalls = Channel.empty()
+
+    if (params.use_cnvkit) {
+        ch_all_varcalls = ch_all_varcalls.mix(
+            CNVKIT_ANALYSIS.out.ch_vardict_vcfs.map { meta, vcf -> vcf }
+        )
+    }
+
+    if (params.use_jabcontool) {
+        ch_all_varcalls = ch_all_varcalls.mix(
+            JABCONTOOL_ANALYSIS.out.ch_jabcontool_varcalls
+        )
+    }
+
+    if (params.use_gatk) {
+        ch_all_varcalls = ch_all_varcalls.mix(
+            GATK_ANALYSIS.out.ch_gatk_segment.map { meta, f1, f2, f3, f4, f5 -> [f1, f2, f3, f4, f5] }
+        )
+    }
+
+    if (params.use_panelcnmops) {
+        ch_all_varcalls = ch_all_varcalls.mix(
+            PANELCNMOPS_ANALYSIS.out.ch_panelcnmops_varcalls
+        )
+    }
+
+    if (params.use_cnmops) {
+        ch_all_varcalls = ch_all_varcalls.mix(
+            CNMOPS_ANALYSIS.out.ch_cnmops_varcalls
+        )
+    }
+
+    if (params.use_exomedepth) {
+        ch_all_varcalls = ch_all_varcalls.mix(
+            EXOMEDEPTH_ANALYSIS.out.ch_exomeDepth_varcalls
+        )
+    }
+
+    VARIANT_NORMALIZATION(
+        ch_all_varcalls
+    )
 }
