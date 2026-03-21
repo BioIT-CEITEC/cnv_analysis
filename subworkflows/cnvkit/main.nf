@@ -96,6 +96,8 @@ workflow CNVKIT_ANALYSIS {
       ch_cnkvkit_segments
     )
 
+        ch_cnvkit_varcall = CNVKIT_CALL.out.cnvkit_calls
+
     CNVKIT_CLASSIFY_AND_ANNOTATE(
         ch_cnvkit_varcall,
         ch_reference_gtf_tsv
