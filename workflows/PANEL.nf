@@ -54,6 +54,7 @@ def controls = inputData.controls
 workflow PANEL_WES {
 
    ch_cohort_data = Channel.empty()
+   ch_all_varcalls = Channel.empty()
 
   // Create channels of tuples (meta, bam, bai) where bam/bai are wrapped with file()
   ch_samples = Channel.fromList(samples)
@@ -81,7 +82,9 @@ workflow PANEL_WES {
         ch_organism_gtf_tsv
         )
 
-        ch_vcfs = CNVKIT_ANALYSIS.out.ch_vardict_vcfs
+        ch_all_varcalls = ch_all_varcalls.mix(
+            CNVKIT_ANALYSIS.out.ch_vardict_vcfs.map { meta, vcf -> vcf }
+        )
     }
 
     if (params.use_jabcontool) {
@@ -95,6 +98,10 @@ workflow PANEL_WES {
         ch_gc_profile,
         ch_cohort_data
         )
+
+        ch_all_varcalls = ch_all_varcalls.mix(
+            JABCONTOOL_ANALYSIS.out.ch_jabcontool_varcalls
+        )
     }
 
     if (params.use_gatk) {
@@ -106,8 +113,12 @@ workflow PANEL_WES {
         ch_organism_dict,
         ch_organism_ploidy_priors
         )
+
+        ch_all_varcalls = ch_all_varcalls.mix(
+            GATK_ANALYSIS.out.ch_gatk_segment.map { meta, f1, f2, f3, f4, f5 -> [f1, f2, f3, f4, f5] }
+        )
     }
- 
+
     ch_all_bam_control_files = ch_controls
         .map { meta, bam, bai -> bam }
         .collect()
@@ -122,68 +133,42 @@ workflow PANEL_WES {
         .map { lists -> tuple(lists[0], lists[1]) }
 
   if (params.use_panelcnmops) {
-      PANELCNMOPS_ANALYSIS (
-      ch_samples,
-      ch_all_bam_control_files,
-      ch_organism_dna_panel
-      )
-  }
-
-  if (params.use_cnmops) {
-      CNMOPS_ANALYSIS (
-      ch_samples,
-      ch_all_bam_control_files,
-      ch_organism_dna_panel
-      )
-  }
-
-  if (params.use_exomedepth) {
-      EXOMEDEPTH_ANALYSIS (
-      ch_samples,
-      ch_all_bam_control_files,
-      ch_organism_dna_panel,
-      ch_organism_fasta
-      )
-  }
-
-    // Collect all variant caller results into a single channel (no meta)
-    ch_all_varcalls = Channel.empty()
-
-    if (params.use_cnvkit) {
-        ch_all_varcalls = ch_all_varcalls.mix(
-            CNVKIT_ANALYSIS.out.ch_vardict_vcfs.map { meta, vcf -> vcf }
+        PANELCNMOPS_ANALYSIS (
+        ch_samples,
+        ch_all_bam_control_files,
+        ch_organism_dna_panel
         )
-    }
 
-    if (params.use_jabcontool) {
-        ch_all_varcalls = ch_all_varcalls.mix(
-            JABCONTOOL_ANALYSIS.out.ch_jabcontool_varcalls
-        )
-    }
-
-    if (params.use_gatk) {
-        ch_all_varcalls = ch_all_varcalls.mix(
-            GATK_ANALYSIS.out.ch_gatk_segment.map { meta, f1, f2, f3, f4, f5 -> [f1, f2, f3, f4, f5] }
-        )
-    }
-
-    if (params.use_panelcnmops) {
         ch_all_varcalls = ch_all_varcalls.mix(
             PANELCNMOPS_ANALYSIS.out.ch_panelcnmops_varcalls
         )
-    }
+  }
 
-    if (params.use_cnmops) {
+  if (params.use_cnmops) {
+        CNMOPS_ANALYSIS (
+        ch_samples,
+        ch_all_bam_control_files,
+        ch_organism_dna_panel
+        )
+
         ch_all_varcalls = ch_all_varcalls.mix(
             CNMOPS_ANALYSIS.out.ch_cnmops_varcalls
         )
-    }
 
-    if (params.use_exomedepth) {
+  }
+
+  if (params.use_exomedepth) {
+        EXOMEDEPTH_ANALYSIS (
+        ch_samples,
+        ch_all_bam_control_files,
+        ch_organism_dna_panel,
+        ch_organism_fasta
+        )
+
         ch_all_varcalls = ch_all_varcalls.mix(
             EXOMEDEPTH_ANALYSIS.out.ch_exomeDepth_varcalls
         )
-    }
+  }
 
     ch_all_varcalls = ch_all_varcalls
         .flatten()
