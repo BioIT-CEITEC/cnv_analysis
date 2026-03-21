@@ -10,7 +10,7 @@ process CNV_CALL_EXOMEDEPTH {
     path reference_fasta
 
     output:
-    path("cnv_calls/ExomeDepth_CNV_${meta.sample_name}.tsv"), emit: exomedepth_cnvcalls
+    tuple val(meta),path("cnv_calls/ExomeDepth_CNV_${meta.sample_name}.tsv"), emit: exomedepth_cnvcalls
 
     script:
 

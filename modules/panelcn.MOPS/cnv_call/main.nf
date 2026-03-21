@@ -9,7 +9,7 @@ process CNV_CALL_PANELCNMOPS {
     path cohort_data
 
     output:
-    path("cnv_calls/panelcnMOPS_CNV_${meta.sample_name}.tsv"), emit: panelcnMOPS_cnvcalls
+    tuple val(meta), path("cnv_calls/panelcnMOPS_CNV_${meta.sample_name}.tsv"), emit: panelcnMOPS_cnvcalls
 
     script:
 

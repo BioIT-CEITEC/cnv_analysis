@@ -47,18 +47,15 @@ def panelMode = params.panel_of_normals ?: false
 
 def inputData = Utils.parseInputVC(params.new_samples, panelMode, projectDir, log)
 
-def resolveSampleId = { meta ->
-    meta?.sample_name ?: meta?.sample_id ?: meta?.id ?: meta?.tumor_id ?: meta?.normal_id ?: meta.toString()
-}
-
 // Extract samples and controls
 def samples = inputData.samples
 def controls = inputData.controls
 
 workflow PANEL_WES {
 
-    ch_cohort_data = Channel.empty()
-    ch_all_varcalls = Channel.empty()
+   ch_cohort_data = Channel.empty()
+   ch_all_varcalls = Channel.empty()
+
 
   // Create channels of tuples (meta, bam, bai) where bam/bai are wrapped with file()
   ch_samples = Channel.fromList(samples)
@@ -84,12 +81,12 @@ workflow PANEL_WES {
         ch_organism_fasta,
         ch_organism_fasta_fai,
         ch_organism_gtf_tsv
-        )
-
+     )
         ch_all_varcalls = ch_all_varcalls.mix(
-            CNVKIT_ANALYSIS.out.ch_vardict_vcfs.map { meta, vcf -> tuple(resolveSampleId(meta), vcf) }
+            CNVKIT_ANALYSIS.out.ch_vardict_vcfs.map { meta, vcf -> tuple(meta, vcf) }
         )
     }
+
 
     if (params.use_jabcontool) {
         JABCONTOOL_ANALYSIS (
@@ -103,9 +100,6 @@ workflow PANEL_WES {
         ch_cohort_data
         )
 
-        ch_all_varcalls = ch_all_varcalls.mix(
-            JABCONTOOL_ANALYSIS.out.ch_jabcontool_varcalls.map { f -> tuple('cohort', f) }
-        )
     }
 
     if (params.use_gatk) {
@@ -119,11 +113,8 @@ workflow PANEL_WES {
         )
 
         ch_all_varcalls = ch_all_varcalls.mix(
-            GATK_ANALYSIS.out.ch_gatk_segment.map { row ->
-                def meta = row[0]
-                def files = row[1..-1]
-                tuple(resolveSampleId(meta), files)
-            }
+            GATK_ANALYSIS.out.ch_gatk_segment
+            .map { meta, f1,f2,f3,f4,f5 -> tuple(meta, f3) }
         )
     }
 
@@ -141,61 +132,52 @@ workflow PANEL_WES {
         .map { lists -> tuple(lists[0], lists[1]) }
 
   if (params.use_panelcnmops) {
-        PANELCNMOPS_ANALYSIS (
-        ch_samples,
-        ch_all_bam_control_files,
-        ch_organism_dna_panel
-        )
+      PANELCNMOPS_ANALYSIS (
+      ch_samples,
+      ch_all_bam_control_files,
+      ch_organism_dna_panel
+      )
 
-        ch_all_varcalls = ch_all_varcalls.mix(
-            PANELCNMOPS_ANALYSIS.out.ch_panelcnmops_varcalls.map { f ->
-                def m = (f.baseName =~ /panelcnMOPS_CNV_(.+)$/)
-                tuple(m ? m[0][1] : 'unknown_sample', f)
-            }
+      ch_all_varcalls = ch_all_varcalls.mix(
+          PANELCNMOPS_ANALYSIS.out.ch_panelcnmops_varcalls
         )
   }
 
   if (params.use_cnmops) {
-        CNMOPS_ANALYSIS (
-        ch_samples,
-        ch_all_bam_control_files,
-        ch_organism_dna_panel
-        )
+      CNMOPS_ANALYSIS (
+      ch_samples,
+      ch_all_bam_control_files,
+      ch_organism_dna_panel
+      )
 
-        ch_all_varcalls = ch_all_varcalls.mix(
-            CNMOPS_ANALYSIS.out.ch_cnmops_varcalls.map { f ->
-                def m = (f.baseName =~ /cnMOPS_CNV_(.+)$/)
-                tuple(m ? m[0][1] : 'unknown_sample', f)
-            }
+     ch_all_varcalls = ch_all_varcalls.mix(
+          CNMOPS_ANALYSIS.out.ch_cnmops_varcalls
         )
-
   }
 
   if (params.use_exomedepth) {
-        EXOMEDEPTH_ANALYSIS (
-        ch_samples,
-        ch_all_bam_control_files,
-        ch_organism_dna_panel,
-        ch_organism_fasta
-        )
+      EXOMEDEPTH_ANALYSIS (
+      ch_samples,
+      ch_all_bam_control_files,
+      ch_organism_dna_panel,
+      ch_organism_fasta
+      )
 
-        ch_all_varcalls = ch_all_varcalls.mix(
-            EXOMEDEPTH_ANALYSIS.out.ch_exomeDepth_varcalls.map { f ->
-                def m = (f.baseName =~ /ExomeDepth_CNV_(.+)$/)
-                tuple(m ? m[0][1] : 'unknown_sample', f)
-            }
+      ch_all_varcalls = ch_all_varcalls.mix(
+          EXOMEDEPTH_ANALYSIS.out.ch_exomeDepth_varcalls
         )
   }
 
+
     ch_all_varcalls = ch_all_varcalls
-        .map { sample_id, files ->
-            def file_list = (files instanceof Collection) ? files : [files]
-            file_list.collect { f -> tuple(sample_id, f) }
-        }
-        .flatten()
-        .filter { sample_id, f -> f.toString() ==~ /(?i).*\.(tsv|cns)$/ }
-        .groupTuple()
-        .map { sample_id, files -> tuple(sample_id, files) }
+                .map { meta, files ->
+                        def file_list = (files instanceof Collection) ? files : [files]
+                        file_list.collect { f -> tuple(meta, f) }
+                }
+                .flatten()
+                .filter { meta, file -> file.toString() ==~ /(?i).*\.(tsv|cns)$/ }
+                .groupTuple()
+                .map { meta, files -> tuple(meta, files) }
 
     VARIANT_NORMALIZATION(
         ch_all_varcalls
