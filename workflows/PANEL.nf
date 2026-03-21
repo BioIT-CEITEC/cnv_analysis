@@ -83,11 +83,21 @@ workflow PANEL_WES {
         )
 
         ch_all_varcalls = ch_all_varcalls
-        .mix(CNVKIT_ANALYSIS.out.ch_cnvkit_calls)
+        .mix(
+            CNVKIT_ANALYSIS.out.ch_cnvkit_calls
+                .map {tuple -> 
+                    def meta = tuple[0]
+                    def f6 = tuple[6]
+                    [meta, f6]
+                }
+        )
         .groupTuple()
-        .map { meta, files -> 
-            [meta, files.flatten()]
-        }
+	    .map { tuple ->
+		    def meta = tuple[0]
+		    def files = tuple[1..-1].flatten()
+		    [meta, files]
+	    }
+
     }
 
     if (params.use_jabcontool) {
@@ -144,9 +154,11 @@ workflow PANEL_WES {
         ch_all_varcalls = ch_all_varcalls
         .mix(PANELCNMOPS_ANALYSIS.out.ch_panelcnmops_varcalls)
         .groupTuple()
-        .map { meta, files -> 
-            [meta, files.flatten()]
-        }
+	    .map { tuple ->
+		    def meta = tuple[0]
+		    def files = tuple[1..-1].flatten()
+		    [meta, files]
+	    }
 
         ch_all_varcalls.view()
 
