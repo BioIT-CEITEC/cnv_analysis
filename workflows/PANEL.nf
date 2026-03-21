@@ -87,7 +87,7 @@ workflow PANEL_WES {
             CNVKIT_ANALYSIS.out.ch_cnvkit_calls
                 .map {tuple -> 
                     def meta = tuple[0]
-                    def f6 = tuple[6]
+                    def f6 = tuple[5]
                     [meta, f6]
                 }
         )
