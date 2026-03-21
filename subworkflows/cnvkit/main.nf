@@ -95,7 +95,6 @@ workflow CNVKIT_ANALYSIS {
     CNVKIT_CALL (
       ch_cnkvkit_segments
     )
-    ch_cnvkit_varcall = CNVKIT_CALL.out.cnvkit_calls
 
     CNVKIT_CLASSIFY_AND_ANNOTATE(
         ch_cnvkit_varcall,
@@ -104,4 +103,5 @@ workflow CNVKIT_ANALYSIS {
 
     emit:
     ch_vardict_vcfs = VARDICT_CALL.out.vcfs
+    ch_cnvkit_calls = CNVKIT_CALL.out.cnvkit_calls
 }

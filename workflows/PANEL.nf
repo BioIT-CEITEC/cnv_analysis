@@ -83,10 +83,9 @@ workflow PANEL_WES {
         )
 
         ch_all_varcalls = ch_all_varcalls.mix(
-        CNVKIT_ANALYSIS.out.ch_vardict_vcfs
+        CNVKIT_ANALYSIS.out.ch_cnvkit_calls
         )
 
-        ch_all_varcalls.view()
     }
 
     if (params.use_jabcontool) {
@@ -140,7 +139,11 @@ workflow PANEL_WES {
         ch_organism_dna_panel
         )
 
-        panelcnmops_varcalls = PANELCNMOPS_ANALYSIS.out.ch_panelcnmops_varcalls.view { println "PanelCNMOPS varcall: ${it}" }
+        ch_all_varcalls = ch_all_varcalls.mix(
+        PANELCNMOPS_ANALYSIS.out.ch_panelcnmops_varcalls
+        )
+
+        ch_all_varcalls.view()
 
   }
 
@@ -168,10 +171,10 @@ workflow PANEL_WES {
 
   }
 
-    ch_all_varcalls = ch_all_varcalls
-        .flatten()
-        .filter { file -> file.toString() ==~ /(?i).*\.(tsv|cns)$/ }
-        .collect()
+//    ch_all_varcalls = ch_all_varcalls
+//        .flatten()
+//        .filter { file -> file.toString() ==~ /(?i).*\.(tsv|cns)$/ }
+//        .collect()
 
     VARIANT_NORMALIZATION(
         ch_all_varcalls
