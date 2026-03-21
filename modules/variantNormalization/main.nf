@@ -1,17 +1,18 @@
 process VARIANT_NORMALIZATION {
 
-    publishDir "variantNormalization", mode: 'copy'
+    tag "${sample_id}"
+    publishDir "variantNormalization/${sample_id}", mode: 'copy'
     conda "${moduleDir}/env.yaml"
 
     input:
-    path(input_dir)
+    tuple val(sample_id), path(input_files)
 
     output:
-    path("normalized"), emit: normalized_varcalls
+    tuple val(sample_id), path("${sample_id}_normalized"), emit: normalized_varcalls
 
     script:
     """
     python ${projectDir}/bin/variant_normalization.py \
-        ./ normalized
+        ./ ${sample_id}_normalized
     """
 }

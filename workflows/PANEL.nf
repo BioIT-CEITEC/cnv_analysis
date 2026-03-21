@@ -47,14 +47,18 @@ def panelMode = params.panel_of_normals ?: false
 
 def inputData = Utils.parseInputVC(params.new_samples, panelMode, projectDir, log)
 
+def resolveSampleId = { meta ->
+    meta?.sample_name ?: meta?.sample_id ?: meta?.id ?: meta?.tumor_id ?: meta?.normal_id ?: meta.toString()
+}
+
 // Extract samples and controls
 def samples = inputData.samples
 def controls = inputData.controls
 
 workflow PANEL_WES {
 
-   ch_cohort_data = Channel.empty()
-   ch_all_varcalls = Channel.empty()
+    ch_cohort_data = Channel.empty()
+    ch_all_varcalls = Channel.empty()
 
   // Create channels of tuples (meta, bam, bai) where bam/bai are wrapped with file()
   ch_samples = Channel.fromList(samples)
@@ -83,7 +87,7 @@ workflow PANEL_WES {
         )
 
         ch_all_varcalls = ch_all_varcalls.mix(
-            CNVKIT_ANALYSIS.out.ch_vardict_vcfs.map { meta, vcf -> vcf }
+            CNVKIT_ANALYSIS.out.ch_vardict_vcfs.map { meta, vcf -> tuple(resolveSampleId(meta), vcf) }
         )
     }
 
@@ -100,7 +104,7 @@ workflow PANEL_WES {
         )
 
         ch_all_varcalls = ch_all_varcalls.mix(
-            JABCONTOOL_ANALYSIS.out.ch_jabcontool_varcalls
+            JABCONTOOL_ANALYSIS.out.ch_jabcontool_varcalls.map { f -> tuple('cohort', f) }
         )
     }
 
@@ -115,7 +119,11 @@ workflow PANEL_WES {
         )
 
         ch_all_varcalls = ch_all_varcalls.mix(
-            GATK_ANALYSIS.out.ch_gatk_segment.map { meta, f1, f2, f3, f4, f5 -> [f1, f2, f3, f4, f5] }
+            GATK_ANALYSIS.out.ch_gatk_segment.map { row ->
+                def meta = row[0]
+                def files = row[1..-1]
+                tuple(resolveSampleId(meta), files)
+            }
         )
     }
 
@@ -140,7 +148,10 @@ workflow PANEL_WES {
         )
 
         ch_all_varcalls = ch_all_varcalls.mix(
-            PANELCNMOPS_ANALYSIS.out.ch_panelcnmops_varcalls
+            PANELCNMOPS_ANALYSIS.out.ch_panelcnmops_varcalls.map { f ->
+                def m = (f.baseName =~ /panelcnMOPS_CNV_(.+)$/)
+                tuple(m ? m[0][1] : 'unknown_sample', f)
+            }
         )
   }
 
@@ -152,7 +163,10 @@ workflow PANEL_WES {
         )
 
         ch_all_varcalls = ch_all_varcalls.mix(
-            CNMOPS_ANALYSIS.out.ch_cnmops_varcalls
+            CNMOPS_ANALYSIS.out.ch_cnmops_varcalls.map { f ->
+                def m = (f.baseName =~ /cnMOPS_CNV_(.+)$/)
+                tuple(m ? m[0][1] : 'unknown_sample', f)
+            }
         )
 
   }
@@ -166,14 +180,22 @@ workflow PANEL_WES {
         )
 
         ch_all_varcalls = ch_all_varcalls.mix(
-            EXOMEDEPTH_ANALYSIS.out.ch_exomeDepth_varcalls
+            EXOMEDEPTH_ANALYSIS.out.ch_exomeDepth_varcalls.map { f ->
+                def m = (f.baseName =~ /ExomeDepth_CNV_(.+)$/)
+                tuple(m ? m[0][1] : 'unknown_sample', f)
+            }
         )
   }
 
     ch_all_varcalls = ch_all_varcalls
+        .map { sample_id, files ->
+            def file_list = (files instanceof Collection) ? files : [files]
+            file_list.collect { f -> tuple(sample_id, f) }
+        }
         .flatten()
-        .filter { file -> file.toString() ==~ /(?i).*\.(tsv|cns)$/ }
-        .collect()
+        .filter { sample_id, f -> f.toString() ==~ /(?i).*\.(tsv|cns)$/ }
+        .groupTuple()
+        .map { sample_id, files -> tuple(sample_id, files) }
 
     VARIANT_NORMALIZATION(
         ch_all_varcalls
