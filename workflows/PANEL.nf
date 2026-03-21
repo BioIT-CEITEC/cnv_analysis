@@ -82,9 +82,9 @@ workflow PANEL_WES {
         ch_organism_gtf_tsv
         )
 
-        ch_all_varcalls = ch_all_varcalls.mix(
-        CNVKIT_ANALYSIS.out.ch_cnvkit_calls
-        )
+        ch_all_varcalls = ch_all_varcalls
+        .mix(CNVKIT_ANALYSIS.out.ch_cnvkit_calls)
+        .groupTuple()
 
     }
 
@@ -139,9 +139,9 @@ workflow PANEL_WES {
         ch_organism_dna_panel
         )
 
-        ch_all_varcalls = ch_all_varcalls.mix(
-        PANELCNMOPS_ANALYSIS.out.ch_panelcnmops_varcalls
-        )
+        ch_all_varcalls = ch_all_varcalls
+        .mix(PANELCNMOPS_ANALYSIS.out.ch_panelcnmops_varcalls)
+        .groupTuple()
 
         ch_all_varcalls.view()
 
