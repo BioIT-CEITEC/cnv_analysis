@@ -82,8 +82,11 @@ workflow PANEL_WES {
         ch_organism_gtf_tsv
         )
 
-        cnvkit_varcalls = CNVKIT_ANALYSIS.out.ch_vardict_vcfs.view { println "CNVkit varcall: ${it}" }
+        ch_all_varcalls = ch_all_varcalls.mix(
+        CNVKIT_ANALYSIS.out.ch_vardict_vcfs
+        )
 
+        ch_all_varcalls.view()
     }
 
     if (params.use_jabcontool) {
