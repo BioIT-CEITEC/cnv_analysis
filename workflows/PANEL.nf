@@ -201,7 +201,7 @@ workflow PANEL_WES {
         )
 
         ch_all_varcalls = ch_all_varcalls
-        .mix(EXOMEDEPTH_ANALYSIS.out.ch_exomedepth_varcalls)
+        .mix(EXOMEDEPTH_ANALYSIS.out.ch_exomeDepth_varcalls)
         .groupTuple()
         .map { tuple ->
             def meta = tuple[0]
