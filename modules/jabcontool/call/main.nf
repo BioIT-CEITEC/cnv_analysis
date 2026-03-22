@@ -11,7 +11,7 @@ process JABCONTOOL_CALL {
 
     output:
     path("calls/final_CNV_probs_jabcontool.tsv"), emit: final_CNV_probs
-    path("calls/cohort_info_tab_jabcontool.tsv"), emit: cohort_info_tab
+    path("calls/cohort_info_tab.tsv"), emit: cohort_info_tab
 
     script:
 
@@ -39,8 +39,8 @@ process JABCONTOOL_CALL {
 
     stub:
     """
-    mkdir -p results
-    touch results/final_CNV_probs_jabcontool.tsv
-    touch results/cohort_info_tab_jabcontool.tsv
+    mkdir -p calls
+    touch calls/final_CNV_probs_jabcontool.tsv
+    touch calls/cohort_info_tab.tsv
     """
 }
