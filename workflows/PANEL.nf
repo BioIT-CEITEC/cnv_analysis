@@ -171,8 +171,14 @@ workflow PANEL_WES {
         ch_organism_dna_panel
         )
 
-        cnmops_varcalls = CNMOPS_ANALYSIS.out.ch_cnmops_varcalls.view { println "cnMOPS varcall: ${it}" }
-
+        ch_all_varcalls = ch_all_varcalls
+        .mix(CNMOPS_ANALYSIS.out.ch_cnmops_varcalls)
+        .groupTuple()
+        .map { tuple ->
+            def meta = tuple[0]
+            def files = tuple[1..-1].flatten()
+            [meta, files]
+        }
 
   }
 
@@ -184,7 +190,14 @@ workflow PANEL_WES {
         ch_organism_fasta
         )
 
-        exomeDepth_varcalls = EXOMEDEPTH_ANALYSIS.out.ch_exomeDepth_varcalls.view { println "ExomeDepth varcall: ${it}" }
+        ch_all_varcalls = ch_all_varcalls
+        .mix(EXOMEDEPTH_ANALYSIS.out.ch_exomedepth_varcalls)
+        .groupTuple()
+        .map { tuple ->
+            def meta = tuple[0]
+            def files = tuple[1..-1].flatten()
+            [meta, files]
+        }
 
   }
 
