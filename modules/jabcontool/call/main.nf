@@ -10,8 +10,8 @@ process JABCONTOOL_CALL {
     path organism_snps
 
     output:
-    path("calls/final_CNV_probs.tsv"), emit: final_CNV_probs
-    path("calls/cohort_info_tab.tsv"), emit: cohort_info_tab
+    path("calls/final_CNV_probs_jabcontool.tsv"), emit: final_CNV_probs
+    path("calls/cohort_info_tab_jabcontool.tsv"), emit: cohort_info_tab
 
     script:
 
@@ -24,7 +24,7 @@ process JABCONTOOL_CALL {
 
     """
     mkdir -p calls
-    Rscript ${projectDir}/bin/jabConTool_main.R calls/final_CNV_probs.tsv \
+    Rscript ${projectDir}/bin/jabConTool_main.R calls/final_CNV_probs_jabcontool.tsv \
         ${organism_regions} \
         ${snp_bed} \
         ${params.calling_type} \
@@ -40,7 +40,7 @@ process JABCONTOOL_CALL {
     stub:
     """
     mkdir -p results
-    touch results/final_CNV_probs.tsv
-    touch results/cohort_info_tab.tsv
+    touch results/final_CNV_probs_jabcontool.tsv
+    touch results/cohort_info_tab_jabcontool.tsv
     """
 }

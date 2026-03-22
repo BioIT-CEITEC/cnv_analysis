@@ -1,6 +1,7 @@
 include { COVERAGE_CALC } from "../../modules/jabcontool/coverage/main.nf"
 include { SNP_AF_CALC } from "../../modules/jabcontool/AF_calculation/main.nf"
 include { JABCONTOOL_CALL } from "../../modules/jabcontool/call/main.nf"
+include { VARIANT_NORMALIZATION_JABCONTOOL } from "../../modules/jabcontool/variantNormalization/main.nf"
 
 workflow JABCONTOOL_ANALYSIS {
 
@@ -51,6 +52,11 @@ workflow JABCONTOOL_ANALYSIS {
         ch_organism_snps
         )
 
-    emit:
     ch_jabcontool_varcalls = JABCONTOOL_CALL.out.final_CNV_probs
+
+    VARIANT_NORMALIZATION_JABCONTOOL (
+        ch_jabcontool_varcalls
+    )
+    emit:
+    ch_jabcontool_norm_varcalls = VARIANT_NORMALIZATION_JABCONTOOL.out.normalized_varcalls
 }
