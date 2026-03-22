@@ -111,10 +111,6 @@ workflow PANEL_WES {
         ch_gc_profile,
         ch_cohort_data
         )
-
-
-        jabcontool_varcalls = JABCONTOOL_ANALYSIS.out.ch_jabcontool_varcalls.view { println "JabConTool varcall: ${it}" }
-
     }
 
     if (params.use_gatk) {
@@ -127,7 +123,21 @@ workflow PANEL_WES {
         ch_organism_ploidy_priors
         )
 
-        gatk_varcalls = GATK_ANALYSIS.out.ch_gatk_segment.view { println "GATK varcall: ${it}" }
+        ch_all_varcalls = ch_all_varcalls
+        .mix(GATK_ANALYSIS.out.ch_gatk_segment
+            .map { tuple -> 
+                def meta = tuple[0]
+                def f2 = tuple[1]
+                [meta, f2]
+            }
+        .groupTuple()
+        .map { tuple ->
+            def meta = tuple[0]
+            def files = tuple[1..-1].flatten()
+            [meta, files]
+        }
+    )
+
 
     }
 
