@@ -169,9 +169,6 @@ workflow PANEL_WES {
 		    def files = tuple[1..-1].flatten()
 		    [meta, files]
 	    }
-
-        ch_all_varcalls.view()
-
   }
 
   if (params.use_cnmops) {
@@ -211,12 +208,8 @@ workflow PANEL_WES {
 
   }
 
-//    ch_all_varcalls = ch_all_varcalls
-//        .flatten()
-//        .filter { file -> file.toString() ==~ /(?i).*\.(tsv|cns)$/ }
-//        .collect()
-
     VARIANT_NORMALIZATION(
         ch_all_varcalls
     )
-}
+
+    VARIANT_NORMALIZATION.out.normalized_varcalls.view()
