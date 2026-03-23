@@ -9,14 +9,14 @@ process CNV_CALL_CNMOPS {
     path cohort_data
 
     output:
-    tuple val(meta), path("cnv_calls/cnMOPS_CNV_${meta.sample_name}.tsv"), emit: cnmops_cnvcalls
+    tuple val(meta), path("cnv_calls/${meta.sample_name}_cnMOPS_CNV.tsv"), emit: cnmops_cnvcalls
 
     script:
 
         """
         mkdir -p cnv_calls
 
-        Rscript ${projectDir}/bin/cnMOPS_wrapper.R ${bam} ${cohort_data} ${meta.sample_name} cnv_calls/cnMOPS_CNV_${meta.sample_name}.tsv
+        Rscript ${projectDir}/bin/cnMOPS_wrapper.R ${bam} ${cohort_data} ${meta.sample_name} cnv_calls/${meta.sample_name}_cnMOPS_CNV.tsv
 
         """
 

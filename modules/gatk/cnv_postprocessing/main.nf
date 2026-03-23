@@ -14,8 +14,8 @@ process POSTPROCESSING_CNV_GATK {
     output:
     tuple val(meta), path("calls/*_intervals_${meta.sample_name}.vcf.gz"),
     path("calls/*_intervals_${meta.sample_name}.vcf.gz.tbi"),
-    path("calls/*_segments_${meta.sample_name}.vcf.gz"),
-    path("calls/*_segments_${meta.sample_name}.vcf.gz.tbi"),
+    path("calls/${meta.sample_name}_gatk.vcf.gz"),
+    path("calls/${meta.sample_name}_gatk.vcf.gz.tbi"),
     path("calls/copy_ratios_${meta.sample_name}.tsv"), emit: postprocess_cnv_gatk
 
     script:
@@ -29,7 +29,7 @@ process POSTPROCESSING_CNV_GATK {
           --contig-ploidy-calls ploidy-calls \\
           --sample-index 0 \\
           --output-genotyped-intervals calls/genotyped_intervals_${meta.sample_name}.vcf.gz \\
-          --output-genotyped-segments calls/genotyped_segments_${meta.sample_name}.vcf.gz \\
+          --output-genotyped-segments calls/${meta.sample_name}_gatk.vcf.gz \\
           --output-denoised-copy-ratios calls/copy_ratios_${meta.sample_name}.tsv \\
           --sequence-dictionary ${reference_dict}
 
