@@ -1,7 +1,7 @@
 process VARIANT_NORMALIZATION {
 
     tag "${meta.sample_name}"
-    publishDir "variantNormalization/${meta.sample_name}_normalized", mode: 'copy'
+    publishDir "variantNormalization/", mode: 'copy'
     conda "${moduleDir}/env.yaml"
 
     input:
