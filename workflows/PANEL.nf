@@ -212,4 +212,6 @@ workflow PANEL_WES {
         ch_all_varcalls
     )
 
-    VARIANT_NORMALIZATION.out.normalized_varcalls.view()
+}
+
+
