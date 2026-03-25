@@ -13,6 +13,7 @@ include { CNMOPS_ANALYSIS } from "../subworkflows/cnMOPS/main.nf"
 include { PANELCNMOPS_ANALYSIS } from "../subworkflows/panelcnMOPS/main.nf"
 include { EXOMEDEPTH_ANALYSIS } from "../subworkflows/ExomeDepth/main.nf"
 include { VARIANT_NORMALIZATION } from "../modules/variantNormalization/main.nf"
+include { PSEUDOGENE_ANALYSIS } from "../subworkflows/pseudogene_identification/main.nf"
 
 /*
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -42,6 +43,8 @@ ch_organism_ploidy_priors = params.organism_ploidy_priors ? Channel.fromPath(par
 ch_organism_excluded_sites = params.organism_excluded_sites ? Channel.fromPath(params.organism_excluded_sites).collect() : Channel.empty()
 ch_organism_delly_map = params.organism_delly_map ? Channel.fromPath(params.organism_delly_map).collect() : Channel.empty()
 ch_organism_gtf_tsv = params.organism_gtf_tsv ? Channel.fromPath(params.organism_gtf_tsv).collect() : Channel.empty()
+ch_organism_gene_bed = params.organism_gene_bed ? Channel.fromPath(params.organism_gene_bed).collect() : Channel.empty()
+ch_organism_pseudogene_bed = params.organism_pseudogene_bed ? Channel.fromPath(params.organism_pseudogene_bed).collect() : Channel.empty()
 
 def panelMode = params.panel_of_normals ?: false
 
@@ -56,14 +59,11 @@ workflow PANEL_WES {
    ch_cohort_data = Channel.empty()
    ch_all_varcalls = Channel.empty()
 
-  // Create channels of tuples (meta, bam, bai) where bam/bai are wrapped with file()
   ch_samples = Channel.fromList(samples)
     .map { meta, bamPath, baiPath -> tuple(meta, file(bamPath), file(baiPath)) }
 
   ch_controls = controls.isEmpty() ? Channel.empty() : Channel.fromList(controls)
     .map { meta, bamPath, baiPath -> tuple(meta, file(bamPath), file(baiPath)) }
-
-
 
     BED_PREPARATION (
         ch_organism_fasta,
@@ -137,9 +137,7 @@ workflow PANEL_WES {
             [meta, files]
         }
     )
-
-
-    }
+}
 
     ch_all_bam_control_files = ch_controls
         .map { meta, bam, bai -> bam }
@@ -212,6 +210,12 @@ workflow PANEL_WES {
         ch_all_varcalls
     )
 
+    PSEUDOGENE_ANALYSIS(
+        ch_samples,
+        ch_organism_fasta,
+        ch_organism_fasta_fai,
+        ch_organism_gene_bed,
+        ch_organism_pseudogene_bed
+    )
+
 }
-
-
