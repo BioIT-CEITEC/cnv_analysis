@@ -9,6 +9,12 @@ import math
 INPUT_DIR = sys.argv[1]
 OUTPUT_DIR = sys.argv[2]
 
+# raw_package_input = sys.argv[3] if len(sys.argv) > 3 else ""
+# if raw_package_input and raw_package_input.lower() != "null":
+#     PACKAGE_LIST = [p.strip().lower() for p in raw_package_input.split(",") if p.strip()]
+# else:
+#     PACKAGE_LIST = []
+
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 
 # CONSTANTS
@@ -47,7 +53,7 @@ def has_header(lines):
     return False
 
 
-def normalize_header(header_line):
+def normalize_header(header_line, map_pos_to_start=False):
     cols = header_line.rstrip("\r\n").split("\t")
     normalized = []
     for col in cols:
@@ -56,7 +62,7 @@ def normalize_header(header_line):
 
         if col_upper in ["CHROMOSOME", "CONTIG", "CHR"]:
             normalized.append("CHROM")
-        elif col_upper == "START":
+        elif col_upper == "START" or (map_pos_to_start and col_upper == "POS"):
             normalized.append("START")
         elif col_upper == "END":
             normalized.append("END")
@@ -64,6 +70,8 @@ def normalize_header(header_line):
             normalized.append("CN_ESTIMATE")
         elif col_upper in ["TYPE", "SVTYPE"]:
             normalized.append("TYPE")
+        elif col_upper in ["SAMPLE", "SAMPLENAME", "SAMPLE_NAME"]:
+            normalized.append("SAMPLE")
         else:
             normalized.append(col_clean)
 
@@ -101,10 +109,24 @@ for root, _, files in os.walk(INPUT_DIR):
         if not filename.lower().endswith((".tsv", ".cns")):
             continue
 
+        # if PACKAGE_LIST:
+        #     # Check if ANY of the packages in our list are in the path or filename
+        #     # is_valid will be True if at least one match is found
+        #     is_valid = any(
+        #         pkg in root.lower() or pkg in filename.lower() 
+        #         for pkg in PACKAGE_LIST
+        #     )
+
+        #     if not is_valid:
+        #         # If a filter was requested but no package matched, skip it
+        #         continue
+
         in_path = os.path.join(root, filename)
 
         if not os.path.isfile(in_path):
             continue
+
+        keep_cols = KEEP_COLUMNS + ["SAMPLE"] if re.search(r'jabcontool', root, re.IGNORECASE) else KEEP_COLUMNS
 
         rel_path = os.path.relpath(in_path, INPUT_DIR)
         path_parts = rel_path.split(os.sep)
@@ -136,17 +158,18 @@ for root, _, files in os.walk(INPUT_DIR):
         if not has_header(lines):
             lines.insert(0, MISSING_HEADER)
 
-        header = normalize_header(lines[0])
+        is_cnvkit_preannot = "cnvkit" in root.lower() and "preannot" in filename.lower()
+        header = normalize_header(lines[0], map_pos_to_start=is_cnvkit_preannot)
         header_cols = header.split("\t")
 
         col_index = {col.upper(): i for i, col in enumerate(header_cols)}
 
-        if not any(col in col_index for col in KEEP_COLUMNS):
+        if not any(col in col_index for col in keep_cols):
             continue
 
         with open(out_path, "w") as outfile:
 
-            outfile.write("\t".join(KEEP_COLUMNS) + "\n")
+            outfile.write("\t".join(keep_cols) + "\n")
 
             for line in lines[1:]:
 
@@ -163,7 +186,7 @@ for root, _, files in os.walk(INPUT_DIR):
 
                 row = {}
 
-                for col in KEEP_COLUMNS:
+                for col in keep_cols:
                     if col in col_index and col_index[col] < len(cols):
                         row[col] = cols[col_index[col]]
                     else:
@@ -186,7 +209,7 @@ for root, _, files in os.walk(INPUT_DIR):
                     row["TYPE"] = infer_type_from_cn(int(row["CN_ESTIMATE"]))
 
                 outfile.write(
-                    "\t".join(row[col] for col in KEEP_COLUMNS) + "\n"
+                    "\t".join(row[col] for col in keep_cols) + "\n"
                 )
 
 print("Variant normalization complete.")
