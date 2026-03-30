@@ -167,6 +167,8 @@ for root, _, files in os.walk(INPUT_DIR):
         if not any(col in col_index for col in keep_cols):
             continue
 
+        seen = set()
+
         with open(out_path, "w") as outfile:
 
             outfile.write("\t".join(keep_cols) + "\n")
@@ -208,8 +210,10 @@ for root, _, files in os.walk(INPUT_DIR):
                 elif row["CN_ESTIMATE"]:
                     row["TYPE"] = infer_type_from_cn(int(row["CN_ESTIMATE"]))
 
-                outfile.write(
-                    "\t".join(row[col] for col in keep_cols) + "\n"
-                )
+                out_line = "\t".join(row[col] for col in keep_cols)
+                if out_line in seen:
+                    continue
+                seen.add(out_line)
+                outfile.write(out_line + "\n")
 
 print("Variant normalization complete.")
