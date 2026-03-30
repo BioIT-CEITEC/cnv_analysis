@@ -1,11 +1,13 @@
-process CombineBam {
-    tag "${gene_region}_${pseudogene_region}"
-    conda './env.yml'
+process COMBINE_BAM {
+    tag "${meta.sample_name}_${gene_region}_${pseudogene_region}"
+    publishDir "pseudogene/test", mode: 'copy'
+    conda "${moduleDir}/../env.yaml"
+
     input:
-    tuple val(gene_region), val(pseudogene_region), file(bam)
+    tuple val(meta), path(bam), path(bai), val(gene_region), path(gene_reference), val(pseudogene_region), path(pseudogene_reference)
 
     output:
-    tuple val(gene_region), val(pseudogene_region), path("combined_${gene_region}_${pseudogene_region}.bam")
+    tuple val(meta), val(gene_region), val(pseudogene_region), path(gene_reference), path("${meta.sample_name}_combined_${gene_region}_${pseudogene_region}.bam"), emit: combined_bam
 
     script:
     """
@@ -18,7 +20,7 @@ process CombineBam {
     samtools index gene_region_sorted_${gene_region}.bam
     samtools index pseudogene_region_sorted_${pseudogene_region}.bam
 
-    samtools merge -f -o combined_${gene_region}_${pseudogene_region}.bam gene_region_sorted_${gene_region}.bam pseudogene_region_sorted_${pseudogene_region}.bam
-    samtools index combined_${gene_region}_${pseudogene_region}.bam
+    samtools merge -f -o ${meta.sample_name}_combined_${gene_region}_${pseudogene_region}.bam gene_region_sorted_${gene_region}.bam pseudogene_region_sorted_${pseudogene_region}.bam
+    samtools index ${meta.sample_name}_combined_${gene_region}_${pseudogene_region}.bam
     """
 }

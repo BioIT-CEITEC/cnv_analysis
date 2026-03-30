@@ -1,11 +1,7 @@
-include { GETREFERENCE_FROM_REGION } from "../../modules/pseudogene_identification/get_reference_from_region/main.nf"
-include { COMBINE_BAM } from "../../modules/pseudogene_identification/combine_bam/main.nf"
-include { FORCEMAP } from "../../modules/pseudogene_identification/forcemap/main.nf"
-include { DIFF_REFERENCE } from "../../modules/pseudogene_identification/diff_reference/main.nf"
-include { READ_CLASSIFICTION } from "../../modules/pseudogene_identification/read_classification/main.nf"
-include { READ_PROCESSING } from "../../modules/pseudogene_identification/read_processing/main.nf"
-include { SPLIT_BAM } from "../../modules/pseudogene_identification/split_bam/main.nf"
-include { SUMMARIZE } from "../../modules/pseudogene_identification/summarize/main.nf"
+include { EXTRACT_REGIONS } from "../../modules/pseudogene_identification/extract_regions/main.nf"
+include { REALIGN_READS } from "../../modules/pseudogene_identification/realign_reads/main.nf"
+include { READS_CLASSIFICATION } from "../../modules/pseudogene_identification/classify_reads/main.nf"
+
 
 workflow PSEUDOGENE_ANALYSIS {
 
@@ -13,20 +9,28 @@ workflow PSEUDOGENE_ANALYSIS {
     ch_input_bams
     ch_reference_fasta
     ch_reference_fasta_fai
-    ch_organism_gene_bed
-    ch_organism_pseudogene_bed
+    ch_regions_bed
 
     main:
 
-    gene_regions_ch = ch_organism_gene_bed
-        .splitCsv(header: false, sep: '\t')
-        .combine(ch_reference_fasta)
-        .map { row, reference -> tuple(reference, "${row[0]}:${row[1]}-${row[2]}") }
+    EXTRACT_REGIONS(
+        ch_input_bams,
+        ch_regions_bed
+    )
 
-    gene_regions_ch.view()
+    ch_extracted_reads = EXTRACT_REGIONS.out.extracted_reads
 
-    //GETREFERENCE_FROM_REGION(
-    //    gene_regions_ch
-    //)
+    REALIGN_READS(
+        ch_extracted_reads,
+        ch_reference_fasta,
+        ch_reference_fasta_fai
+    )
+
+    ch_realigned_reads = REALIGN_READS.out.realigned_reads
+
+    READS_CLASSIFICATION(
+        ch_realigned_reads,
+        regions_bed
+    )
 
 }

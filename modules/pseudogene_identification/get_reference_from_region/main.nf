@@ -1,20 +1,28 @@
-process GetReferenceFromRegion {
+process GETREFERENCE_FROM_REGION {
+
+    tag "${region}"
+    publishDir "pseudogene/test", mode: 'copy'
+    conda "${moduleDir}/../env.yaml"
+
     input:
     tuple path(reference), val(region)
+    path gene_bed
+    path pseudogene_bed
+
 
     output:
-    tuple val(region), path("${reference.baseName}_${region}.fasta")
+    tuple val(region), path("${reference.baseName}_${region}.fasta"), emit: pseudogene_reference
 
     script:
     def chrom = region.split(':')[0]
     def start = region.split(':')[1].split('-')[0]
     def end = region.split(':')[1].split('-')[1]
 
-    def strand_1 = GetStrand(file(params.gene_bed), chrom, start, end)
-    def strand_2 = GetStrand(file(params.pseudogene_bed), chrom, start, end)
+    def strand_1 = GetStrand(gene_bed, chrom, start, end)
+    def strand_2 = GetStrand(pseudogene_bed, chrom, start, end)
     def strand = strand_1 != '-1' ? strand_1 : (strand_2 != '-1' ? strand_2 : '-')
     """
-    get_reference.py --region ${region} --reference ${reference} --output ${reference.baseName}_${region}.fasta --strand ${strand}
+    python ${projectDir}/bin/get_reference.py --region ${region} --reference ${reference} --output ${reference.baseName}_${region}.fasta --strand ${strand}
     """
 }
 
@@ -32,7 +40,11 @@ def GetStrand(bedFile, chrom, start, end) {
     chrom = chrom.toString()
     start = start.toInteger()
     end = end.toInteger()
-    bedFile.eachLine { line ->
+    def bed = new File(bedFile.toString())
+    if (!bed.exists()) {
+        return strand
+    }
+    bed.eachLine { line ->
         if (line.startsWith('#') || line.trim().isEmpty()) {
             return
         }

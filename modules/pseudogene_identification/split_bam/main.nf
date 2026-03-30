@@ -1,4 +1,4 @@
-process SplitBam{
+process SPLIT_BAM {
     tag "${params.bam}"
     conda './env.yml'
     publishDir path: "${params.output_dir}/${params.run_name}/${params.run_name}_split", mode: 'copy'
