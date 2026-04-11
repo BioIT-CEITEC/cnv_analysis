@@ -43,7 +43,8 @@ ch_organism_ploidy_priors = params.organism_ploidy_priors ? Channel.fromPath(par
 ch_organism_excluded_sites = params.organism_excluded_sites ? Channel.fromPath(params.organism_excluded_sites).collect() : Channel.empty()
 ch_organism_delly_map = params.organism_delly_map ? Channel.fromPath(params.organism_delly_map).collect() : Channel.empty()
 ch_organism_gtf_tsv = params.organism_gtf_tsv ? Channel.fromPath(params.organism_gtf_tsv).collect() : Channel.empty()
-//ch_organism_pseudogene_identification_bed = params.organism_pseudogene_identification_bed ? Channel.fromPath(params.organism_pseudogene_identification_bed).collect() : Channel.empty()
+ch_organism_gene_bed = params.organism_gene_bed ? Channel.fromPath(params.organism_gene_bed).collect() : Channel.empty()
+ch_organism_pseudogene_bed = params.organism_pseudogene_bed ? Channel.fromPath(params.organism_pseudogene_bed).collect() : Channel.empty()
 
 def panelMode = params.panel_of_normals ?: false
 
@@ -209,11 +210,12 @@ workflow PANEL_WES {
         ch_all_varcalls
     )
 
- //   PSEUDOGENE_ANALYSIS(
- //       ch_samples,
- //       ch_organism_fasta,
- //       ch_organism_fasta_fai,
- //       ch_organism_pseudogene_identification_bed
- //   )
+    PSEUDOGENE_ANALYSIS(
+        ch_samples,
+        ch_organism_fasta,
+        ch_organism_fasta_fai,
+        ch_organism_gene_bed,
+        ch_organism_pseudogene_bed
+    )
 
 }
