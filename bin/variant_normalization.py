@@ -14,6 +14,7 @@ OUTPUT_DIR = sys.argv[2]
 #     PACKAGE_LIST = [p.strip().lower() for p in raw_package_input.split(",") if p.strip()]
 # else:
 #     PACKAGE_LIST = []
+# 
 
 os.makedirs(OUTPUT_DIR, exist_ok=True)
 
