@@ -66,7 +66,7 @@ def normalize_header(header_line, map_pos_to_start=False):
             normalized.append("START")
         elif col_upper == "END":
             normalized.append("END")
-        elif col_upper in ["CN", "CN_PRED", "CN_PREDICTION", "CN_EST", "LINEAR_COPY_RATIO"]:
+        elif col_upper in ["CN", "CN_PRED", "CN_PREDICTION", "CN_EST", "LINEAR_COPY_RATIO", "READS.RATIO"]:
             normalized.append("CN_ESTIMATE")
         elif col_upper in ["TYPE", "SVTYPE"]:
             normalized.append("TYPE")
@@ -158,8 +158,10 @@ for root, _, files in os.walk(INPUT_DIR):
         if not has_header(lines):
             lines.insert(0, MISSING_HEADER)
 
-        is_cnvkit_preannot = "cnvkit" in root.lower() and "preannot" in filename.lower()
-        header = normalize_header(lines[0], map_pos_to_start=is_cnvkit_preannot)
+        is_cnvkit_call_tsv = "cnvkit" in root.lower() and "call" in root.lower() and filename.lower().endswith(".tsv")
+        raw_header_cols = [c.strip().upper() for c in lines[0].rstrip("\r\n").split("\t")]
+        skip_cn_rounding = "READS.RATIO" in raw_header_cols
+        header = normalize_header(lines[0], map_pos_to_start=is_cnvkit_call_tsv)
         header_cols = header.split("\t")
 
         col_index = {col.upper(): i for i, col in enumerate(header_cols)}
@@ -197,10 +199,13 @@ for root, _, files in os.walk(INPUT_DIR):
                 # CN rounding + remove neutral
                 if row["CN_ESTIMATE"]:
                     try:
-                        cn = round_half_up(row["CN_ESTIMATE"])
-                        if cn == 2:
-                            continue
-                        row["CN_ESTIMATE"] = str(cn)
+                        if skip_cn_rounding:
+                            cn = float(row["CN_ESTIMATE"])
+                        else:
+                            cn = round_half_up(row["CN_ESTIMATE"])
+                            if cn == 2:
+                                continue
+                            row["CN_ESTIMATE"] = str(cn)
                     except Exception:
                         continue
 
@@ -208,7 +213,7 @@ for root, _, files in os.walk(INPUT_DIR):
                 if row["TYPE"]:
                     row["TYPE"] = normalize_type(row["TYPE"])
                 elif row["CN_ESTIMATE"]:
-                    row["TYPE"] = infer_type_from_cn(int(row["CN_ESTIMATE"]))
+                    row["TYPE"] = infer_type_from_cn(float(row["CN_ESTIMATE"]))
 
                 out_line = "\t".join(row[col] for col in keep_cols)
                 if out_line in seen:
