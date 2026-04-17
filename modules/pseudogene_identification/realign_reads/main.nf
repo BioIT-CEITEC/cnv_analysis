@@ -13,6 +13,6 @@ process REALIGN_READS {
 
     script:
     """
-    python3 ${projectDir}/bin/realign_reads.py --bam_dir ${extracted_dir} --ref ${reference_fasta} --bed ${region_bed} --outdir ${meta.sample_id}_realigned_reads --flank 300
+    python3 ${projectDir}/bin/realign_specific.py --bam_dir ${extracted_dir} --ref ${reference_fasta} --bed ${region_bed} --outdir ${meta.sample_id}_realigned_reads --flank 300
     """
 }

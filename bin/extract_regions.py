@@ -1,6 +1,6 @@
-#!/usr/bin/env python3
 
-# Usage: python extract_regions.py --bam sample.bam --bed regions.bed --outdir extracted/
+#
+# Usage: python 2_extract_regions.py --bam sample.bam --bed regions.bed --outdir extracted/
 
 import pysam
 import argparse
@@ -18,7 +18,7 @@ def parse_bed(bed_file):
             parts = line.split("\t")
             if len(parts) < 5:
                 raise ValueError(
-                    f"BED file MUST have 5 columns (chrom, start, end, name, pair_id). Line: {line}"
+                    f"The BED must have 5 columns (chrom, start, end, name, pair_id). Line: {line}"
                 )
             chrom, start, end, name, pair_id = (
                 parts[0], int(parts[1]), int(parts[2]), parts[3], parts[4]
@@ -33,9 +33,13 @@ def parse_bed(bed_file):
 
 def extract_by_pairs(bam_path, bed_path, outdir):
     """
-    For each homologous pair, extracts all reads that map to ANY of 
-    its regions (gene or pseudogene) into a single BAM.
+    For each homologous pair, extract all reads that map to
+    ANY of its regions (gene or pseudogene) into a single BAM.
 
+    The origin is not labeled because:
+    - Pseudogene reads can be in gene coordinates
+    - Gene reads can be in pseudogene coordinates
+    The true origin is determined by re-alignment in step 3/4.
     """
     os.makedirs(outdir, exist_ok=True)
     pairs = parse_bed(bed_path)
@@ -48,8 +52,8 @@ def extract_by_pairs(bam_path, bed_path, outdir):
             gene_regions   = [r for r in regions if r["type"] == "gene"]
             pseudo_regions = [r for r in regions if r["type"] == "pseudogene"]
             print(f"[2_extract] Par {pair_id}: "
-                  f"{len(gene_regions)} gene region(s) + "
-                  f"{len(pseudo_regions)} pseudogene region(s)")
+                f"{len(gene_regions)} gene region(s) + "
+                f"{len(pseudo_regions)} pseudogene region(s)")
 
             read_ids_written = set()
             total = 0
@@ -70,6 +74,7 @@ def extract_by_pairs(bam_path, bed_path, outdir):
             pysam.index(out_bam)
             os.remove(tmp_bam)
 
+            # Summary by region type according to mapping position
             gene_coords   = [(r["start"], r["end"]) for r in gene_regions]
             pseudo_coords = [(r["start"], r["end"]) for r in pseudo_regions]
 
@@ -86,25 +91,25 @@ def extract_by_pairs(bam_path, bed_path, outdir):
                     else:
                         ambiguous += 1
 
-            print(f"[2_extract]   Total extracted: {total}")
-            print(f"[2_extract]   Mapped in gene:      {in_gene}")
-            print(f"[2_extract]   Mapped in pseudogene:{in_pseudo}")
-            print(f"[2_extract]   Out/ambiguous:        {ambiguous}")
-#            print(f"[2_extract]   WARNING: reads in pseudogene={in_pseudo} may be low")
-#            print(f"[2_extract]   if the aligner redirected reads from pseudogene to gene.")
-            print(f"[2_extract]   The re-alignment (step 3) will determine the real origin.")
+                print(f"[2_extract]   Total extracted: {total}")
+                print(f"[2_extract]   Mapped in gene:      {in_gene}")
+                print(f"[2_extract]   Mapped in pseudogene:{in_pseudo}")
+                print(f"[2_extract]   Out/ambiguous:        {ambiguous}")
+                print(f"[2_extract]   WARNING: pseudogene reads={in_pseudo} may be low")
+                print(f"[2_extract]   if the aligner redirected reads from pseudogene to gene.")
+                print(f"[2_extract]   Re-alignment (step 3) will determine the true origin.")
             print(f"[2_extract]   -> {out_bam}\n")
 
-    print(f"[2_extract] Done. BAMs by pair in: {outdir}/")
+            print(f"[2_extract] Done. BAMs per pair in: {outdir}/")
 
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(
-        description="Extract reads from gene+pseudogene regions by homologous pairs defined in a BED file."
+        description="Extract reads from gene+pseudogene regions by homologous pair"
     )
-    parser.add_argument("--bam",    required=True, help="Original BAM file with all mapped reads")
-    parser.add_argument("--bed",    required=True, help="BED file with 5 columns (chrom, start, end, name, pair_id)")
-    parser.add_argument("--outdir", required=True, help="Output directory with a BAM file for each pair")
+    parser.add_argument("--bam",    required=True, help="Original BAM aligned to the whole genome")
+    parser.add_argument("--bed",    required=True, help="BED with 5 columns (chrom, start, end, name, pair_id)")
+    parser.add_argument("--outdir", required=True, help="Output directory with one BAM per pair")
     args = parser.parse_args()
 
     extract_by_pairs(args.bam, args.bed, args.outdir)

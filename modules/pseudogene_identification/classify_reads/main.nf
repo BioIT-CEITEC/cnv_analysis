@@ -5,6 +5,7 @@ process CLASSIFY_READS {
 
     input:
     tuple val(meta), path(realigned_dir), path(bam), path(bai)
+    path region_bed
 
     output:
     tuple val(meta), path("${meta.sample_id}_classified_reads.tsv"), emit: classified_reads

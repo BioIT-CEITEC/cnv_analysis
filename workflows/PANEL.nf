@@ -44,7 +44,7 @@ ch_organism_excluded_sites = params.organism_excluded_sites ? Channel.fromPath(p
 ch_organism_delly_map = params.organism_delly_map ? Channel.fromPath(params.organism_delly_map).collect() : Channel.empty()
 ch_organism_gtf_tsv = params.organism_gtf_tsv ? Channel.fromPath(params.organism_gtf_tsv).collect() : Channel.empty()
 ch_organism_gene_bed = params.organism_gene_bed ? Channel.fromPath(params.organism_gene_bed).collect() : Channel.empty()
-ch_organism_pseudogene_bed = params.organism_pseudogene_bed ? Channel.fromPath(params.organism_pseudogene_bed).collect() : Channel.empty()
+ch_organism_pseudogene_bed = /*params.organism_pseudogene_bed ?*/ Channel.fromPath(params.organism_pseudogene_bed).collect() : Channel.empty()
 
 def panelMode = params.panel_of_normals ?: false
 
@@ -210,12 +210,17 @@ workflow PANEL_WES {
         ch_all_varcalls
     )
 
+    ch_samples.view()
+    ch_organism_fasta.view()
+    ch_organism_fasta_fai.view()
+    ch_organism_gene_bed.view()
+    ch_organism_pseudogene_bed.view()
+
     PSEUDOGENE_ANALYSIS(
         ch_samples,
         ch_organism_fasta,
         ch_organism_fasta_fai,
         ch_organism_gene_bed,
-        ch_organism_pseudogene_bed
     )
 
 }

@@ -147,7 +147,7 @@ public static parseInputVC(inputSh, panelOfNormals, projectDir, log) {
         if (conf.containsKey('lib_ROI')) {
             load_lib_ROI(conf)
             conf.organism_dna_panel = "${conf.reference_dir}/others/DNA_ROI/${conf.panel}/${conf.panel}.bed"
-            conf.ch_organism_gene_bed = "${conf.reference_dir}/others/DNA_ROI/${conf.panel}/${conf.panel}_gene.bed"
+            conf.ch_organism_gene_bed = "${conf.reference_dir}/others/DNA_ROI/${conf.panel}/${conf.panel}_pair.bed"
             conf.ch_organism_pseudogene_bed = "${conf.reference_dir}/others/DNA_ROI/${conf.panel}/${conf.panel}_pseudogenes.bed"
             conf.organism_snps_panel = "${conf.reference_dir}/others/snp/${conf.panel}/${conf.panel}_snps.tsv"
             conf.organism_interval_list = "${conf.reference_dir}/others/DNA_ROI/${conf.panel}/${conf.panel}.interval_list"
