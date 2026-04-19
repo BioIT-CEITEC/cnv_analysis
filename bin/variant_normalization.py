@@ -54,8 +54,11 @@ def has_header(lines):
     return False
 
 
-def normalize_header(header_line, map_pos_to_start=False):
+def normalize_header(header_line):
     cols = header_line.rstrip("\r\n").split("\t")
+    # Pre-scan: only use POS as a START fallback when no explicit start column exists
+    cols_upper = [c.strip().upper() for c in cols]
+    has_explicit_start = "START" in cols_upper
     normalized = []
     for col in cols:
         col_clean = col.strip()
@@ -63,11 +66,11 @@ def normalize_header(header_line, map_pos_to_start=False):
 
         if col_upper in ["CHROMOSOME", "CONTIG", "CHR"]:
             normalized.append("CHROM")
-        elif col_upper == "START" or (map_pos_to_start and col_upper == "POS"):
+        elif col_upper == "START" or (col_upper == "POS" and not has_explicit_start):
             normalized.append("START")
         elif col_upper == "END":
             normalized.append("END")
-        elif col_upper in ["CN", "CN_PRED", "CN_PREDICTION", "CN_EST", "LINEAR_COPY_RATIO", "READS.RATIO"]:
+        elif col_upper in ["CN", "CN_PRED", "CN_PREDICTION", "CN_EST", "LINEAR_COPY_RATIO", "READS.RATIO", "FOLD_CHANGE"]:
             normalized.append("CN_ESTIMATE")
         elif col_upper in ["TYPE", "SVTYPE"]:
             normalized.append("TYPE")
@@ -104,23 +107,19 @@ def infer_type_from_cn(cn):
 
 
 # MAIN PROCESSING
-for root, _, files in os.walk(INPUT_DIR):
+abs_output_dir = os.path.abspath(OUTPUT_DIR)
+
+for root, dirs, files in os.walk(INPUT_DIR, topdown=True):
+    # Never recurse into the output directory — prevents re-processing normalized files
+    dirs[:] = [
+        d for d in dirs
+        if os.path.abspath(os.path.join(root, d)) != abs_output_dir
+    ]
+
     for filename in files:
 
         if not filename.lower().endswith((".tsv", ".cns")):
             continue
-
-        # if PACKAGE_LIST:
-        #     # Check if ANY of the packages in our list are in the path or filename
-        #     # is_valid will be True if at least one match is found
-        #     is_valid = any(
-        #         pkg in root.lower() or pkg in filename.lower() 
-        #         for pkg in PACKAGE_LIST
-        #     )
-
-        #     if not is_valid:
-        #         # If a filter was requested but no package matched, skip it
-        #         continue
 
         in_path = os.path.join(root, filename)
 
@@ -129,21 +128,9 @@ for root, _, files in os.walk(INPUT_DIR):
 
         keep_cols = KEEP_COLUMNS + ["SAMPLE"] if re.search(r'jabcontool', root, re.IGNORECASE) else KEEP_COLUMNS
 
-        rel_path = os.path.relpath(in_path, INPUT_DIR)
-        path_parts = rel_path.split(os.sep)
-
-        if len(path_parts) > 1:
-            folder_prefix = "_".join(path_parts[:-1])
-            base_name = f"{folder_prefix}_{path_parts[-1]}"
-        else:
-            base_name = path_parts[0]
-
-        # Split filename and extension
-        name, ext = os.path.splitext(base_name)
-
-        # Add _normalized before extension
-        out_filename = f"{name}_normalized{ext}"
-
+        # Output is always <original_basename>_normalized.tsv in a flat output dir
+        name = os.path.splitext(filename)[0]
+        out_filename = f"{name}_normalized.tsv"
         out_path = os.path.join(OUTPUT_DIR, out_filename)
 
         print("Processing:", in_path)
@@ -159,10 +146,9 @@ for root, _, files in os.walk(INPUT_DIR):
         if not has_header(lines):
             lines.insert(0, MISSING_HEADER)
 
-        is_cnvkit_call_tsv = "cnvkit" in root.lower() and "call" in root.lower() and filename.lower().endswith(".tsv")
         raw_header_cols = [c.strip().upper() for c in lines[0].rstrip("\r\n").split("\t")]
-        skip_cn_rounding = "READS.RATIO" in raw_header_cols
-        header = normalize_header(lines[0], map_pos_to_start=is_cnvkit_call_tsv)
+        skip_cn_rounding = "READS.RATIO" in raw_header_cols or "FOLD_CHANGE" in raw_header_cols
+        header = normalize_header(lines[0])
         header_cols = header.split("\t")
 
         col_index = {col.upper(): i for i, col in enumerate(header_cols)}

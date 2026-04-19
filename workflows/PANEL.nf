@@ -14,6 +14,8 @@ include { PANELCNMOPS_ANALYSIS } from "../subworkflows/panelcnMOPS/main.nf"
 include { EXOMEDEPTH_ANALYSIS } from "../subworkflows/ExomeDepth/main.nf"
 include { VARIANT_NORMALIZATION } from "../modules/variantNormalization/main.nf"
 include { PSEUDOGENE_ANALYSIS } from "../subworkflows/pseudogene_identification/main.nf"
+include { MERGE_VARIANT_CALLS } from "../modules/mergeVariantCalls/main.nf"
+include { CLASSIFY_AND_ANNOTATE } from "../modules/classify_and_annotate_CNVs/main.nf"
 
 /*
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -44,7 +46,7 @@ ch_organism_excluded_sites = params.organism_excluded_sites ? Channel.fromPath(p
 ch_organism_delly_map = params.organism_delly_map ? Channel.fromPath(params.organism_delly_map).collect() : Channel.empty()
 ch_organism_gtf_tsv = params.organism_gtf_tsv ? Channel.fromPath(params.organism_gtf_tsv).collect() : Channel.empty()
 ch_organism_gene_bed = params.organism_gene_bed ? Channel.fromPath(params.organism_gene_bed).collect() : Channel.empty()
-ch_organism_pseudogene_bed = /*params.organism_pseudogene_bed ?*/ Channel.fromPath(params.organism_pseudogene_bed).collect() : Channel.empty()
+ch_organism_pseudogene_bed = params.organism_pseudogene_bed ? Channel.fromPath(params.organism_pseudogene_bed).collect() : Channel.empty()
 
 def panelMode = params.panel_of_normals ?: false
 
@@ -210,17 +212,33 @@ workflow PANEL_WES {
         ch_all_varcalls
     )
 
-    ch_samples.view()
-    ch_organism_fasta.view()
-    ch_organism_fasta_fai.view()
-    ch_organism_gene_bed.view()
-    ch_organism_pseudogene_bed.view()
+    ch_all_varcalls_for_merging = VARIANT_NORMALIZATION.out.normalized_varcalls
+        .combine(JABCONTOOL_ANALYSIS.out.ch_jabcontool_norm_varcalls)
+        .map { tuple ->
+            def meta = tuple[0]
+            def varcall_files = tuple[1]  // [file1, file2, file3, file4, file5]
+            def jabcontool_file = tuple[2]
+            def all_files = varcall_files + [jabcontool_file]
+            [meta,[all_files].flatten()]
+        }
+
+    MERGE_VARIANT_CALLS(
+        ch_all_varcalls_for_merging,
+        ch_organism_dna_panel
+    )
+
+    ch_variants_to_annotate = MERGE_VARIANT_CALLS.out.merged_calls
+
+    CLASSIFY_AND_ANNOTATE(
+        ch_variants_to_annotate,
+        ch_organism_gtf_tsv
+    )
 
     PSEUDOGENE_ANALYSIS(
         ch_samples,
         ch_organism_fasta,
         ch_organism_fasta_fai,
-        ch_organism_gene_bed,
+        ch_organism_gene_bed
     )
 
 }

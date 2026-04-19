@@ -1,5 +1,5 @@
 process REALIGN_READS {
-    tag "${meta.sample_id}"
+    tag "${meta.sample_name}"
     conda "${moduleDir}/../env.yaml"
 
     input:
@@ -9,10 +9,10 @@ process REALIGN_READS {
     path region_bed
 
     output:
-    tuple val(meta), path("${meta.sample_id}_realigned_reads/"), path(bam), path(bai), emit: realigned_reads
+    tuple val(meta), path("${meta.sample_name}_realigned_reads/"), path(bam), path(bai), emit: realigned_reads
 
     script:
     """
-    python3 ${projectDir}/bin/realign_specific.py --bam_dir ${extracted_dir} --ref ${reference_fasta} --bed ${region_bed} --outdir ${meta.sample_id}_realigned_reads --flank 300
+    python3 ${projectDir}/bin/realign_specific.py --bam_dir ${extracted_dir} --ref ${reference_fasta} --bed ${region_bed} --outdir ${meta.sample_name}_realigned_reads --flank 300
     """
 }

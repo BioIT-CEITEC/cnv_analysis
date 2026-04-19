@@ -1,5 +1,5 @@
 process CLASSIFY_READS {
-    tag "${meta.sample_id}"
+    tag "${meta.sample_name}"
     publishDir "pseudogene_identification/", mode: 'copy'
     conda "${moduleDir}/../env.yaml"
 
@@ -8,10 +8,10 @@ process CLASSIFY_READS {
     path region_bed
 
     output:
-    tuple val(meta), path("${meta.sample_id}_classified_reads.tsv"), emit: classified_reads
+    tuple val(meta), path("${meta.sample_name}_classified_reads.tsv"), emit: classified_reads
 
     script:
     """
-    python3 ${projectDir}/bin/reads_classification.py --bam_original ${bam} --realigned_dir ${realigned_dir} --bed ${region_bed} --out  ${meta.sample_id}_classified_reads.tsv
+    python3 ${projectDir}/bin/reads_classification.py --bam_original ${bam} --realigned_dir ${realigned_dir} --bed ${region_bed} --out  ${meta.sample_name}_classified_reads.tsv
     """
 }

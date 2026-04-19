@@ -7,7 +7,7 @@ process VARIANT_NORMALIZATION_JABCONTOOL {
     path(input_dir)
 
     output:
-    path("jabcontool/*"), emit: normalized_varcalls
+    path("jabcontool/*.tsv"), emit: normalized_varcalls
 
     script:
     """
