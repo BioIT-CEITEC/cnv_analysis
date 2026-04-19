@@ -212,15 +212,20 @@ workflow PANEL_WES {
         ch_all_varcalls
     )
 
-    ch_all_varcalls_for_merging = VARIANT_NORMALIZATION.out.normalized_varcalls
-        .combine(JABCONTOOL_ANALYSIS.out.ch_jabcontool_norm_varcalls)
-        .map { tuple ->
-            def meta = tuple[0]
-            def varcall_files = tuple[1]  // [file1, file2, file3, file4, file5]
-            def jabcontool_file = tuple[2]
-            def all_files = varcall_files + [jabcontool_file]
-            [meta,[all_files].flatten()]
-        }
+    if (params.use_jabcontool) {
+        ch_all_varcalls_for_merging = VARIANT_NORMALIZATION.out.normalized_varcalls
+            .combine(JABCONTOOL_ANALYSIS.out.ch_jabcontool_norm_varcalls)
+            .map { tuple ->
+                def meta = tuple[0]
+                def varcall_files = tuple[1]  // [file1, file2, file3, file4, file5]
+                def jabcontool_file = tuple[2]
+                def all_files = varcall_files + [jabcontool_file]
+                [meta,[all_files].flatten()]
+            }
+
+    } else {
+        ch_all_varcalls_for_merging = VARIANT_NORMALIZATION.out.normalized_varcalls
+    }
 
     MERGE_VARIANT_CALLS(
         ch_all_varcalls_for_merging,
