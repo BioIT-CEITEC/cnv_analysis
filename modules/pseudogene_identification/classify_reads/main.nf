@@ -5,6 +5,7 @@ process CLASSIFY_READS {
 
     input:
     tuple val(meta), path(realigned_dir), path(bam), path(bai)
+    path diff_dir
     path region_bed
 
     output:
@@ -12,6 +13,12 @@ process CLASSIFY_READS {
 
     script:
     """
-    python3 ${projectDir}/bin/reads_classification.py --bam_original ${bam} --realigned_dir ${realigned_dir} --bed ${region_bed} --out  ${meta.sample_name}_classified_reads.tsv
+    python3 ${projectDir}/bin/classify_reads_by_base.py \
+        --diff_dir      ${diff_dir} \
+        --realigned_dir ${realigned_dir} \
+        --bam_original  ${bam} \
+        --bed           ${region_bed} \
+        --sample        ${meta.sample_name} \
+        --output        ${meta.sample_name}_classified_reads.tsv
     """
 }

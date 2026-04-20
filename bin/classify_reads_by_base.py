@@ -1,19 +1,25 @@
 #!/usr/bin/env python3
 """
 For each mismatch position (Difference_Type=X) in the gene/pseudogene diff TSV,
-count per-nucleotide read coverage from the realigned gene.bam and pseudogene.bam.
+extract the per-read nucleotide observed in the main BAM, gene BAM, and pseudogene BAM.
 
-Compatible with 3_realign_specific.py after the liftover fix:
-  - BAM RNAME = real chromosome name (e.g. chr7), not the gene name
-  - BAM POS   = true genomic coordinates (1-based in SAM, 0-based in pysam)
+This complements mismatch_pileup.py (aggregate counts) by providing per-read base
+evidence at each diagnostic site, enabling base-level read classification.
+
+BAM coordinate conventions (same as mismatch_pileup.py):
+  - BAM RNAME = real chromosome name (e.g. chr7)
+  - BAM POS   = true genomic coordinates
   - diff TSV positions are 1-based genomic coords
 
-Output TSV columns per mismatch position:
-  sample, pair_id,
+Output TSV columns (one row per read × mismatch position):
+  sample, pair_id, read_name,
   gene_chrom, gene_pos, gene_base,
   pseudo_chrom, pseudo_pos, pseudo_base,
-  g_bam_{A,C,G,T,N}, g_bam_depth, g_bam_gene_frac, g_bam_pseudo_frac,
-  p_bam_{A,C,G,T,N}, p_bam_depth, p_bam_gene_frac, p_bam_pseudo_frac
+  base_original,   (base in main BAM at gene_chrom:gene_pos; '.' if absent)
+  base_gene_bam,   (base in gene BAM at gene_chrom:gene_pos; '.' if absent)
+  base_pseudo_bam, (base in pseudogene BAM at pseudo_chrom:pseudo_pos; '.' if absent)
+  supports_gene,   (base_gene_bam == gene_base)
+  supports_pseudo  (base_pseudo_bam == pseudo_base)
 """
 
 import argparse
@@ -36,14 +42,16 @@ def parse_args():
                    help="Directory with {pair_id}.tsv files from ALIGN_REGIONS")
     p.add_argument("--realigned_dir",    required=True,
                    help="Directory with {pair_id}_gene.bam and {pair_id}_pseudogene.bam")
+    p.add_argument("--bam_original",     required=True,
+                   help="Original/main BAM file (true genomic coordinates)")
     p.add_argument("--bed",              required=True,
                    help="BED file (chrom start end name pair_id [strand ...])")
-    p.add_argument("--sample",           required=True,  help="Sample name")
-    p.add_argument("--output",           required=True,  help="Output TSV path")
+    p.add_argument("--sample",           required=True, help="Sample name")
+    p.add_argument("--output",           required=True, help="Output TSV path")
     p.add_argument("--min_base_quality", type=int, default=20,
-                   help="Minimum base quality for pileup (default: 20)")
+                   help="Minimum base quality (default: 20)")
     p.add_argument("--min_map_quality",  type=int, default=10,
-                   help="Minimum mapping quality for pileup (default: 10)")
+                   help="Minimum mapping quality (default: 10)")
     return p.parse_args()
 
 
@@ -64,10 +72,7 @@ def _infer_region_type(name, extra_fields=()):
 
 
 def parse_bed(bed_file):
-    """Return {pair_id: {"gene": region_dict, "pseudogene": region_dict}}.
-
-    Uses the same region-type detection and positional fallback as align.py.
-    """
+    """Return {pair_id: {"gene": region_dict, "pseudogene": region_dict}}."""
     raw = defaultdict(lambda: {"gene": None, "pseudogene": None, "unknown": []})
     with open(bed_file) as f:
         for line in f:
@@ -81,8 +86,8 @@ def parse_bed(bed_file):
                 parts[0], int(parts[1]), int(parts[2]), parts[3], parts[4]
             )
             strand = parts[5] if len(parts) > 5 else "+"
-            extra = parts[6:] if len(parts) > 6 else []
-            rtype = _infer_region_type(name, extra)
+            extra  = parts[6:] if len(parts) > 6 else []
+            rtype  = _infer_region_type(name, extra)
             region = {"chrom": chrom, "start": start, "end": end, "name": name, "strand": strand}
             if rtype == "gene" and raw[pair_id]["gene"] is None:
                 raw[pair_id]["gene"] = region
@@ -110,23 +115,19 @@ def parse_position(pos_str):
     return chrom, int(pos)
 
 
-def pileup_at(bam_path, chrom, pos_1based, min_bq, min_mq):
+def bases_at(bam_path, chrom, pos_1based, min_bq, min_mq):
     """
-    Return nucleotide counts and depth at a genomic position.
+    Return {read_name: base} for all reads spanning a genomic position.
 
-    Parameters
-    ----------
-    bam_path  : path to the liftover-corrected BAM (true genomic coordinates)
-    chrom     : real chromosome name, e.g. 'chr7'  (RNAME in the BAM header)
-    pos_1based: 1-based genomic position (as reported in the diff TSV)
-    min_bq    : minimum base quality
-    min_mq    : minimum mapping quality
+    Uses the same coordinate conventions as pileup_at() in mismatch_pileup.py.
+    Skips deletions, ref-skips, and reads below quality thresholds.
+    When a read appears multiple times (supplementary alignments), the first
+    observed base is kept.
     """
-    counts = {"A": 0, "C": 0, "G": 0, "T": 0, "N": 0}
+    result = {}
     if not os.path.exists(bam_path):
-        return counts | {"depth": 0}
+        return result
 
-    # pysam pileup uses 0-based half-open coordinates
     pos_0based = pos_1based - 1
 
     try:
@@ -146,17 +147,15 @@ def pileup_at(bam_path, chrom, pos_1based, min_bq, min_mq):
                         continue
                     if pread.alignment.mapping_quality < min_mq:
                         continue
-                    base = pread.alignment.query_sequence[pread.query_position].upper()
-                    counts[base] = counts.get(base, 0) + 1
+                    rname = pread.alignment.query_name
+                    base  = pread.alignment.query_sequence[pread.query_position].upper()
+                    if rname not in result:
+                        result[rname] = base
                 break
     except (ValueError, KeyError):
         pass
 
-    return counts | {"depth": sum(counts.values())}
-
-
-def frac(count, depth):
-    return round(count / depth, 4) if depth > 0 else 0.0
+    return result
 
 
 def main():
@@ -179,14 +178,16 @@ def main():
             print(f"[WARNING] {pair_id}: diff TSV not found ({diff_tsv}), skipping")
             continue
 
-        # After the liftover fix, RNAME in the BAM is the real chromosome,
-        # not the gene name. Positions are true genomic coords (1-based in TSV).
         gene_chrom_rname   = gene_info["chrom"]
         pseudo_chrom_rname = pseudo_info["chrom"]
-        # pysam pileup always returns + strand bases. The diff TSV reports bases in
-        # gene-strand orientation, so we complement when the region is on - strand.
+        # pysam pileup always returns + strand bases.
+        # The diff TSV reports bases in gene-strand / pseudo-strand orientation,
+        # so complement when the region is on - strand.
         gene_neg_strand   = gene_info.get("strand", "+") == "-"
         pseudo_neg_strand = pseudo_info.get("strand", "+") == "-"
+
+        n_positions = 0
+        n_reads     = 0
 
         with open(diff_tsv) as f:
             for row in csv.DictReader(f, delimiter="\t"):
@@ -200,17 +201,13 @@ def main():
 
                 gene_chrom,   gene_pos   = gene_coord
                 pseudo_chrom, pseudo_pos = pseudo_coord
-                # Bases in gene-strand / pseudo-strand orientation (as in the diff TSV)
                 gene_base_tsv   = row["Gene_Base"].upper()
                 pseudo_base_tsv = row["Pseudogene_Base"].upper()
 
-                # pysam pileup always returns + strand bases.
-                # If a region is on - strand the diff TSV base must be complemented
-                # to match what the pileup will show.
+                # + strand bases for comparison against pileup output
                 gene_base_plus   = complement(gene_base_tsv)   if gene_neg_strand   else gene_base_tsv
                 pseudo_base_plus = complement(pseudo_base_tsv) if pseudo_neg_strand else pseudo_base_tsv
 
-                # Sanity check: chrom in TSV should match BED
                 if gene_chrom != gene_chrom_rname:
                     print(
                         f"[WARNING] {pair_id}: gene chrom mismatch — "
@@ -222,47 +219,49 @@ def main():
                         f"TSV={pseudo_chrom}, BED={pseudo_chrom_rname}"
                     )
 
-                # Query BAM directly with genomic coordinates — no offset arithmetic needed
-                g = pileup_at(gene_bam,   gene_chrom_rname,   gene_pos,
-                              args.min_base_quality, args.min_map_quality)
-                p = pileup_at(pseudo_bam, pseudo_chrom_rname, pseudo_pos,
-                              args.min_base_quality, args.min_map_quality)
+                orig_bases   = bases_at(args.bam_original,  gene_chrom_rname,   gene_pos,
+                                        args.min_base_quality, args.min_map_quality)
+                gene_bases   = bases_at(gene_bam,            gene_chrom_rname,   gene_pos,
+                                        args.min_base_quality, args.min_map_quality)
+                pseudo_bases = bases_at(pseudo_bam,          pseudo_chrom_rname, pseudo_pos,
+                                        args.min_base_quality, args.min_map_quality)
 
-                out_rows.append({
-                    "sample":            args.sample,
-                    "pair_id":           pair_id,
-                    "gene_chrom":        gene_chrom,
-                    "gene_pos":          gene_pos,
-                    "gene_base":         gene_base_plus,
-                    "pseudo_chrom":      pseudo_chrom,
-                    "pseudo_pos":        pseudo_pos,
-                    "pseudo_base":       pseudo_base_plus,
-                    "g_bam_A":           g["A"],
-                    "g_bam_C":           g["C"],
-                    "g_bam_G":           g["G"],
-                    "g_bam_T":           g["T"],
-                    "g_bam_N":           g.get("N", 0),
-                    "g_bam_depth":       g["depth"],
-                    "g_bam_gene_frac":   frac(g.get(gene_base_plus,   0), g["depth"]),
-                    "g_bam_pseudo_frac": frac(g.get(pseudo_base_plus, 0), g["depth"]),
-                    "p_bam_A":           p["A"],
-                    "p_bam_C":           p["C"],
-                    "p_bam_G":           p["G"],
-                    "p_bam_T":           p["T"],
-                    "p_bam_N":           p.get("N", 0),
-                    "p_bam_depth":       p["depth"],
-                    "p_bam_gene_frac":   frac(p.get(gene_base_plus,   0), p["depth"]),
-                    "p_bam_pseudo_frac": frac(p.get(pseudo_base_plus, 0), p["depth"]),
-                })
+                all_reads = set(orig_bases) | set(gene_bases) | set(pseudo_bases)
+                n_positions += 1
+                n_reads     += len(all_reads)
+
+                for rname in sorted(all_reads):
+                    b_orig   = orig_bases.get(rname,   ".")
+                    b_gene   = gene_bases.get(rname,   ".")
+                    b_pseudo = pseudo_bases.get(rname, ".")
+                    out_rows.append({
+                        "sample":          args.sample,
+                        "pair_id":         pair_id,
+                        "read_name":       rname,
+                        "gene_chrom":      gene_chrom,
+                        "gene_pos":        gene_pos,
+                        "gene_base":       gene_base_plus,
+                        "pseudo_chrom":    pseudo_chrom,
+                        "pseudo_pos":      pseudo_pos,
+                        "pseudo_base":     pseudo_base_plus,
+                        "base_original":   b_orig,
+                        "base_gene_bam":   b_gene,
+                        "base_pseudo_bam": b_pseudo,
+                        "supports_gene":   b_gene   == gene_base_plus,
+                        "supports_pseudo": b_pseudo == pseudo_base_plus,
+                    })
+
+        print(
+            f"[INFO] {pair_id}: {n_positions} mismatch positions, "
+            f"{n_reads} total read×position observations"
+        )
 
     fieldnames = [
-        "sample", "pair_id",
+        "sample", "pair_id", "read_name",
         "gene_chrom", "gene_pos", "gene_base",
         "pseudo_chrom", "pseudo_pos", "pseudo_base",
-        "g_bam_A", "g_bam_C", "g_bam_G", "g_bam_T", "g_bam_N",
-        "g_bam_depth", "g_bam_gene_frac", "g_bam_pseudo_frac",
-        "p_bam_A", "p_bam_C", "p_bam_G", "p_bam_T", "p_bam_N",
-        "p_bam_depth", "p_bam_gene_frac", "p_bam_pseudo_frac",
+        "base_original", "base_gene_bam", "base_pseudo_bam",
+        "supports_gene", "supports_pseudo",
     ]
 
     with open(args.output, "w", newline="") as f:
@@ -270,7 +269,7 @@ def main():
         writer.writeheader()
         writer.writerows(out_rows)
 
-    print(f"[INFO] {args.sample}: wrote {len(out_rows)} mismatch positions -> {args.output}")
+    print(f"[INFO] {args.sample}: wrote {len(out_rows)} read×position rows -> {args.output}")
 
 
 if __name__ == "__main__":

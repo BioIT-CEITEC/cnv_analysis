@@ -43,7 +43,14 @@ workflow PSEUDOGENE_ANALYSIS {
         ch_regions_bed
     )
 
+    READS_CLASSIFICATION(
+        ch_realigned_reads,
+        ALIGN_REGIONS.out.diff_tsvs.first(),
+        ch_regions_bed
+    )
+
     emit:
-    pileup_tsvs = MISMATCH_PILEUP.out.pileup_tsv
+    pileup_tsvs      = MISMATCH_PILEUP.out.pileup_tsv
+    classified_reads = READS_CLASSIFICATION.out.classified_reads
 
 }

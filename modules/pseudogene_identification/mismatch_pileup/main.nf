@@ -19,6 +19,5 @@ process MISMATCH_PILEUP {
         --bed         ${region_bed} \
         --sample      ${meta.sample_name} \
         --output      ${meta.sample_name}_mismatch_pileup.tsv \
-        
     """
 }
