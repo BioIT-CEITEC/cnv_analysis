@@ -1,4 +1,4 @@
-include { ALIGN_REGIONS } from "../../modules/pseudogene_identification/align/main.nf"
+include { ALIGN_REGIONS } from "../../modules/pseudogene_identification/align_regions/main.nf"
 include { EXTRACT_REGIONS } from "../../modules/pseudogene_identification/extract_regions/main.nf"
 include { REALIGN_READS } from "../../modules/pseudogene_identification/realign_reads/main.nf"
 include { CLASSIFY_READS as READS_CLASSIFICATION } from "../../modules/pseudogene_identification/classify_reads/main.nf"

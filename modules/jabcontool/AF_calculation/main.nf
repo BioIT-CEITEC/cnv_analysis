@@ -14,9 +14,6 @@ process SNP_AF_CALC {
 
     script:
 
-    //def hasNormals = params.panel_of_normals ?: false
-    //def tumor_call = hasNormals ? "alleleCounter -r ${reference_fasta} -l ${reference_snps} -b ${tumor_bam} -o ${meta.donor}_T.snpAF.tsv" : "touch ${meta.donor}_T.snpAF.tsv"
-
     """
     alleleCounter -r ${reference_fasta} -l ${reference_snps} -b ${bam} -o ${meta.sample_name}.snpAF.tsv
     """

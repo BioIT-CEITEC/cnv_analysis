@@ -1,20 +1,4 @@
 #!/usr/bin/env python3
-"""
-For each mismatch position (Difference_Type=X) in the gene/pseudogene diff TSV,
-count per-nucleotide read coverage from the realigned gene.bam and pseudogene.bam.
-
-Compatible with 3_realign_specific.py after the liftover fix:
-  - BAM RNAME = real chromosome name (e.g. chr7), not the gene name
-  - BAM POS   = true genomic coordinates (1-based in SAM, 0-based in pysam)
-  - diff TSV positions are 1-based genomic coords
-
-Output TSV columns per mismatch position:
-  sample, pair_id,
-  gene_chrom, gene_pos, gene_base,
-  pseudo_chrom, pseudo_pos, pseudo_base,
-  g_bam_{A,C,G,T,N}, g_bam_depth, g_bam_gene_frac, g_bam_pseudo_frac,
-  p_bam_{A,C,G,T,N}, p_bam_depth, p_bam_gene_frac, p_bam_pseudo_frac
-"""
 
 import argparse
 import csv
@@ -111,22 +95,11 @@ def parse_position(pos_str):
 
 
 def pileup_at(bam_path, chrom, pos_1based, min_bq, min_mq):
-    """
-    Return nucleotide counts and depth at a genomic position.
 
-    Parameters
-    ----------
-    bam_path  : path to the liftover-corrected BAM (true genomic coordinates)
-    chrom     : real chromosome name, e.g. 'chr7'  (RNAME in the BAM header)
-    pos_1based: 1-based genomic position (as reported in the diff TSV)
-    min_bq    : minimum base quality
-    min_mq    : minimum mapping quality
-    """
     counts = {"A": 0, "C": 0, "G": 0, "T": 0, "N": 0}
     if not os.path.exists(bam_path):
         return counts | {"depth": 0}
 
-    # pysam pileup uses 0-based half-open coordinates
     pos_0based = pos_1based - 1
 
     try:
@@ -159,6 +132,15 @@ def frac(count, depth):
     return round(count / depth, 4) if depth > 0 else 0.0
 
 
+def combined_count(counts, base_plus, other_base_plus):
+ 
+    c = complement(base_plus)
+    n = counts.get(base_plus, 0)
+    if c != other_base_plus:
+        n += counts.get(c, 0)
+    return n
+
+
 def main():
     args = parse_args()
     pairs = parse_bed(args.bed)
@@ -179,12 +161,9 @@ def main():
             print(f"[WARNING] {pair_id}: diff TSV not found ({diff_tsv}), skipping")
             continue
 
-        # After the liftover fix, RNAME in the BAM is the real chromosome,
-        # not the gene name. Positions are true genomic coords (1-based in TSV).
         gene_chrom_rname   = gene_info["chrom"]
         pseudo_chrom_rname = pseudo_info["chrom"]
-        # pysam pileup always returns + strand bases. The diff TSV reports bases in
-        # gene-strand orientation, so we complement when the region is on - strand.
+
         gene_neg_strand   = gene_info.get("strand", "+") == "-"
         pseudo_neg_strand = pseudo_info.get("strand", "+") == "-"
 
@@ -200,17 +179,16 @@ def main():
 
                 gene_chrom,   gene_pos   = gene_coord
                 pseudo_chrom, pseudo_pos = pseudo_coord
-                # Bases in gene-strand / pseudo-strand orientation (as in the diff TSV)
+
                 gene_base_tsv   = row["Gene_Base"].upper()
                 pseudo_base_tsv = row["Pseudogene_Base"].upper()
 
-                # pysam pileup always returns + strand bases.
-                # If a region is on - strand the diff TSV base must be complemented
-                # to match what the pileup will show.
                 gene_base_plus   = complement(gene_base_tsv)   if gene_neg_strand   else gene_base_tsv
                 pseudo_base_plus = complement(pseudo_base_tsv) if pseudo_neg_strand else pseudo_base_tsv
 
-                # Sanity check: chrom in TSV should match BED
+                if gene_base_plus == pseudo_base_plus:
+                    continue
+
                 if gene_chrom != gene_chrom_rname:
                     print(
                         f"[WARNING] {pair_id}: gene chrom mismatch — "
@@ -222,7 +200,6 @@ def main():
                         f"TSV={pseudo_chrom}, BED={pseudo_chrom_rname}"
                     )
 
-                # Query BAM directly with genomic coordinates — no offset arithmetic needed
                 g = pileup_at(gene_bam,   gene_chrom_rname,   gene_pos,
                               args.min_base_quality, args.min_map_quality)
                 p = pileup_at(pseudo_bam, pseudo_chrom_rname, pseudo_pos,
@@ -243,16 +220,16 @@ def main():
                     "g_bam_T":           g["T"],
                     "g_bam_N":           g.get("N", 0),
                     "g_bam_depth":       g["depth"],
-                    "g_bam_gene_frac":   frac(g.get(gene_base_plus,   0), g["depth"]),
-                    "g_bam_pseudo_frac": frac(g.get(pseudo_base_plus, 0), g["depth"]),
+                    "g_bam_gene_frac":   frac(combined_count(g, gene_base_plus,   pseudo_base_plus), g["depth"]),
+                    "g_bam_pseudo_frac": frac(combined_count(g, pseudo_base_plus, gene_base_plus),   g["depth"]),
                     "p_bam_A":           p["A"],
                     "p_bam_C":           p["C"],
                     "p_bam_G":           p["G"],
                     "p_bam_T":           p["T"],
                     "p_bam_N":           p.get("N", 0),
                     "p_bam_depth":       p["depth"],
-                    "p_bam_gene_frac":   frac(p.get(gene_base_plus,   0), p["depth"]),
-                    "p_bam_pseudo_frac": frac(p.get(pseudo_base_plus, 0), p["depth"]),
+                    "p_bam_gene_frac":   frac(combined_count(p, gene_base_plus,   pseudo_base_plus), p["depth"]),
+                    "p_bam_pseudo_frac": frac(combined_count(p, pseudo_base_plus, gene_base_plus),   p["depth"]),
                 })
 
     fieldnames = [

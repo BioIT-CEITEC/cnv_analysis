@@ -1,21 +1,5 @@
 #!/usr/bin/env python3
-#
-# Usage: python 3_realign_specific.py --bam_dir extracted/ --ref genome.fa
-#                                     --bed regions.bed --outdir realigned/
-#
-# FIX: Reads are aligned against a custom reference extracted from the genome,
-# which ensures mapping specificity (reads from homologous regions map only to
-# their intended locus). After alignment, the BAM header and read coordinates
-# are remapped to true genomic positions so the output is valid for IGV and
-# any downstream genomic tool.
-#
-# Strategy:
-#   1. Extract the region sequence as before (custom reference).
-#   2. Name the FASTA record as "chrom" (not the gene name) and record the
-#      genomic start offset in the description.
-#   3. After alignment, rewrite the BAM header so the sequence dict entry
-#      points to the real chromosome + length, then shift every read's POS
-#      by the genomic offset.
+
 
 import pysam
 import argparse
@@ -29,7 +13,7 @@ from Bio.Seq import Seq
 
 
 def _infer_region_type(name, extra_fields=()):
-    """Detect gene vs pseudogene from name/annotations (mirrors align.py logic)."""
+    """Detect gene vs pseudogene from name/annotations."""
     candidates = [name] + list(extra_fields)
     pseudo_keys     = ("pseudogene", "pseudo", "_ps", "ps_")
     pseudo_suffixes = ("cl", "_cl", "_b", "_dup", "_v", "_v2", "_v3")
@@ -45,10 +29,7 @@ def _infer_region_type(name, extra_fields=()):
 
 
 def parse_bed(bed_file):
-    """Parse BED into {pair_id: [region_dict, ...]}.
-
-    Uses extended type detection with positional fallback (first=gene,
-    second=pseudogene) so names like PMS2/PMS2CL are handled correctly.
+    """Parse BED file
     """
     raw = defaultdict(lambda: {"gene": None, "pseudogene": None, "unknown": []})
     with open(bed_file) as f:
@@ -92,14 +73,6 @@ def parse_bed(bed_file):
 
 def build_reference(ref_fa, regions, out_fasta, flank=300):
     """Build a FASTA for the target regions + flanks.
-
-    FIX: The sequence record ID is set to the real chromosome name (not the
-    gene name) so that after coordinate-shifting the BAM references the
-    correct contig. The genomic start (with flank) is stored in the
-    description for use by liftover_bam_coords().
-
-    Returns a list of dicts with the actual coordinates used:
-        [{"chrom": ..., "offset": <0-based genomic start>, "length": <seq len>}, ...]
     """
     records = []
     coord_info = []
@@ -109,7 +82,7 @@ def build_reference(ref_fa, regions, out_fasta, flank=300):
             start = max(0, region["start"] - flank)
             end   = min(chrom_len, region["end"] + flank)
             seq   = fa.fetch(region["chrom"], start, end)
-            # ID = real chrom so BWA uses it as the contig name in the BAM header
+
             record = SeqRecord(
                 Seq(seq),
                 id=region["chrom"],
@@ -122,8 +95,9 @@ def build_reference(ref_fa, regions, out_fasta, flank=300):
             records.append(record)
             coord_info.append({
                 "chrom":  region["chrom"],
-                "offset": start,          # 0-based genomic start of this custom ref
+                "offset": start,
                 "length": end - start,
+                "strand": region.get("strand", "+"),
             })
     with open(out_fasta, "w") as f:
         SeqIO.write(records, f, "fasta")
@@ -135,29 +109,15 @@ def liftover_bam_coords(in_bam, coord_info, genome_fai, out_bam):
 
     For each read:
       - The contig name in the BAM header already matches the real chromosome
-        (because we named the FASTA record with the chrom name).
       - POS is local (0-based within the extracted region).
-      - We add the genomic offset so POS becomes the true genomic position.
-      - The BAM header SQ length is updated to the real chromosome length from
-        the genome .fai so IGV and samtools can validate the file.
-
-    Parameters
-    ----------
-    in_bam     : path to the BWA-produced BAM (local coordinates)
-    coord_info : list of dicts returned by build_reference()
-                 [{"chrom": str, "offset": int, "length": int}, ...]
-    genome_fai : path to the genome .fai index (for real chrom lengths)
-    out_bam    : path for the corrected output BAM
+      - Add the genomic offset so POS becomes the true genomic position.
     """
 
-    # Build lookup: chrom -> offset
-    # If multiple regions share a chrom (unusual), use the first offset.
-    offset_map = {}
+    region_map = {}
     for ci in coord_info:
-        if ci["chrom"] not in offset_map:
-            offset_map[ci["chrom"]] = ci["offset"]
+        if ci["chrom"] not in region_map:
+            region_map[ci["chrom"]] = ci
 
-    # Read real chromosome lengths from .fai
     chrom_lengths = {}
     with open(genome_fai) as f:
         for line in f:
@@ -168,7 +128,6 @@ def liftover_bam_coords(in_bam, coord_info, genome_fai, out_bam):
     with pysam.AlignmentFile(in_bam, "rb") as src:
         old_header = src.header.to_dict()
 
-        # Patch SQ lengths to real chromosome lengths
         new_sq = []
         for sq in old_header.get("SQ", []):
             name = sq["SN"]
@@ -184,15 +143,22 @@ def liftover_bam_coords(in_bam, coord_info, genome_fai, out_bam):
             for read in src:
                 if not read.is_unmapped:
                     ref_name = src.get_reference_name(read.reference_id)
-                    offset   = offset_map.get(ref_name, 0)
-                    # Shift POS from local to genomic (pysam uses 0-based internally)
+                    ci       = region_map.get(ref_name, {"offset": 0, "strand": "+"})
+                    offset   = ci["offset"]
+                    neg      = ci["strand"] == "-"
+
                     read.reference_start += offset
+
+                    if neg:
+                        read.is_reverse       = not read.is_reverse
+                        read.mate_is_reverse  = not read.mate_is_reverse
+                        read.template_length  = -read.template_length
 
                     # Also fix mate coordinates if paired
                     if not read.mate_is_unmapped and read.next_reference_id >= 0:
                         mate_ref    = src.get_reference_name(read.next_reference_id)
-                        mate_offset = offset_map.get(mate_ref, 0)
-                        read.next_reference_start += mate_offset
+                        mate_ci     = region_map.get(mate_ref, {"offset": 0})
+                        read.next_reference_start += mate_ci["offset"]
 
                 dst.write(read)
 
@@ -263,11 +229,11 @@ def realign_all_pairs(bam_dir, ref_fa, bed_path, outdir, threads=8, flank=300):
     """
     For each homologous pair:
 
-    1. Build a local reference for the gene only (with real chrom name as ID)
+    1. Build a local reference for the gene only
     2. Build a local reference for the pseudogene only
     3. Align the extracted reads against each custom reference
     4. Liftover BAM coordinates from local space to true genomic positions
-    5. Sort, index, and write the final BAMs — ready for IGV
+    5. Sort, index, and write the final BAMs
     """
     os.makedirs(outdir, exist_ok=True)
 

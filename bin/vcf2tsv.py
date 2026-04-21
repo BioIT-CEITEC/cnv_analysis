@@ -3,7 +3,6 @@ import sys, csv, gzip, os, collections
 
 def parse_info(info_field):
     info_dict = {}
-    # proteger si el INFO viene vacío o con espacios
     if not info_field:
         return info_dict
     for entry in info_field.split(';'):
@@ -23,30 +22,25 @@ def parse_vcf(vcf_path, tsv_path, bed_path=None, debug=True):
     bed_records = []
     chrom_counter = collections.Counter()
 
-    # abrir en modo texto siempre
     opener = gzip.open if vcf_path.endswith('.gz') else open
     with opener(vcf_path, 'rt', newline='') as vcf:
         for raw in vcf:
-            # normalizar espacios y finales de línea (CRLF, etc.)
             line = raw.strip()
             if not line:
                 continue
-            # saltar headers aunque tengan espacios antes
             if line.lstrip().startswith('#'):
                 continue
 
-            # usar split por tab pero si no hay, caer a split por espacios
             fields = line.split('\t')
             if len(fields) < 8:
-                fields = line.split()  # separador genérico (espacios/tabs)
+                fields = line.split()
 
             if len(fields) < 8:
-                # línea corrupta; la ignoramos
                 if debug:
-                    sys.stderr.write(f"[WARN] línea con <8 campos: {line[:80]}...\n")
+                    sys.stderr.write(f"[WARN] Line with < 8 fields: {line[:80]}...\n")
                 continue
 
-            chrom = fields[0].strip()          # puede ser '1', '2', 'GL000...' etc.
+            chrom = fields[0].strip()
             pos   = fields[1].strip()
             info  = fields[7].strip()
 
@@ -68,7 +62,6 @@ def parse_vcf(vcf_path, tsv_path, bed_path=None, debug=True):
             records.append(record)
 
             if bed_path:
-                # BED es 0-based, end exclusivo; si no hay END, usamos POS como fin
                 try:
                     start0 = max(0, int(pos) - 1)
                 except ValueError:
@@ -86,19 +79,17 @@ def parse_vcf(vcf_path, tsv_path, bed_path=None, debug=True):
         writer = csv.DictWriter(out, fieldnames=all_columns, delimiter='\t', extrasaction='ignore')
         writer.writeheader()
         for rec in records:
-            # asegurar que todas las claves existan (aunque sea vacío)
             for k in all_columns:
                 rec.setdefault(k, '')
             writer.writerow(rec)
 
-    # escribir BED
     if bed_path:
         with open(bed_path, 'w') as bed:
             for chrom, start0, end, svtype in bed_records:
                 bed.write(f"{chrom}\t{start0}\t{end}\t{svtype}\n")
 
     if debug:
-        sys.stderr.write("[INFO] Cromosomas detectados y conteos:\n")
+        sys.stderr.write("[INFO] Chromosomes detected and counted:\n")
         for chrom, cnt in chrom_counter.most_common():
             sys.stderr.write(f"  {chrom}: {cnt}\n")
 

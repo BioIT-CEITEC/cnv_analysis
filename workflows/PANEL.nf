@@ -16,6 +16,7 @@ include { VARIANT_NORMALIZATION } from "../modules/variantNormalization/main.nf"
 include { PSEUDOGENE_ANALYSIS } from "../subworkflows/pseudogene_identification/main.nf"
 include { MERGE_VARIANT_CALLS } from "../modules/mergeVariantCalls/main.nf"
 include { CLASSIFY_AND_ANNOTATE } from "../modules/classify_and_annotate_CNVs/main.nf"
+include { ECOLE_ANALYSIS } from "../subworkflows/ECOLE/main.nf"
 
 /*
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~

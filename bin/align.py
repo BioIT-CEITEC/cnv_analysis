@@ -32,14 +32,10 @@ def parse_args():
 
 def _infer_region_type(name, extra_fields):
     """Infer region type from the name or optional BED annotation columns.
-    
-    Recognizes pseudogene patterns: explicit labels, CL/B/_dup/_v suffixes.
-    Recognizes gene: explicit 'gene' label.
-    Falls back to None if ambiguous.
     """
     candidates = [name] + list(extra_fields)
     pseudo_keys = ("pseudogene", "pseudo", "_ps", "ps_")
-    pseudo_suffixes = ("cl", "_cl", "_b", "_dup", "_v", "_v2", "_v3")  # Copy-like paralogs
+    pseudo_suffixes = ("cl", "_cl", "_b", "_dup", "_v", "_v2", "_v3")
 
     for value in candidates:
         lv = value.lower()
@@ -57,9 +53,6 @@ def parse_bed(bed_file):
 
     Required columns: chrom(0) start(1) end(2) name(3) pair_id(4)
     Optional columns: strand(5), region-type annotations (6+)
-
-    If labels are missing but exactly two regions are present for a pair, the
-    first region is treated as gene and the second as pseudogene.
     """
     parsed_pairs = {}
 
@@ -104,13 +97,11 @@ def parse_bed(bed_file):
         pseudogene = entry["pseudogene"]
         unknown = entry["unknown"]
 
-        # Fill empty slots from unknowns
         if gene is None and unknown:
             gene = unknown.pop(0)
         if pseudogene is None and unknown:
             pseudogene = unknown.pop(0)
 
-        # Warn if we had to use positional fallback
         if (gene is not None or pseudogene is not None) and (entry["gene"] is None or entry["pseudogene"] is None):
             print(
                 f"[WARNING] {pair_id}: region types not explicit in BED; "
@@ -219,21 +210,7 @@ def run_minimap2(gene_fasta, pseudo_fasta, preset, threads, sam_path):
 # ---------------------------------------------------------------------------
 
 def build_diff_rows(gene_seq, pseudo_seq, gene_info, pseudo_info, sam_path):
-    """Walk the CIGAR and emit one row per aligned base.
 
-    FIX: Because extract_fasta() now reverse-complements minus-strand sequences
-    before alignment, minimap2 should always produce a forward alignment
-    (is_reverse=False). The coordinate reconstruction is updated accordingly:
-
-    - Gene (minus strand): the sequence passed to minimap2 was the RC of the
-      genomic forward strand, so base index 0 corresponds to genomic position
-      gene_end and index i corresponds to gene_end - i (1-based).
-    - Pseudogene (plus strand): unchanged — index i → pseudo_start + i + 1.
-
-    If for any reason minimap2 still returns a reverse alignment (is_reverse=True),
-    a warning is emitted and the original fallback coordinate logic is used so
-    the output is never silently wrong.
-    """
     fields = choose_best_alignment(sam_path)
 
     flag = int(fields[1])
@@ -250,8 +227,6 @@ def build_diff_rows(gene_seq, pseudo_seq, gene_info, pseudo_info, sam_path):
             file=sys.stderr,
         )
 
-    # After the fix, gene_seq is already in 5'→3' orientation (RC if strand=="-")
-    # and pseudo_seq is likewise in its correct orientation.
     query_seq_oriented = revcomp(pseudo_seq) if is_reverse else pseudo_seq
 
     gene_chr = gene_info["chrom"]
@@ -284,17 +259,11 @@ def build_diff_rows(gene_seq, pseudo_seq, gene_info, pseudo_info, sam_path):
                 pbase = query_seq_oriented[query_idx]
                 dtype = "M" if (op == "=" or gbase == pbase) else "X"
 
-                # Gene coordinate:
-                # - minus strand: index 0 of the RC sequence = genomic gene_end (1-based)
-                # - plus  strand: index 0 = genomic gene_start + 1 (1-based)
                 if gene_strand == "-":
                     gene_pos = f"{gene_chr}:{gene_end - ref_idx}"
                 else:
                     gene_pos = f"{gene_chr}:{gene_start + ref_idx + 1}"
 
-                # Pseudogene coordinate:
-                # - plus  strand: straightforward
-                # - minus strand (unusual): mirror logic
                 if pseudo_strand == "-":
                     pseudo_pos = f"{pseudo_chr}:{pseudo_end - query_idx}"
                 else:
@@ -353,10 +322,6 @@ def write_tsv(rows, output_tsv):
         writer.writeheader()
         writer.writerows(rows)
 
-
-# ---------------------------------------------------------------------------
-# Main loop
-# ---------------------------------------------------------------------------
 
 def main():
     args = parse_args()

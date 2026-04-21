@@ -1,26 +1,4 @@
 #!/usr/bin/env python3
-"""
-For each mismatch position (Difference_Type=X) in the gene/pseudogene diff TSV,
-extract the per-read nucleotide observed in the main BAM, gene BAM, and pseudogene BAM.
-
-This complements mismatch_pileup.py (aggregate counts) by providing per-read base
-evidence at each diagnostic site, enabling base-level read classification.
-
-BAM coordinate conventions (same as mismatch_pileup.py):
-  - BAM RNAME = real chromosome name (e.g. chr7)
-  - BAM POS   = true genomic coordinates
-  - diff TSV positions are 1-based genomic coords
-
-Output TSV columns (one row per read × mismatch position):
-  sample, pair_id, read_name,
-  gene_chrom, gene_pos, gene_base,
-  pseudo_chrom, pseudo_pos, pseudo_base,
-  base_original,   (base in main BAM at gene_chrom:gene_pos; '.' if absent)
-  base_gene_bam,   (base in gene BAM at gene_chrom:gene_pos; '.' if absent)
-  base_pseudo_bam, (base in pseudogene BAM at pseudo_chrom:pseudo_pos; '.' if absent)
-  supports_gene,   (base_gene_bam == gene_base)
-  supports_pseudo  (base_pseudo_bam == pseudo_base)
-"""
 
 import argparse
 import csv
@@ -34,6 +12,23 @@ _COMPLEMENT = str.maketrans("ACGTacgt", "TGCAtgca")
 
 def complement(base):
     return base.translate(_COMPLEMENT)
+
+
+def normalize_base(base, gene_base_plus, pseudo_base_plus):
+    """
+    Map complement(gene_base_plus) → gene_base_plus and
+    complement(pseudo_base_plus) → pseudo_base_plus when unambiguous.
+    Handles BWA FR-pairing where R2 reads store complement(true_base).
+    """
+    if base == ".":
+        return base
+    c_gene   = complement(gene_base_plus)
+    c_pseudo = complement(pseudo_base_plus)
+    if base == c_gene and c_gene != pseudo_base_plus:
+        return gene_base_plus
+    if base == c_pseudo and c_pseudo != gene_base_plus:
+        return pseudo_base_plus
+    return base
 
 
 def parse_args():
@@ -180,9 +175,6 @@ def main():
 
         gene_chrom_rname   = gene_info["chrom"]
         pseudo_chrom_rname = pseudo_info["chrom"]
-        # pysam pileup always returns + strand bases.
-        # The diff TSV reports bases in gene-strand / pseudo-strand orientation,
-        # so complement when the region is on - strand.
         gene_neg_strand   = gene_info.get("strand", "+") == "-"
         pseudo_neg_strand = pseudo_info.get("strand", "+") == "-"
 
@@ -204,9 +196,11 @@ def main():
                 gene_base_tsv   = row["Gene_Base"].upper()
                 pseudo_base_tsv = row["Pseudogene_Base"].upper()
 
-                # + strand bases for comparison against pileup output
                 gene_base_plus   = complement(gene_base_tsv)   if gene_neg_strand   else gene_base_tsv
                 pseudo_base_plus = complement(pseudo_base_tsv) if pseudo_neg_strand else pseudo_base_tsv
+
+                if gene_base_plus == pseudo_base_plus:
+                    continue
 
                 if gene_chrom != gene_chrom_rname:
                     print(
@@ -231,9 +225,28 @@ def main():
                 n_reads     += len(all_reads)
 
                 for rname in sorted(all_reads):
-                    b_orig   = orig_bases.get(rname,   ".")
-                    b_gene   = gene_bases.get(rname,   ".")
-                    b_pseudo = pseudo_bases.get(rname, ".")
+                    b_orig   = normalize_base(orig_bases.get(rname,   "."), gene_base_plus, pseudo_base_plus)
+                    b_gene   = normalize_base(gene_bases.get(rname,   "."), gene_base_plus, pseudo_base_plus)
+                    b_pseudo = normalize_base(pseudo_bases.get(rname, "."), gene_base_plus, pseudo_base_plus)
+                    if b_gene != b_pseudo:
+                        misassigned = "ambiguous"
+                    elif b_orig == ".":
+                        if b_gene == gene_base_plus:
+                            misassigned = "gene"
+                        elif b_gene == pseudo_base_plus:
+                            misassigned = "pseudogene"
+                        else:
+                            misassigned = "ambiguous"
+                    else:
+                        if b_orig == b_gene:
+                            if b_orig == gene_base_plus:
+                                misassigned = "gene"
+                            elif b_orig == pseudo_base_plus:
+                                misassigned = "pseudogene"
+                            else:
+                                misassigned = "ambiguous"
+                        else:
+                            misassigned = "misassigned"
                     out_rows.append({
                         "sample":          args.sample,
                         "pair_id":         pair_id,
@@ -249,6 +262,7 @@ def main():
                         "base_pseudo_bam": b_pseudo,
                         "supports_gene":   b_gene   == gene_base_plus,
                         "supports_pseudo": b_pseudo == pseudo_base_plus,
+                        "misassigned":     misassigned,
                     })
 
         print(
@@ -261,7 +275,7 @@ def main():
         "gene_chrom", "gene_pos", "gene_base",
         "pseudo_chrom", "pseudo_pos", "pseudo_base",
         "base_original", "base_gene_bam", "base_pseudo_bam",
-        "supports_gene", "supports_pseudo",
+        "supports_gene", "supports_pseudo", "misassigned",
     ]
 
     with open(args.output, "w", newline="") as f:

@@ -14,7 +14,7 @@ process MERGE_VARIANT_CALLS {
     script:
 
         """
-        Rscript ${projectDir}/bin/merging_wrapper.R ${dna_panel} ${meta.sample_name}
+        Rscript ${projectDir}/bin/merging_wrapper.R ${dna_panel} ${meta.sample_name} ${params.min_number_callers}
         """
 
     stub:

@@ -124,6 +124,7 @@ run_all <- function(args){
 
     bed_file <- args[1]
     sample_name <- args[2]
+    min_number_callers <- as.numeric(args[3])
 
     tsv_files <- list.files(path = "./", pattern = "_normalized\\.tsv$", full.names = TRUE)
     tsv_files <- tsv_files[!grepl("final_CNV_probs_jabcontool_normalized\\.tsv$", tsv_files)]
@@ -187,6 +188,10 @@ run_all <- function(args){
     all_calls[, START := as.numeric(START)]
     all_calls[, END := as.numeric(END)]
     all_calls[, CN_ESTIMATE := suppressWarnings(as.numeric(CN_ESTIMATE))]
+    if ("ExomeDepth" %in% all_calls$varcaller) {
+      all_calls[varcaller == "ExomeDepth" & !is.na(CN_ESTIMATE),
+                CN_ESTIMATE := CN_ESTIMATE * 2]
+    }
     all_calls[, TYPE := as.character(TYPE)]
     all_calls[toupper(TYPE) %in% c("DELETION", "DEL"), TYPE := "DEL"]
     all_calls[toupper(TYPE) %in% c("DUPLICATION", "DUP"), TYPE := "DUP"]
@@ -197,6 +202,10 @@ run_all <- function(args){
     } else {
       all_calls[, CHROM := gsub("^chr", "", CHROM)]
       all_calls <- all_calls[CHROM %in% listofCHR2]
+    }
+
+    if ("cnvkit" %in% all_calls$varcaller) {
+      all_calls <- all_calls[!(varcaller == "cnvkit" & (END - START) > 500000)]
     }
 
     all_calls[, CALL_CHROM := CHROM]
@@ -293,12 +302,14 @@ run_all <- function(args){
       colnames(wide_calls)
     )
 
+    min_number_callers <- min(min_number_callers, length(type_cols))
+
     for (col in type_cols) {
       wide_calls[is.na(get(col)), (col) := "0"]
     }
 
     wide_calls[, Count_Detected := rowSums(as.matrix(.SD) != "0"), .SDcols = type_cols]
-    wide_calls <- wide_calls[Count_Detected >= 2]
+    wide_calls <- wide_calls[Count_Detected >= min_number_callers]
     wide_calls[, n_DEL := rowSums(.SD == "DEL", na.rm = TRUE), .SDcols = type_cols]
     wide_calls[, n_DUP := rowSums(.SD == "DUP", na.rm = TRUE), .SDcols = type_cols]
     wide_calls[, consensus_type := NA_character_]
@@ -353,12 +364,3 @@ run_all <- function(args){
 
     args <- commandArgs(trailingOnly = T)
     run_all(args)
-
-
-
-
-
-
-
-
-

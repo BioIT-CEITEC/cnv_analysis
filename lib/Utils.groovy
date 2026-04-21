@@ -4,46 +4,46 @@ import nextflow.splitter.SplitterEx
 class Utils {
 
 public static parseInputVC(inputSh, panelOfNormals, projectDir, log) {
-  
+
     // Always process samples
     def samples = inputSh.findAll { it.sample_type == 'sample' }
-    
+
     // Process samples - always present
     def samplesList = samples.collect { entry ->
         def meta = [
             sample_name  : entry.sample_name,
             sample_type  : entry.sample_type
         ]
-        
+
         // Return absolute paths so Nextflow can stage files from work directories
         def bamPath = "${projectDir}/mapped/${meta.sample_name}.bam"
         def baiPath = "${projectDir}/mapped/${meta.sample_name}.bam.bai"
-        
+
         return [meta, bamPath, baiPath]
     }
-    
+
     // Process controls - only if panel_of_normals is true
     def controlsList = []
     if (panelOfNormals) {
         def controls = inputSh.findAll { it.sample_type == 'control' }
-        
+
         if (controls.isEmpty()) {
-            log.warn "Panel of normals mode enabled but no control samples found!"
+            log.warn "[WARNING] Panel of normals mode enabled but no control samples found! Tasks that require controls will not execute."
         }
-        
+
         controlsList = controls.collect { entry ->
             def meta = [
                 sample_name  : entry.sample_name,
                 sample_type  : entry.sample_type
             ]
-            
+
             def bamPath = "${projectDir}/mapped/${meta.sample_name}.bam"
             def baiPath = "${projectDir}/mapped/${meta.sample_name}.bam.bai"
 
             return [meta, bamPath, baiPath]
         }
     }
-    
+
     // Return both lists as a map
     return [samples: samplesList, controls: controlsList]
 }
