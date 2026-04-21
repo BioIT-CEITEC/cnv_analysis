@@ -51,6 +51,26 @@
         "type": "bool",
         "default": true
       },
+      "use_cnmops": {
+        "label": "Use cnMOPS for variant calling.",
+        "type": "bool",
+        "default": true
+      },
+      "use_panelcnmops": {
+        "label": "Use panel cnMOPS for variant calling.",
+        "type": "bool",
+        "default": true
+      },
+      "use_exomedepth": {
+        "label": "Use ExomeDepth for variant calling.",
+        "type": "bool",
+        "default": true
+      },
+      "use_ecole": {
+        "label": "Use ECOLE for variant calling.",
+        "type": "bool",
+        "default": true
+      },
       "use_jabcontool": {
         "label": "Use jabCoNtool for variant calling.",
         "type": "bool",

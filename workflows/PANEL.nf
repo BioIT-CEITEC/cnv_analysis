@@ -247,4 +247,10 @@ workflow PANEL_WES {
         ch_organism_gene_bed
     )
 
+    if (params.use_ecole) {
+        ECOLE_ANALYSIS(
+            ch_samples,
+            ch_organism_gene_bed
+        )
+    }
 }
