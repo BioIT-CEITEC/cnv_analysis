@@ -119,7 +119,16 @@
       "jabCoNtool_predict_TL": {
         "label": "Predict tumor DNA fraction in somatic samples.",
         "type": "bool",
-        "default": false
+        "default": false,
+        "conditions": {
+          "relevance": {
+            "operand": "equal",
+            "negation": false,
+            "values": {
+              "use_jabcontool": true
+            }
+          }
+        }
       },
       "jabCoNtool_normalize_to_GC": {
         "label": "Normalize read count to GC content for WGS.",
