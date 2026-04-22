@@ -40,8 +40,8 @@
         "type": "int",
         "default": 2
       },
-      "use_gatk": {
-        "label": "Use GATK_cnv for variant calling.",
+    "use_cnmops": {
+        "label": "Use cnMOPS for variant calling.",
         "type": "bool",
         "default": true
       },
@@ -50,18 +50,13 @@
         "type": "bool",
         "default": true
       },
-      "use_cnmops": {
-        "label": "Use cnMOPS for variant calling.",
+      "use_conifer": {
+        "label": "Use conifer for variant calling.",
         "type": "bool",
         "default": true
       },
-      "use_panelcnmops": {
-        "label": "Use panel cnMOPS for variant calling.",
-        "type": "bool",
-        "default": true
-      },
-      "use_exomedepth": {
-        "label": "Use ExomeDepth for variant calling.",
+      "use_control_freec": {
+        "label": "Use Control-FREEC for variant calling.",
         "type": "bool",
         "default": true
       },
@@ -70,18 +65,28 @@
         "type": "bool",
         "default": true
       },
+      "use_exomedepth": {
+        "label": "Use ExomeDepth for variant calling.",
+        "type": "bool",
+        "default": true
+      },
+      "use_gatk": {
+        "label": "Use GATK_cnv for variant calling.",
+        "type": "bool",
+        "default": true
+      },
       "use_jabcontool": {
         "label": "Use jabCoNtool for variant calling.",
         "type": "bool",
         "default": true
       },
-      "max_CNV_occurance_in_cohort": {
-        "label": "Maximal occurance of CNV in cohort for it not to be filtered. As ratio of cohort size in percent.",
-        "type": "int",
-        "default": 100
+      "use_panelcnmops": {
+        "label": "Use panel cnMOPS for variant calling.",
+        "type": "bool",
+        "default": true
       },
-      "use_control_freec": {
-        "label": "Use Control-FREEC for variant calling.",
+      "use_xhmm": {
+        "label": "Use XHMM for variant calling.",
         "type": "bool",
         "default": true
       },
@@ -100,7 +105,16 @@
       "jabCoNtool_use_snps": {
         "label": "Use snps allelic frequency.",
         "type": "bool",
-        "default": true
+        "default": true,
+        "conditions": {
+          "relevance": {
+            "operand": "equal",
+            "negation": false,
+            "values": {
+              "use_jabcontool": true
+            }
+          }
+        }
       },
       "jabCoNtool_predict_TL": {
         "label": "Predict tumor DNA fraction in somatic samples.",
