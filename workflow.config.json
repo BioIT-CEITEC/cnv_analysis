@@ -102,34 +102,6 @@
         "type": "int",
         "default": 50000
       },
-      "conifer_min_rpkm": {
-        "label": "Minimum RPKM to consider a probe in conifer.",
-        "type": "string",
-        "default": "1",
-        "conditions": {
-          "relevance": {
-            "operand": "equal",
-            "negation": false,
-            "values": {
-              "use_conifer": true
-            }
-          }
-        }
-      },
-      "conifer_svd_components": {
-        "label": "Number of SVD components to use in conifer.",
-        "type": "string",
-        "default": "12",
-        "conditions": {
-          "relevance": {
-            "operand": "equal",
-            "negation": false,
-            "values": {
-              "use_conifer": true
-            }
-          }
-        }
-      },
       "jabCoNtool_use_snps": {
         "label": "Use snps allelic frequency.",
         "type": "bool",
@@ -147,58 +119,22 @@
       "jabCoNtool_predict_TL": {
         "label": "Predict tumor DNA fraction in somatic samples.",
         "type": "bool",
-        "default": false,
-        "conditions": {
-          "relevance": {
-            "operand": "equal",
-            "negation": false,
-            "values": {
-              "use_jabcontool": true
-            }
-          }
-        }
+        "default": false
       },
       "jabCoNtool_normalize_to_GC": {
         "label": "Normalize read count to GC content for WGS.",
         "type": "bool",
-        "default": false,
-        "conditions": {
-          "relevance": {
-            "operand": "equal",
-            "negation": false,
-            "values": {
-              "use_jabcontool": true
-            }
-          }
-        }
+        "default": false
       },
       "jabCoNtool_remove_centromeres": {
         "label": "Remove centromere regions in WGS.",
         "type": "bool",
-        "default": false,
-        "conditions": {
-          "relevance": {
-            "operand": "equal",
-            "negation": false,
-            "values": {
-              "use_jabcontool": true
-            }
-          }
-        }
+        "default": false
       },
-      "jabCoNtool_max_CNV_occurance_in_cohort": {
-        "label": "Maximal occurance of CNV in cohort for it not to be filtered. As ratio of cohort size in percent.",
-        "type": "int",
-        "default": 100,
-        "conditions": {
-          "relevance": {
-            "operand": "equal",
-            "negation": false,
-            "values": {
-              "use_jabcontool": true
-            }
-          }
-        }
+      "AF_threshold": {
+        "label": "Allelic frequency threshold for CNV calling.",
+        "type": "string",
+        "default": "0.5"
       },
       "purple_diploid_regions": {
         "label": "Use purple diploid regions for variant calling.",
