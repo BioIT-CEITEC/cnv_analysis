@@ -133,17 +133,30 @@
       "jabCoNtool_normalize_to_GC": {
         "label": "Normalize read count to GC content for WGS.",
         "type": "bool",
-        "default": false
+        "default": false,
+        "conditions": {
+          "relevance": {
+            "operand": "equal",
+            "negation": false,
+            "values": {
+              "use_jabcontool": true
+            }
+          }
+        }
       },
       "jabCoNtool_remove_centromeres": {
         "label": "Remove centromere regions in WGS.",
         "type": "bool",
-        "default": false
-      },
-      "AF_threshold": {
-        "label": "Allelic frequency threshold for CNV calling.",
-        "type": "string",
-        "default": "0.5"
+        "default": false,
+        "conditions": {
+          "relevance": {
+            "operand": "equal",
+            "negation": false,
+            "values": {
+              "use_jabcontool": true
+            }
+          }
+        }
       },
       "purple_diploid_regions": {
         "label": "Use purple diploid regions for variant calling.",
