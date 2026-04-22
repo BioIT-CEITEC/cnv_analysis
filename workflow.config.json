@@ -102,6 +102,20 @@
         "type": "int",
         "default": 50000
       },
+      "conifer_min_rpkm": {
+        "label": "Minimum RPKM for conifer.",
+        "type": "int",
+        "default": 1,
+        "conditions": {
+          "relevance": {
+            "operand": "equal",
+            "negation": false,
+            "values": {
+              "use_conifer": true
+            }
+          }
+        }
+      },
       "jabCoNtool_use_snps": {
         "label": "Use snps allelic frequency.",
         "type": "bool",
