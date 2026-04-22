@@ -175,11 +175,6 @@
       }
     },
     "samples": {
-      "donor": {
-        "label": "Patient ID",
-        "type": "string",
-        "default": ""
-      },
       "sample_type": {
         "label": "Sample type (role)",
         "type": "enum",
