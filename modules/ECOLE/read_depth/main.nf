@@ -1,6 +1,6 @@
 process READ_DEPTH_ECOLE {
 
-    conda "${moduleDir}/env.yaml"
+    conda "${moduleDir}/../env.yaml"
 
     input:
     path bams
@@ -13,13 +13,14 @@ process READ_DEPTH_ECOLE {
 
     """
     mkdir -p read_depths
+    mkdir -p processed_samples
 
-    for filename in ${bams}; do
+    for filename in ./*.bam; do
         f=\$(basename -- "\$filename")
         sambamba depth base -L ${target_bed} "\$filename" > "read_depths/\${f}.txt"
     done
 
-    python ${moduleDir}/ECOLE-02/scripts/preprocess_sample.py \
+    python ${moduleDir}/../ECOLE-0.2/scripts/preprocess_sample.py \
         --readdepth ./read_depths \
         --output ./processed_samples --target ${target_bed}
     """
@@ -27,7 +28,7 @@ process READ_DEPTH_ECOLE {
     stub:
     """
     mkdir -p read_depths
-    for filename in ${bams}; do
+    for filename in ./*.bam; do
         f=\$(basename -- "\$filename")
         touch "read_depths/\${f}.txt"
     done

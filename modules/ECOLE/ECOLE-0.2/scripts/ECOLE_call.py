@@ -280,15 +280,15 @@ for sample_name in tqdm(all_samples_names):
     for i in range(len(temp_chrs)):
         
         crs = temp_chrs[i]
-        if(len(crs) == 4):
-            if(crs[3] == "Y"):
+        if not isinstance(crs, (int, np.integer)):
+            # strip optional "chr" prefix
+            crs_stripped = crs[3:] if crs.startswith("chr") else crs
+            if crs_stripped == "Y":
                 crs = 23
-            elif (crs[3] == "X"):
+            elif crs_stripped == "X":
                 crs = 24
             else:
-                crs = int(crs[3])
-        elif(len(crs) == 5):
-            crs = int(crs[3:5])
+                crs = int(crs_stripped)
 
         temp_chrs[i] = crs
         temp_readdepths[i] = list(temp_readdepths[i])

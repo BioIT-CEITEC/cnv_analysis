@@ -27,13 +27,13 @@ process JABCONTOOL_CALL {
     Rscript ${projectDir}/bin/jabConTool_main.R calls/final_CNV_probs_jabcontool.tsv \
         ${organism_regions} \
         ${snp_bed} \
-        ${params.calling_type} \
+        germline \
         ${wgs_or_roi} \
         ${gc_profile_flag} \
         ${use_cytoband} \
         ${cohort_flag} \
         ${params.jabCoNtool_predict_TL} \
-        ${params.max_CNV_occurance_in_cohort} \
+        ${params.jabCoNtool_max_CNV_occurance_in_cohort} \
         cov ${normal_cov} 
     """
 

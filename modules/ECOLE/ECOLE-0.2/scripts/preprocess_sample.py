@@ -45,8 +45,8 @@ for file_name in exon_wise_readdepth_files:
 
     labeled_data = []
     sample_name = file_name.split(".")[0]
-    target_data = pd.read_csv(target_list_path, sep="\t", header=None).values
-    read_depth_data = pd.read_csv(os.path.join(exon_wise_readdepths_path, file_name), sep="\t").values
+    target_data = pd.read_csv(target_list_path, sep="\t", header=None, dtype={0: str}).values
+    read_depth_data = pd.read_csv(os.path.join(exon_wise_readdepths_path, file_name), sep="\t", dtype={0: str}).values
 
     chromosomes = np.unique(target_data[:,0])
     

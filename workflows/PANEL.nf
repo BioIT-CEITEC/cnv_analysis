@@ -17,6 +17,8 @@ include { PSEUDOGENE_ANALYSIS } from "../subworkflows/pseudogene_identification/
 include { MERGE_VARIANT_CALLS } from "../modules/mergeVariantCalls/main.nf"
 include { CLASSIFY_AND_ANNOTATE } from "../modules/classify_and_annotate_CNVs/main.nf"
 include { ECOLE_ANALYSIS } from "../subworkflows/ECOLE/main.nf"
+include { XHMM_ANALYSIS } from "../subworkflows/XHMM/main.nf"
+include { CONIFER_ANALYSIS } from "../subworkflows/conifer/main.nf"
 
 /*
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -48,6 +50,7 @@ ch_organism_delly_map = params.organism_delly_map ? Channel.fromPath(params.orga
 ch_organism_gtf_tsv = params.organism_gtf_tsv ? Channel.fromPath(params.organism_gtf_tsv).collect() : Channel.empty()
 ch_organism_gene_bed = params.organism_gene_bed ? Channel.fromPath(params.organism_gene_bed).collect() : Channel.empty()
 ch_organism_pseudogene_bed = params.organism_pseudogene_bed ? Channel.fromPath(params.organism_pseudogene_bed).collect() : Channel.empty()
+ch_organism_gtf = params.organism_gtf ? Channel.fromPath(params.organism_gtf).collect() : Channel.empty()
 
 def panelMode = params.panel_of_normals ?: false
 
@@ -250,7 +253,24 @@ workflow PANEL_WES {
     if (params.use_ecole) {
         ECOLE_ANALYSIS(
             ch_samples,
-            ch_organism_gene_bed
+            ch_organism_dna_panel
         )
     }
+
+    if (params.use_xhmm) {
+        XHMM_ANALYSIS(
+            ch_samples,
+            ch_organism_dna_panel
+        )
+    }
+
+    if (params.use_conifer) {
+        CONIFER_ANALYSIS(
+            ch_samples,
+            ch_organism_dna_panel,
+            ch_organism_gtf
+        )
+    }
+
+
 }

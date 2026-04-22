@@ -10,7 +10,7 @@ process ALIGN_REGIONS {
     path paired_bed
 
     output:
-    path("diff_output/*"), emit: diff_tsvs
+    path("diff_output"), emit: diff_tsvs
 
     script:
     """

@@ -26,7 +26,7 @@ workflow ECOLE_ANALYSIS {
         ch_regions_of_interest
     )
 
-    ch_read_depths = READ_DEPTH_ECOLE.out.ecole_preprocessed_samples
+    ch_read_depths     = READ_DEPTH_ECOLE.out.ecole_preprocessed_samples
 
     CNV_CALL_ECOLE (
         ch_read_depths,
