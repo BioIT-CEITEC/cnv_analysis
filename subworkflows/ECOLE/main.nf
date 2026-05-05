@@ -9,7 +9,7 @@ workflow ECOLE_ANALYSIS {
 
     main:
 
-    ch_bed = ch_regions_of_interest.first()
+    ch_bed = ch_regions_of_interest
 
     // Transform input channel
     ch_input_bams

@@ -1,4 +1,4 @@
-nextflow.enable.dsl = 2
+ nextflow.enable.dsl = 2
 
 
 // Validate inputs and potentially references
@@ -38,9 +38,8 @@ ch_organism_gtf_tsv = params.organism_gtf_tsv ? Channel.fromPath(params.organism
 ch_organism_gtf = params.organism_gtf ? Channel.fromPath(params.organism_gtf).collect() : Channel.empty()
 ch_organism_gene_bed = params.organism_gene_bed ? Channel.fromPath(params.organism_gene_bed).collect() : Channel.empty()
 
-
+Utils.loadSample(params)
 def inputData = Utils.parseInputVC(params.new_samples, projectDir, log)
-
 def samples = inputData.samples
 
 workflow PANEL_WES {
