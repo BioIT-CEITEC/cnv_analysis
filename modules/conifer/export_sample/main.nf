@@ -1,9 +1,10 @@
 process EXPORT_SAMPLE_CONIFER {
     tag "${meta.sample_name}"
+    publishDir "structural_varcalls/${meta.sample_name}/conifer", mode: 'copy'
     conda "${moduleDir}/../env.yaml"
 
     input:
-    tuple val(meta), path cohort_hdf5
+    tuple val(meta), path(cohort_hdf5)
 
     output:
     tuple val(meta), path("${meta.sample_name}_conifer.bed"), emit: conifer_export
@@ -14,7 +15,7 @@ process EXPORT_SAMPLE_CONIFER {
     """
     exported=0
     for candidate in "${meta.sample_name}" "${meta.sample_name}.rpkm"; do
-        python3 ${conifer} export \
+        python ${conifer} export \
             --input  ${cohort_hdf5} \
             --sample "\$candidate" \
             --output ${out} && exported=1 && break

@@ -1,6 +1,6 @@
 process PREPARE_COHORT_EXOMEDEPTH {
 
-    publishDir "structural_varcalls/exomeDepth", mode: 'copy'
+    publishDir "cohort_data", mode: 'copy'
     conda "${moduleDir}/env.yaml"
 
     input:
@@ -15,18 +15,15 @@ process PREPARE_COHORT_EXOMEDEPTH {
 
     def bam_files = bam instanceof List ? bam.join(' ') : bam
 
-        """
-
-        mkdir -p cohort_data
-        Rscript ${projectDir}/bin/prepare_exomeDepth_wrapper.R ${regions_of_interest} ${reference_fasta} cohort_data/exomeDepth_customCohort.RData ${bam_files} 
-
-        """
+    """
+    mkdir -p cohort_data
+    Rscript ${projectDir}/bin/prepare_exomeDepth_wrapper.R ${regions_of_interest} ${reference_fasta} cohort_data/exomeDepth_customCohort.RData ${bam_files} 
+    """
 
     stub:
         """
         mkdir -p cohort_data
-        touch cohort_data/target.bed
-        touch cohort_data/antitarget.bed
+        touch cohort_data/exomeDepth_customCohort.RData
         """
 
 }

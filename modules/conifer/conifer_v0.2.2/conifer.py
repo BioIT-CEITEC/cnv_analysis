@@ -172,11 +172,12 @@ def CF_analyze(args):
 		
 		print "[RUNNING: chr%d] Calculating ZRPKM scores..." % chr
 		rpkm = np.apply_along_axis(cf.zrpkm, 0, rpkm, median[probe_mask], sd[probe_mask])
-		
+		rpkm = np.nan_to_num(rpkm)  # sd=0 at zero-variance probes yields NaN; treat as no deviation
+
 		# svd transform
 		print "[RUNNING: chr%d] SVD decomposition..." % chr
 		components_removed = int(args.svd)
-		
+
 		U, S, Vt = np.linalg.svd(rpkm,full_matrices=False)
 		new_S = np.diag(np.hstack([np.zeros([components_removed]),S[components_removed:]]))
 		

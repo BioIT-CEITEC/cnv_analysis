@@ -33,10 +33,24 @@ run_all <- function(args){
   exons <- GRanges(exons[,1],IRanges(exons[,2]-30,exons[,3]+30))
   exons <- reduce(exons)
 
-  ## load COHORT BAMS
-  BAMcohort <- BAMS
+  # Process BAMs in batches to limit peak memory; parallel=1 per batch avoids
+  # spawning 8 threads × N concurrent Nextflow tasks simultaneously
+  BATCH_SIZE <- 20
 
-  X_cohort <- cn.mops::getSegmentReadCountsFromBAM(BAMcohort, GR=exons, parallel=8)
+  batches <- split(BAMS, ceiling(seq_along(BAMS) / BATCH_SIZE))
+
+  X_cohort <- NULL
+  for (batch in batches) {
+    X_batch <- cn.mops::getSegmentReadCountsFromBAM(batch, GR=exons, parallel=1)
+    if (is.null(X_cohort)) {
+      X_cohort <- X_batch
+    } else {
+      elementMetadata(X_cohort) <- cbind(elementMetadata(X_cohort),
+                                         elementMetadata(X_batch))
+    }
+    rm(X_batch)
+    gc()
+  }
 
   save(X_cohort,exons,file=Rdata)
 

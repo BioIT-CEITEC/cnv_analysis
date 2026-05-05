@@ -49,7 +49,6 @@ workflow GATK_ANALYSIS {
     ch_prepared_regions
     )
 
-
     ch_filtering_input = COUNT_READS_GATK.out.read_counts_gatk
       .map { meta, counts -> 
         return counts}
@@ -73,7 +72,7 @@ workflow GATK_ANALYSIS {
     ch_ploidy_determination = GERMLINE_PLOIDY_DETERMINATION_GATK.out.ploidy_model_gatk.collect()
 
     COHORT_GENERATION_GATK(
-    ch_prepared_regions,
+    ch_qc_filtered_intervals,
     ch_filtering_input,
     ch_annotated_regions,
     ch_ploidy_determination
@@ -88,7 +87,6 @@ workflow GATK_ANALYSIS {
       ch_cohort_data
     )
 
-  // Do not collect germline calls into a value-only channel; keep tuple with meta
   ch_germline_calls = CNV_VARCALLS_GATK.out.germline_calls
 
   ch_postproc_input = normal_bam

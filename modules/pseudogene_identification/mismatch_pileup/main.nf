@@ -1,6 +1,8 @@
 process MISMATCH_PILEUP {
     tag "${meta.sample_name}"
-    publishDir "pseudogene/mismatch_pileup", mode: 'copy'
+
+    publishDir "pseudogene/final_classification", mode: 'copy'
+
     conda "${moduleDir}/../env.yaml"
 
     input:
@@ -9,7 +11,7 @@ process MISMATCH_PILEUP {
     path region_bed
 
     output:
-    tuple val(meta), path("${meta.sample_name}_mismatch_pileup.tsv"), emit: pileup_tsv
+    tuple val(meta), path("${meta.sample_name}_final_classification.tsv"), emit: pileup_tsv
 
     script:
     """
@@ -18,6 +20,11 @@ process MISMATCH_PILEUP {
         --realigned_dir ${realigned_dir} \
         --bed         ${region_bed} \
         --sample      ${meta.sample_name} \
-        --output      ${meta.sample_name}_mismatch_pileup.tsv \
+        --output      ${meta.sample_name}_final_classification.tsv \
+    """
+
+    stub:
+    """
+    touch ${meta.sample_name}_final_classification.tsv
     """
 }

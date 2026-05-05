@@ -1,5 +1,6 @@
 process REALIGN_READS {
     tag "${meta.sample_name}"
+
     conda "${moduleDir}/../env.yaml"
 
     input:
@@ -14,5 +15,11 @@ process REALIGN_READS {
     script:
     """
     python3 ${projectDir}/bin/realign_specific.py --bam_dir ${extracted_dir} --ref ${reference_fasta} --bed ${region_bed} --outdir ${meta.sample_name}_realigned_reads --flank 300
+    """
+
+    stub:
+    """
+    mkdir -p ${meta.sample_name}_realigned_reads/
+    touch ${meta.sample_name}_realigned_reads/${meta.sample_name}.bam
     """
 }

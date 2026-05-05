@@ -3,7 +3,7 @@ include { CALCULATE_RPKM_CONIFER } from "../../modules/conifer/calculate_rpkm/ma
 include { COHORT_ANALYSIS_CONIFER } from "../../modules/conifer/cohort_analysis/main.nf"
 include { COHORT_CALL_CONIFER } from "../../modules/conifer/cohort_call/main.nf"
 include { EXPORT_SAMPLE_CONIFER } from "../../modules/conifer/export_sample/main.nf"
-include { EXPORT_COHORT_CONIFER } from "../../modules/conifer/export_cohort/main.nf"
+include { EXTRACT_SAMPLE_CONIFER } from "../../modules/conifer/extract_sample/main.nf"
 
 workflow CONIFER_ANALYSIS {
 
@@ -14,14 +14,12 @@ workflow CONIFER_ANALYSIS {
 
     main:
 
-
-    // Transform input channel
     ch_input_bams
         .map { sample ->
-            sample[1..-1] // Remove the first element if necessary
+            sample[1..-1]
         }
-        .flatten() // Flatten the nested structure
-        .collect() // Collect all files into a single list
+        .flatten()
+        .collect()
         .set { ch_all_bam_files }
 
     GET_PROBES_CONIFER(

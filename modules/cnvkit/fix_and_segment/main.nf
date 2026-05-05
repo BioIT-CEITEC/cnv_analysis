@@ -6,7 +6,7 @@ process FIX_AND_SEGMENT_CNVKIT {
 
     input:
     tuple val(meta), path(target), path(antitarget)
-    path cnvkit_reference // mandatory path to the reference file "normal_reference.cnn" produced at reference process
+    path cnvkit_reference
 
     output:
     tuple val(meta), path("segmented/fixed_cov.cnr"), path("segmented/segmented_cov.cns"), emit: cnvkit_segments
@@ -19,7 +19,12 @@ process FIX_AND_SEGMENT_CNVKIT {
         ${cnvkit_reference} \
         -o segmented/fixed_cov.cnr
 
-    cnvkit.py segment segmented/fixed_cov.cnr \
+    # Remove bins with NaN or -Inf log2 values — CBS (R/DNAcopy) crashes on them
+    awk 'NR==1 || (\$5 != "NaN" && \$5 != "-Inf" && \$5 != "Inf")' segmented/fixed_cov.cnr \
+        > segmented/fixed_cov_filtered.cnr
+
+    cnvkit.py segment segmented/fixed_cov_filtered.cnr \
+        --method cbs \
         -o segmented/segmented_cov.cns
     """
 

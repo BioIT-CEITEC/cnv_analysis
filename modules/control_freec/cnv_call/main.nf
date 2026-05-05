@@ -1,7 +1,6 @@
-process CONTROL_FREEC {
+process CNV_CALL_FREEC {
     tag "${meta.sample_name}"
-    publishDir "structural_varcalls/freec/", mode: 'copy'
-    conda "${moduleDir}/env.yaml"
+    conda "${moduleDir}/../env.yaml"
 
     input:
     tuple val(meta), path(bam), path(bam_bai)
@@ -59,6 +58,8 @@ config_lines = [
     "minExpectedGC = ${params.freec_min_expected_gc}",
     "maxExpectedGC = ${params.freec_max_expected_gc}",
     "coefficientOfVariation = ${params.freec_coeff_var}",
+    "breakPointThreshold = ${params.freec_breakpoint_threshold}",
+    "breakPointType = 4",
     "maxThreads = ${task.cpus}",
     "forceGCcontentNormalization = 1",
 ]
@@ -69,7 +70,7 @@ config_lines += [
     "[sample]",
     "mateFile = ${bam}",
     "inputFormat = BAM",
-    "mateOrientation = FR",
+    "mateOrientation = 0",
     "",
     "[target]",
     "captureRegions = ${capture_bed}",
@@ -82,4 +83,12 @@ CODE
 
     freec -conf ${meta.sample_name}_freec/${meta.sample_name}_freec_config.txt
     """
+
+    stub:
+    """
+    touch ${meta.sample_name}_freec/${meta.sample_name}_${meta.sample_name}.bam_CNVs
+    touch ${meta.sample_name}_freec/${meta.sample_name}_freec_config.txt
+    touch ${meta.sample_name}_freec/${meta.sample_name}.bam_ratio.txt
+    """
+
 }

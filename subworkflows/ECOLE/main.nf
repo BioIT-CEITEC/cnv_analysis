@@ -9,6 +9,7 @@ workflow ECOLE_ANALYSIS {
 
     main:
 
+    ch_bed = ch_regions_of_interest.first()
 
     // Transform input channel
     ch_input_bams
@@ -19,18 +20,19 @@ workflow ECOLE_ANALYSIS {
         .collect() // Collect all files into a single list
         .set { ch_all_bam_files }
 
-    // Debug transformed channel
-
     READ_DEPTH_ECOLE (
         ch_all_bam_files,
-        ch_regions_of_interest
+        ch_bed
     )
 
     ch_read_depths     = READ_DEPTH_ECOLE.out.ecole_preprocessed_samples
 
     CNV_CALL_ECOLE (
         ch_read_depths,
-        ch_regions_of_interest
+        ch_bed
     )
+
+    emit:
+    ch_ecole_varcalls = CNV_CALL_ECOLE.out.ecole_varcalls
 
 }

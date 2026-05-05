@@ -5,16 +5,14 @@ suppressMessages(library(GenomicRanges))
 Sys.setenv("R_ZIPCMD" = "zip")
 
 run_all <- function(args){
-  #read all params as variables
   BED <- args[1]
   FASTA <- args[2]
   Rdata <- args[3]
   BAMS <- args[4:length(args)]
-  
-  
+
   exons <- fread(BED,sep="\t")
   colnames(exons) <- c("chromosome","start","end","gene")
-  exons <- exons[exons$end>exons$start,] # end > start
+  exons <- exons[exons$end>exons$start,]
   exons$width <- exons$end-exons$start
   exons <- exons[exons$width>10,]
   exons <- subset(exons, select = -c(width))
@@ -32,15 +30,29 @@ run_all <- function(args){
   setnames(exons,"name","gene")
   exons <- as.data.frame(exons)
 
-  BAMcohort <- BAMS
+  # Process BAMs in batches to cap peak memory usage
+  BATCH_SIZE <- 20
+  batches <- split(BAMS, ceiling(seq_along(BAMS) / BATCH_SIZE))
 
-  X_cohort <- ExomeDepth::getBamCounts(bed.frame = exons,
-                           bam.files = BAMcohort,
-                           include.chr = FALSE,
-                           referenceFasta = FASTA)
+  X_cohort <- NULL
+  for (batch in batches) {
+    X_batch <- as.data.frame(ExomeDepth::getBamCounts(
+      bed.frame = exons,
+      bam.files = batch,
+      include.chr = FALSE,
+      referenceFasta = FASTA
+    ))
+    if (is.null(X_cohort)) {
+      X_cohort <- X_batch
+    } else {
+      n_meta <- ncol(X_batch) - length(batch)
+      X_cohort <- cbind(X_cohort, X_batch[, (n_meta + 1):ncol(X_batch), drop = FALSE])
+    }
+    rm(X_batch)
+    gc()
+  }
 
   save(X_cohort,exons,file = Rdata)
-
 }
 
 script_dir <- dirname(sub("--file=", "", commandArgs()[grep("--file=", commandArgs())]))

@@ -16,12 +16,10 @@ workflow JABCONTOOL_ANALYSIS {
     ch_cohort_data
 
     main:
-    def tumorNormal = params.tumor_normal
-    ch_region_bed = tumorNormal ? ch_binned_genome : ch_organism_dna_panel
 
     COVERAGE_CALC (
         ch_input_bams,
-        ch_region_bed,
+        ch_organism_dna_panel,
         ch_reference_fasta_fai
     )
     SNP_AF_CALC(
@@ -30,7 +28,6 @@ workflow JABCONTOOL_ANALYSIS {
         ch_reference_fasta_fai,
         ch_organism_snps
     )
-    // Collect all coverage and SNP files and create a proper tuple structure
     ch_combined = COVERAGE_CALC.out.region_coverage
         .map { meta, cov -> cov }
         .collect()
@@ -46,7 +43,7 @@ workflow JABCONTOOL_ANALYSIS {
 
     JABCONTOOL_CALL (
         ch_combined,
-        ch_region_bed,
+        ch_organism_dna_panel,
         ch_gc_profile,
         ch_organism_cytoband,
         ch_organism_snps

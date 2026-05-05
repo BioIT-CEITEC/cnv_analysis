@@ -22,7 +22,7 @@ read_all_tsv <- function(tsv_files) {
   file_info <- file_info[grepl("_normalized\\.tsv$", filename)]
   file_info[, base := sub("_normalized\\.tsv$", "", filename)]
 
-  valid_callers <- c("cnvkit", "cnMOPS", "ExomeDepth", "panelcnMOPS", "gatk", "jabcontool")
+  valid_callers <- c("cnvkit", "cnMOPS", "ExomeDepth", "panelcnMOPS", "gatk", "jabcontool", "xhmm", "freec", "conifer")
 
   file_info[, varcaller := NA_character_]
   for (vc in valid_callers) {
@@ -136,16 +136,16 @@ run_all <- function(args){
       vcf_calls <- vcf_calls[CN_ESTIMATE != 2, TYPE := ifelse(CN_ESTIMATE < 2, "DEL", "DUP")]
     }
 
-    if (file.exists("final_CNV_probs_jabcontool_normalized.tsv")) {
-      jabcontool_calls <- fread("final_CNV_probs_jabcontool_normalized.tsv")
-      jabcontool_calls[, varcaller := "jabcontool"]
-      if ("SAMPLE" %in% colnames(jabcontool_calls) && !"sample" %in% colnames(jabcontool_calls)) {
-        setnames(jabcontool_calls, "SAMPLE", "sample")
-      }
-    } else {
-      jabcontool_calls <- data.table()
-    }
+  if (file.exists("final_CNV_probs_jabcontool_normalized.tsv")) {
+    jabcontool_calls <- fread("final_CNV_probs_jabcontool_normalized.tsv")
+    jabcontool_calls[, varcaller := "jabcontool"]
 
+  if ("SAMPLE" %in% colnames(jabcontool_calls)) {
+    jabcontool_calls[, SAMPLE := sub("\\.region_coverage\\.tsv$", "", SAMPLE)]
+    jabcontool_calls[, SAMPLE := sub("\\.bam$", "", SAMPLE)]  # por si acaso
+    setnames(jabcontool_calls, "SAMPLE", "sample")
+  }
+}
     all_calls <- rbindlist(
       list(tsv_calls, vcf_calls, jabcontool_calls),
       fill = TRUE,
@@ -204,16 +204,19 @@ run_all <- function(args){
       all_calls <- all_calls[CHROM %in% listofCHR2]
     }
 
-    if ("cnvkit" %in% all_calls$varcaller) {
-      all_calls <- all_calls[!(varcaller == "cnvkit" & (END - START) > 500000)]
-    }
+    #all_calls <- all_calls[(END - START) <= 500000]
 
     all_calls[, CALL_CHROM := CHROM]
     all_calls[, CALL_START := START]
     all_calls[, CALL_END := END]
 
+    all_calls <- all_calls[!is.na(CHROM) & !is.na(START) & !is.na(END) & START <= END]
+
     setDT(all_calls)
     setkey(all_calls, CHROM, START, END)
+
+    targets <- targets[!is.na(CHROM) & !is.na(START) & !is.na(END) & START <= END]
+    setkey(targets, CHROM, START, END)
 
     ov <- foverlaps(
       x = targets,
@@ -309,6 +312,17 @@ run_all <- function(args){
     }
 
     wide_calls[, Count_Detected := rowSums(as.matrix(.SD) != "0"), .SDcols = type_cols]
+
+    dir.create("merged_variants", showWarnings = FALSE)
+    write.table(
+      wide_calls,
+      file  = paste0("merged_variants/", sample_name, "_raw_callers_matrix.tsv"),
+      sep   = "\t",
+      quote = FALSE,
+      row.names = FALSE,
+      col.names = TRUE
+    )
+
     wide_calls <- wide_calls[Count_Detected >= min_number_callers]
     wide_calls[, n_DEL := rowSums(.SD == "DEL", na.rm = TRUE), .SDcols = type_cols]
     wide_calls[, n_DUP := rowSums(.SD == "DUP", na.rm = TRUE), .SDcols = type_cols]
@@ -340,11 +354,9 @@ run_all <- function(args){
     final_tsv <- final_calls
     setorder(final_tsv, CHROM, START)
 
-    dir.create("results", showWarnings = FALSE)
-
     write.table(
       final_bed,
-      file = paste0("results/", sample_name, "_merged_target_consensus.bed"),
+      file = paste0("merged_variants/", sample_name, "_merged_target_consensus.bed"),
       sep = "\t",
       quote = FALSE,
       row.names = FALSE,
@@ -353,12 +365,133 @@ run_all <- function(args){
 
     write.table(
       final_tsv,
-      file = paste0("results/", sample_name, "_merged_target_consensus.tsv"),
+      file = paste0("merged_variants/", sample_name, "_merged_target_consensus.tsv"),
       sep = "\t",
       quote = FALSE,
       row.names = FALSE,
       col.names = TRUE
     )
+
+    # === Smoothed independent variant calls ===
+    # Merges overlapping target hits into single variant calls using the actual
+    # caller coordinates: START = earliest start across all callers, END = farthest
+    # end across all callers, so the smoothed call spans the full reported extent.
+    if (nrow(final_calls) > 0 && length(coord_cols_present) > 0) {
+
+        parse_bounds <- function(row_vec, type, max_span = 500000) {
+            valid <- row_vec[!is.na(row_vec) & row_vec != "0" & nchar(as.character(row_vec)) > 0]
+            if (!length(valid)) return(NA_real_)
+            txt <- paste(valid, collapse = ";")
+            # coords format: "CHROM:START-END" — capture the ":digits-digits" part
+            m <- regmatches(txt, gregexpr(":([0-9]+)-([0-9]+)", txt))[[1]]
+            if (!length(m)) return(NA_real_)
+            parts  <- strsplit(sub("^:", "", m), "-")
+            starts <- as.numeric(sapply(parts, `[`, 1))
+            ends   <- as.numeric(sapply(parts, `[`, 2))
+            # drop any individual coord that spans more than max_span (likely an artifact)
+            keep   <- (ends - starts) <= max_span
+            starts <- starts[keep]
+            ends   <- ends[keep]
+            if (!length(starts)) return(NA_real_)
+            if (type == "start") min(starts, na.rm = TRUE) else max(ends, na.rm = TRUE)
+        }
+
+        caller_type_cols <- intersect(type_cols, colnames(final_calls))
+
+        fc_coord_data <- final_calls[, coord_cols_present, with = FALSE]
+        call_starts   <- apply(fc_coord_data, 1, parse_bounds, type = "start")
+        call_ends     <- apply(fc_coord_data, 1, parse_bounds, type = "end")
+
+        smoothed <- cbind(
+            final_calls[, .(sample, CHROM, target_name, consensus_type,
+                             target_START = START, target_END = END)],
+            final_calls[, c(caller_type_cols, coord_cols_present), with = FALSE]
+        )
+        smoothed[, call_start := fifelse(is.na(call_starts), target_START, as.numeric(call_starts))]
+        smoothed[, call_end   := fifelse(is.na(call_ends),   target_END,   as.numeric(call_ends))]
+
+        setorder(smoothed, sample, CHROM, consensus_type, call_start)
+
+        # Build a key of non-trivial caller coord strings per row for exact-match merging.
+        # Two rows belong to the same variant only if at least one caller reported the
+        # identical coordinate string for both (same call mapped to multiple targets).
+        # This prevents nearby but distinct variants from being merged just because their
+        # caller coordinates happen to overlap.
+        smoothed[, coord_key := {
+            apply(.SD, 1, function(row) {
+                vals <- row[!is.na(row) & row != "0" & nchar(as.character(row)) > 0]
+                if (!length(vals)) "" else paste(sort(vals), collapse = "|")
+            })
+        }, .SDcols = coord_cols_present]
+
+        smoothed[, var_group := {
+            n <- .N
+            if (n == 0L) return(integer(0))
+            g       <- integer(n)
+            cur_grp <- 1L
+            g[1L]   <- 1L
+            # group_keys: union of all coord strings seen so far per group
+            group_keys <- list()
+            group_keys[[1L]] <- strsplit(coord_key[1L], "\\|")[[1]]
+            if (n > 1L) {
+                for (i in 2L:n) {
+                    row_keys <- strsplit(coord_key[i], "\\|")[[1]]
+                    # find the most recent group whose coord set overlaps this row
+                    matched_grp <- NA_integer_
+                    for (grp in cur_grp:1L) {
+                        if (length(intersect(row_keys, group_keys[[grp]])) > 0L) {
+                            matched_grp <- grp
+                            break
+                        }
+                    }
+                    if (!is.na(matched_grp)) {
+                        g[i] <- matched_grp
+                        group_keys[[matched_grp]] <- union(group_keys[[matched_grp]], row_keys)
+                    } else {
+                        cur_grp <- cur_grp + 1L
+                        g[i]    <- cur_grp
+                        group_keys[[cur_grp]] <- row_keys
+                    }
+                }
+            }
+            g
+        }, by = .(sample, CHROM, consensus_type)]
+
+        smoothed[, coord_key := NULL]
+
+        # Aggregate each merged group into one variant row
+        smooth_output <- smoothed[, {
+            active <- caller_type_cols[
+                vapply(caller_type_cols,
+                       function(col) any(get(col) != "0", na.rm = TRUE),
+                       logical(1))
+            ]
+            .(
+                START        = min(call_start),
+                END          = max(call_end),
+                n_targets    = .N,
+                n_callers    = length(active),
+                callers      = paste(active, collapse = ";"),
+                target_names = paste(sort(unique(target_name)), collapse = ";")
+            )
+        }, by = .(sample, CHROM, consensus_type, var_group)]
+
+        smooth_output[, var_group := NULL]
+
+        # Deduplicate: rows with identical coords after merging are the same variant
+        smooth_output <- unique(smooth_output, by = c("sample", "CHROM", "START", "END", "consensus_type"))
+
+        setorder(smooth_output, sample, CHROM, START)
+
+        write.table(
+            smooth_output,
+            file      = paste0("merged_variants/", sample_name, "_smoothed_variants.tsv"),
+            sep       = "\t",
+            quote     = FALSE,
+            row.names = FALSE,
+            col.names = TRUE
+        )
+    }
 
 }
 

@@ -12,12 +12,44 @@ process COVERAGE_CALC {
     tuple val(meta), path("${meta.sample_name}.region_coverage.tsv"), emit: region_coverage
 
     script:
-
-    //def hasNormals = params.panel_of_normals ?: false
-    //def tumor_flag = hasNormals ? "bedtools coverage -sorted -a ${organism_reference} -b ${tumor_bam} -o ${reference_index} > ${meta.sample_name}_T.region_coverage.tsv" : "touch ${meta.sample_name}_T.region.coverage.tsv"
-
     """
-    bedtools coverage -sorted -a ${organism_reference} -b ${bam} -g ${reference_index} > ${meta.sample_name}.region_coverage.tsv
+    bedtools sort \
+        -faidx ${reference_index} \
+        -i ${organism_reference} \
+        > ${meta.sample_name}.targets.sorted.bed
+
+    SORT_ORDER=\$(samtools view -H ${bam} | awk '\$1=="@HD" {
+        for (i=1; i<=NF; i++) {
+            if (\$i ~ /^SO:/) {
+                sub("SO:", "", \$i)
+                print \$i
+            }
+        }
+    }')
+
+    if [ "\${SORT_ORDER}" = "coordinate" ]; then
+        ln -s ${bam} ${meta.sample_name}.sorted.bam
+
+        if [ -f "${bam_bai}" ]; then
+            ln -s ${bam_bai} ${meta.sample_name}.sorted.bam.bai
+        else
+            samtools index ${meta.sample_name}.sorted.bam
+        fi
+    else
+        samtools sort \
+            -m 2G \
+            -o ${meta.sample_name}.sorted.bam \
+            ${bam}
+
+        samtools index ${meta.sample_name}.sorted.bam
+    fi
+
+    bedtools coverage \
+        -sorted \
+        -a ${meta.sample_name}.targets.sorted.bed \
+        -b ${meta.sample_name}.sorted.bam \
+        -g ${reference_index} \
+        > ${meta.sample_name}.region_coverage.tsv
     """
 
     stub:

@@ -3,21 +3,20 @@ process REFERENCE_CNVKIT {
     conda "${moduleDir}/../env.yaml"
 
     input:
-    path reference_fasta // channel to the reference fasta file
-    path normal_coverage // channel to the tumor coverage files
-    path sample_coverage // channel to the normal coverage files
-    tuple path(target), path(antitarget) // target and antitarget bed file produced in prepare_regions_cnvkit process
-    val sample_number // if only tumor samples are provided at least 4 are required, otherwise will use antitarget.bed and targed.bed
+    path reference_fasta
+    path normal_coverage
+    path sample_coverage
+    tuple path(target), path(antitarget)
+    val sample_number
 
     output:
     path("reference/normal_reference.cnn"), emit: cnvkit_reference
 
     script:
 
-    def hasNormals = params.tumor_normal ?: false
-    def coverage_files = hasNormals ? normal_coverage : sample_coverage
 
-    if (hasNormals || sample_number) {
+
+    if (sample_number) {
 
         """
         mkdir -p reference

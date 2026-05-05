@@ -1,6 +1,6 @@
 process PREPARE_COHORT_CNMOPS {
 
-    publishDir "structural_varcalls/cnMOPS", mode: 'copy'
+    publishDir "cohort_data", mode: 'copy'
     conda "${moduleDir}/env.yaml"
 
     input:
@@ -16,16 +16,13 @@ process PREPARE_COHORT_CNMOPS {
 
         """
         mkdir -p cohort_data
-
         Rscript ${projectDir}/bin/prepare_cnMOPS_wrapper.R ${regions_of_interest} cohort_data/cnMOPS_customCohort.RData ${bam_files}
-
         """
 
     stub:
         """
         mkdir -p cohort_data
-        touch cohort_data/target.bed
-        touch cohort_data/antitarget.bed
+        touch cohort_data/cnMOPS_customCohort.RData
         """
 
 }

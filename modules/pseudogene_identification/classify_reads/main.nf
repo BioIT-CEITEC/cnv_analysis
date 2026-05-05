@@ -1,6 +1,6 @@
 process CLASSIFY_READS {
     tag "${meta.sample_name}"
-    publishDir "pseudogene_identification/", mode: 'copy'
+
     conda "${moduleDir}/../env.yaml"
 
     input:
@@ -20,5 +20,10 @@ process CLASSIFY_READS {
         --bed           ${region_bed} \
         --sample        ${meta.sample_name} \
         --output        ${meta.sample_name}_classified_reads.tsv
+    """
+
+    stub:
+    """
+    touch ${meta.sample_name}_classified_reads.tsv
     """
 }
