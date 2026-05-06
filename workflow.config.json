@@ -137,7 +137,7 @@
       },
       "conifer_threshold": {
         "label": "threshold to consider a variant in conifer.",
-        "type": "float",
+        "type": "string",
         "default": 3,
         "conditions": {
           "relevance": {
@@ -347,7 +347,7 @@
       },
       "xhmm_pve_mean_factor": {
         "label": "Factor to multiply the mean PVE to determine the number of PCA components to use in XHMM.",
-        "type": "float",
+        "type": "string",
         "default": 0.7,
         "conditions": {
           "relevance": {
@@ -361,7 +361,7 @@
       },
       "freec_breakpoint_threshold": {
         "label": "Breakpoint threshold for Control-FREEC.",
-        "type": "float",
+        "type": "string",
         "default": 0.6,
         "conditions": {
           "relevance": {
@@ -431,7 +431,7 @@
       },
       "freec_min_expected_gc": {
         "label": "Minimum expected GC content for Control-FREEC.",
-        "type": "float",
+        "type": "string",
         "default": 0.4,
         "conditions": {
           "relevance": {
@@ -445,7 +445,7 @@
       },
       "freec_max_expected_gc": {
         "label": "Maximum expected GC content for Control-FREEC.",
-        "type": "float",
+        "type": "string",
         "default": 0.5,
         "conditions": {
           "relevance": {
@@ -459,7 +459,7 @@
       },
       "freec_coeff_var": {
         "label": "Coefficient of variation for Control-FREEC.",
-        "type": "float",
+        "type": "string",
         "default": 0.1,
         "conditions": {
           "relevance": {
@@ -473,7 +473,7 @@
       },
       "freec_min_map": {
         "label": "Minimum mappability for Control-FREEC.",
-        "type": "float",
+        "type": "string",
         "default": 0.85,
         "conditions": {
           "relevance": {
