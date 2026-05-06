@@ -1,5 +1,5 @@
 process CNV_CALL_ECOLE {
-    publishDir "structural_varcalls/ECOLE", mode: 'copy'
+    publishDir "structural_varcalls/all_samples", mode: 'copy'
     conda "${moduleDir}/../env.yaml"
 
     input:
@@ -7,16 +7,15 @@ process CNV_CALL_ECOLE {
     path target_bed
 
     output:
-    path("ecole_calls_output/*"), emit: ecole_cnvcalls
+    path("ECOLE/*"), emit: ecole_cnvcalls
 
     script:
-
+    def ecole_path = "${moduleDir}/../ECOLE-0.2/scripts/ECOLE_call.py"
     """
-    mkdir -p ecole_calls_output
-
-    python ${moduleDir}/../ECOLE-0.2/scripts/ECOLE_call.py --model ecole \
+    mkdir -p ECOLE
+    python ${ecole_path} --model ecole \
     --input ./processed_samples \
-    --output ./ecole_calls_output \
+    --output ./ECOLE \
     --cnv exonlevel \
     --batch_size 16 \
     --normalize ${moduleDir}/../ECOLE-0.2/ecole_stats.txt \
@@ -25,10 +24,10 @@ process CNV_CALL_ECOLE {
 
     stub:
     """
-    mkdir -p ecole_calls_output
+    mkdir -p ECOLE
     for filename in ${bams}; do
         f=\$(basename -- "\$filename")
-        touch "ecole_calls_output/\${f}.txt"
+        touch "ECOLE/\${f}.txt"
     done
     """
 

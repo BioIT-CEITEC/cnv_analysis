@@ -1,5 +1,6 @@
 process PER_SAMPLE_CALL_XHMM {
     tag "${meta.sample_name}"
+    publishDir "structural_varcalls/${meta.sample_name}/XHMM", mode: 'copy'
     conda "${moduleDir}/../env.yaml"
 
     input:
@@ -13,7 +14,7 @@ process PER_SAMPLE_CALL_XHMM {
     """
     python3 ${projectDir}/bin/xhmm_extract_sample.py \
         --xcnv ${cnv_calls} \
-        --sample-name ${meta.sample_name} \
+        --sample-name ${bam.simpleName} \
         --output ${meta.sample_name}_xhmm.tsv
     """
 

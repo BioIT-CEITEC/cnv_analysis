@@ -1,7 +1,7 @@
 process CLASSIFY_AND_ANNOTATE {
 
     tag "${meta.sample_name}"
-    publishDir "annotated_varcalls/", mode: 'copy'
+    publishDir "structural_varcalls/${meta.sample_name}", mode: 'copy'
     conda "${moduleDir}/env.yaml" 
 
     input:
@@ -9,22 +9,23 @@ process CLASSIFY_AND_ANNOTATE {
     path annotation_tsv
 
     output:
-    tuple val(meta), path("classify/*"), path("annotate/*"), emit: cnvkit_annotated_calls
+    tuple val(meta), path("classified_and_annotated_CNVs/Scoresheet.txt"), path("classified_and_annotated_CNVs/*"), emit: cnvkit_annotated_calls
 
     script:
 
     def genomeBuild = params.assembly == "GRCh37" ? "hg19" : "hg38"
 
     """
-    mkdir -p annotate
-    python3 ${moduleDir}/ClassifyCNV.py --infile ${merged_bed} --outdir classify --GenomeBuild ${genomeBuild} --precise
-    Rscript ${moduleDir}/cnvAnnotateCNVkit.R ${merged_tsv} classify/Scoresheet.txt ${annotation_tsv} annotate/${meta.sample_name}_final_CNVs_annotated.tsv annotate/${meta.sample_name}_final_CNVs_annotated.xlsx
+    mkdir -p classified_and_annotated_CNVs
+    python3 ${moduleDir}/ClassifyCNV.py --infile ${merged_bed} --outdir classified_and_annotated_CNVs --GenomeBuild ${genomeBuild} --precise
+    Rscript ${moduleDir}/cnvAnnotateCNVkit.R ${merged_tsv} classified_and_annotated_CNVs/Scoresheet.txt ${annotation_tsv} classified_and_annotated_CNVs/${meta.sample_name}_final_CNVs_annotated.tsv classified_and_annotated_CNVs/${meta.sample_name}_final_CNVs_annotated.xlsx
     """
 
 
     stub:
     """
-    mkdir -p call
-    touch call/CNV_calls.cns
+    mkdir -p classified_and_annotated_CNVs
+    touch classified_and_annotated_CNVs/Scoresheet.txt
+    touch classified_and_annotated_CNVs/${meta.sample_name}_final_CNVs_annotated.tsv
     """
 }

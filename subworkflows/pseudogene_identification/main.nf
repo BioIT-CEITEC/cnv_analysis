@@ -4,7 +4,6 @@ include { REALIGN_READS } from "../../modules/pseudogene_identification/realign_
 include { CLASSIFY_READS as READS_CLASSIFICATION } from "../../modules/pseudogene_identification/classify_reads/main.nf"
 include { MISMATCH_PILEUP } from "../../modules/pseudogene_identification/mismatch_pileup/main.nf"
 
-
 workflow PSEUDOGENE_ANALYSIS {
 
     take:
@@ -25,7 +24,7 @@ workflow PSEUDOGENE_ANALYSIS {
         ch_input_bams,
         ch_regions_bed
     )
-//s
+
     ch_extracted_reads = EXTRACT_REGIONS.out.extracted_reads
 
     REALIGN_READS(

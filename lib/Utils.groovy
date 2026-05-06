@@ -3,56 +3,29 @@ import nextflow.splitter.SplitterEx
 
 class Utils {
 
-public static parseInputVC(inputSh, panelOfNormals, projectDir, log) {
+public static parseInputVC(inputSh, projectDir, log) {
 
-    // Always process samples
-    def samples = inputSh.findAll { it.sample_type == 'sample' }
-
-    // Process samples - always present
-    def samplesList = samples.collect { entry ->
+    def samplesList = inputSh.collect { entry ->
         def meta = [
-            sample_name  : entry.sample_name,
-            sample_type  : entry.sample_type
+            sample_name : entry.sample_name
         ]
 
-        // Return absolute paths so Nextflow can stage files from work directories
         def bamPath = "${projectDir}/mapped/${meta.sample_name}.bam"
         def baiPath = "${projectDir}/mapped/${meta.sample_name}.bam.bai"
 
         return [meta, bamPath, baiPath]
     }
 
-    // Process controls - only if panel_of_normals is true
-    def controlsList = []
-    if (panelOfNormals) {
-        def controls = inputSh.findAll { it.sample_type == 'control' }
-
-        if (controls.isEmpty()) {
-            log.warn "[WARNING] Panel of normals mode enabled but no control samples found! Tasks that require controls will not execute."
-        }
-
-        controlsList = controls.collect { entry ->
-            def meta = [
-                sample_name  : entry.sample_name,
-                sample_type  : entry.sample_type
-            ]
-
-            def bamPath = "${projectDir}/mapped/${meta.sample_name}.bam"
-            def baiPath = "${projectDir}/mapped/${meta.sample_name}.bam.bai"
-
-            return [meta, bamPath, baiPath]
-        }
-    }
-
-    // Return both lists as a map
-    return [samples: samplesList, controls: controlsList]
+    return [samples: samplesList]
 }
 
     public static List<Map> loadSample(Map conf) {
         List<Map> samplesList = []
         conf.samples.each { key, value ->
-            Map<String, Object> row = value
-            row['index'] = key
+            def row = [
+                sample_name : value.sample_name,
+                index       : key
+            ]
             samplesList << row
         }
         conf.new_samples = samplesList
@@ -87,6 +60,17 @@ public static parseInputVC(inputSh, panelOfNormals, projectDir, log) {
         return csvData
     }
 
+    static def mixAndCollectVarcalls(ch_current, ch_new) {
+        return ch_current
+            .mix(ch_new)
+            .groupTuple()
+            .map { tuple ->
+                def meta  = tuple[0]
+                def files = tuple[1..-1].flatten()
+                [meta, files]
+            }
+    }
+
     public static load_organism(conf) {
 
         def organism_tab = readCsvFile("${conf.globalResources}/reference_info/organism_tab.tsv")
@@ -96,7 +80,7 @@ public static parseInputVC(inputSh, panelOfNormals, projectDir, log) {
         conf.new_release = !(conf.containsKey('release')) || conf.release == "UNK_UNK" ? organism_data.release : conf.release.split("_")[-1]
 
         conf.kegg_code = organism_data.kegg_code
-        conf.reference_dir = "${conf.globalResources.replace('base/references_backup','resources')}/references/${conf.organism}/${conf.assembly}"        
+        conf.reference_dir = "${conf.globalResources.replace('base/references_backup','resources')}/references/${conf.organism}/${conf.assembly}"
         conf.organism_fasta = "${conf.reference_dir}/seq/${conf.assembly}.fa"
         conf.organism_ploidy_priors = "${conf.reference_dir}/seq/${conf.assembly}.ploidy_priors.tsv"
         conf.organism_excluded_sites = "${conf.reference_dir}/seq/${conf.assembly}.excl"
@@ -151,6 +135,9 @@ public static parseInputVC(inputSh, panelOfNormals, projectDir, log) {
             conf.organism_pseudogene_bed = "${conf.reference_dir}/others/DNA_ROI/${conf.panel}/${conf.panel}_pseudogenes.bed"
             conf.organism_snps_panel = "${conf.reference_dir}/others/snp/${conf.panel}/${conf.panel}_snps.tsv"
             conf.organism_interval_list = "${conf.reference_dir}/others/DNA_ROI/${conf.panel}/${conf.panel}.interval_list"
+            conf.cohort_panelcnmops_ref = "${conf.reference_dir}/others/DNA_ROI/${conf.panel}/${conf.panel}_panelcnmops.RData"
+            conf.cohort_cnmops_ref = "${conf.reference_dir}/others/DNA_ROI/${conf.panel}/${conf.panel}_cnmops.RData"
+            conf.cohort_exomedepth_ref = "${conf.reference_dir}/others/DNA_ROI/${conf.panel}/${conf.panel}_exomedepth.RData"
         }
 
         return conf

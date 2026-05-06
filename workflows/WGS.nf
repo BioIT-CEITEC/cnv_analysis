@@ -43,23 +43,15 @@ ch_organism_delly_map = params.organism_delly_map ? Channel.fromPath(params.orga
 ch_organism_gtf_tsv = params.organism_gtf_tsv ? Channel.fromPath(params.organism_gtf_tsv).collect() : Channel.empty()
 
 
-def panelMode = params.panel_of_normals ?: false
+def inputData = Utils.parseInputVC(params.new_samples, projectDir, log)
 
-def inputData = Utils.parseInputVC(params.new_samples, panelMode, projectDir, log)
-
-// Extract samples and controls
 def samples = inputData.samples
-def controls = inputData.controls
 
 workflow WGS {
 
    ch_cohort_data = Channel.empty()
 
-  // Create channels of tuples (meta, bam, bai) where bam/bai are wrapped with file()
   ch_samples = Channel.fromList(samples)
-    .map { meta, bamPath, baiPath -> tuple(meta, file(bamPath), file(baiPath)) }
-
-  ch_controls = controls.isEmpty() ? Channel.empty() : Channel.fromList(controls)
     .map { meta, bamPath, baiPath -> tuple(meta, file(bamPath), file(baiPath)) }
 
 
@@ -127,12 +119,12 @@ workflow WGS {
     ch_organism_vep
     )
  
-    ch_all_bam_control_files = ch_controls
+    ch_cnmops_cohort = ch_samples
         .map { meta, bam, bai -> bam }
         .collect()
         .map { bam_files -> [bam_files] }
         .concat(
-            ch_controls
+            ch_samples
                 .map { meta, bam, bai -> bai }
                 .collect()
                 .map { bai_files -> [bai_files] }
@@ -142,7 +134,7 @@ workflow WGS {
 
   CNMOPS_ANALYSIS (
     ch_samples,
-    ch_all_bam_control_files,
+    ch_cnmops_cohort,
     ch_organism_dna_panel
     )
 

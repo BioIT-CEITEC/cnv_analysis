@@ -1,6 +1,5 @@
 process CNV_VARCALLS_GATK {
 
-    publishDir "structural_varcalls/all_samples/gatk", mode: 'copy'
     conda "${moduleDir}/../env.yaml"
     tag "${meta.sample_name}"
 
@@ -13,26 +12,21 @@ process CNV_VARCALLS_GATK {
     tuple val(meta), path("germline_calls/*"), emit: germline_calls
 
     script:
-
-        """
-        mkdir -p cohort_data
-
-        gatk GermlineCNVCaller \\
-         -I ${read_counts} \\
-          --run-mode CASE \\
-          --contig-ploidy-calls ploidy-calls/ \\
-          --model cohort-model \\
-          --output germline_calls \\
-          --output-prefix germline \\
-          --verbosity DEBUG
-
-        """
+    """
+    gatk GermlineCNVCaller \\
+        -I ${read_counts} \\
+        --run-mode CASE \\
+        --contig-ploidy-calls ploidy-calls/ \\
+        --model cohort-model \\
+        --output germline_calls \\
+        --output-prefix germline \\
+        --verbosity DEBUG
+    """
 
     stub:
-        """
-        mkdir -p cohort_data
-        touch cohort_data/target.bed
-        touch cohort_data/antitarget.bed
-        """
+    """
+    mkdir -p germline_calls
+    touch germline_calls/placeholder.vcf.gz
+    """
 
 }

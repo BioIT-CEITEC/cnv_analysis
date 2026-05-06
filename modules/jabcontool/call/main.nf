@@ -1,5 +1,5 @@
 process JABCONTOOL_CALL {
-    publishDir "structural_varcalls/all_samples/jabCoNtool", mode: 'copy'
+    publishDir "structural_varcalls/all_samples", mode: 'copy'
     conda "${moduleDir}/env.yaml"
 
     input:
@@ -10,8 +10,8 @@ process JABCONTOOL_CALL {
     path organism_snps
 
     output:
-    path("calls/final_CNV_probs_jabcontool.tsv"), emit: final_CNV_probs
-    path("calls/cohort_info_tab.tsv"), emit: cohort_info_tab
+    path("jabCoNtool/final_CNV_probs_jabcontool.tsv"), emit: final_CNV_probs
+    path("jabCoNtool/cohort_info_tab.tsv"), emit: cohort_info_tab
 
     script:
 
@@ -20,11 +20,10 @@ process JABCONTOOL_CALL {
     def gc_profile_flag = params.jabCoNtool_normalize_to_GC ? "${gc_profile}" : "no_GC_norm"
     def use_cytoband = params.jabCoNtool_remove_centromeres ? "${organism_cytoband}" : "no_cytoband"
     def wgs_or_roi = params.lib_ROI == "wgs" ? "wgs" : "panel"
-    //def cov_flag = params.calling_type == "tumor_normal" ? "cov ${tumor_cov} norm_cov ${normal_cov}" : "cov ${normal_cov}"
 
     """
-    mkdir -p calls
-    Rscript ${projectDir}/bin/jabConTool_main.R calls/final_CNV_probs_jabcontool.tsv \
+    mkdir -p jabCoNtool
+    Rscript ${projectDir}/bin/jabConTool_main.R jabCoNtool/final_CNV_probs_jabcontool.tsv \
         ${organism_regions} \
         ${snp_bed} \
         germline \
@@ -39,8 +38,8 @@ process JABCONTOOL_CALL {
 
     stub:
     """
-    mkdir -p calls
-    touch calls/final_CNV_probs_jabcontool.tsv
-    touch calls/cohort_info_tab.tsv
+    mkdir -p jabCoNtool
+    touch jabCoNtool/final_CNV_probs_jabcontool.tsv
+    touch jabCoNtool/cohort_info_tab.tsv
     """
 }

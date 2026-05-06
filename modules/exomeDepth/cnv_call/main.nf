@@ -1,7 +1,7 @@
 process CNV_CALL_EXOMEDEPTH {
 
     tag "${meta.sample_name}"
-    publishDir "structural_varcalls/exomeDepth", mode: 'copy'
+    publishDir "structural_varcalls/${meta.sample_name}", mode: 'copy'
     conda "${moduleDir}/env.yaml"
 
     input:
@@ -10,27 +10,26 @@ process CNV_CALL_EXOMEDEPTH {
     path reference_fasta
 
     output:
-    tuple val(meta),path("cnv_calls/${meta.sample_name}_ExomeDepth.tsv"), emit: exomedepth_cnvcalls
+    tuple val(meta),path("exomeDepth/${meta.sample_name}_ExomeDepth.tsv"), emit: exomedepth_cnvcalls
 
     script:
 
         """
-        mkdir -p cnv_calls
+        mkdir -p exomeDepth
 
         Rscript ${projectDir}/bin/ExomeDepth_wrapper.R \
             ${bam} \
             ${cohort_data} \
             ${meta.sample_name} \
             ${reference_fasta} \
-            cnv_calls/${meta.sample_name}_ExomeDepth.tsv
+            exomeDepth/${meta.sample_name}_ExomeDepth.tsv
 
         """
 
     stub:
         """
-        mkdir -p cohort_data
-        touch cohort_data/target.bed
-        touch cohort_data/antitarget.bed
+        mkdir -p exomeDepth
+        touch exomeDepth/${meta.sample_name}_ExomeDepth.tsv
         """
 
 }

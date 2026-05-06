@@ -14,11 +14,12 @@ include { PANELCNMOPS_ANALYSIS } from "../subworkflows/panelcnMOPS/main.nf"
 include { EXOMEDEPTH_ANALYSIS } from "../subworkflows/ExomeDepth/main.nf"
 include { VARIANT_NORMALIZATION } from "../modules/variantNormalization/main.nf"
 include { PSEUDOGENE_ANALYSIS } from "../subworkflows/pseudogene_identification/main.nf"
-include { MERGE_VARIANT_CALLS } from "../modules/mergeVariantCalls/main.nf"
+include { MERGE_VARIANT_CALLS } from "../modules/merge_and_smooth_CNVs/main.nf"
 include { CLASSIFY_AND_ANNOTATE } from "../modules/classify_and_annotate_CNVs/main.nf"
 include { ECOLE_ANALYSIS } from "../subworkflows/ECOLE/main.nf"
 include { XHMM_ANALYSIS } from "../subworkflows/XHMM/main.nf"
 include { CONIFER_ANALYSIS } from "../subworkflows/conifer/main.nf"
+include { FREEC_ANALYSIS } from "../subworkflows/controlFREEC/main.nf"
 
 /*
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -39,7 +40,7 @@ ch_organism_cytoband = params.organism_cytoband ? Channel.fromPath(params.organi
 ch_organism_snps = params.organism_snps_panel ? Channel.fromPath(params.organism_snps_panel).collect() : Channel.empty()
 ch_heterozygous_sites = params.organism_hetsites ? Channel.fromPath(params.organism_hetsites).collect() : Channel.empty()
 ch_gc_content = params.organism_gc_profile ? Channel.fromPath(params.organism_gc_profile).collect() : Channel.empty()
-ch_diploid_regions = params.organism_diploid_regions ? Channel.fromPath(params.organism_diploid_regions).collect() : Channel.empty
+ch_diploid_regions = params.organism_diploid_regions ? Channel.fromPath(params.organism_diploid_regions).collect() : Channel.empty()
 ch_organism_germline_hotspots = params.organism_germline_hotspots ? Channel.fromPath(params.organism_germline_hotspots).collect() : Channel.empty()
 ch_organism_driver_panel = params.organism_germline_driverpanel ? Channel.fromPath(params.organism_germline_driverpanel).collect() : Channel.empty()
 ch_organism_germline_dels = params.organism_germline_dels ? Channel.fromPath(params.organism_germline_dels).collect() : Channel.empty()
@@ -52,13 +53,9 @@ ch_organism_gene_bed = params.organism_gene_bed ? Channel.fromPath(params.organi
 ch_organism_pseudogene_bed = params.organism_pseudogene_bed ? Channel.fromPath(params.organism_pseudogene_bed).collect() : Channel.empty()
 ch_organism_gtf = params.organism_gtf ? Channel.fromPath(params.organism_gtf).collect() : Channel.empty()
 
-def panelMode = params.panel_of_normals ?: false
+def inputData = Utils.parseInputVC(params.new_samples, projectDir, log)
 
-def inputData = Utils.parseInputVC(params.new_samples, panelMode, projectDir, log)
-
-// Extract samples and controls
 def samples = inputData.samples
-def controls = inputData.controls
 
 workflow PANEL_WES {
 
@@ -66,9 +63,6 @@ workflow PANEL_WES {
    ch_all_varcalls = Channel.empty()
 
   ch_samples = Channel.fromList(samples)
-    .map { meta, bamPath, baiPath -> tuple(meta, file(bamPath), file(baiPath)) }
-
-  ch_controls = controls.isEmpty() ? Channel.empty() : Channel.fromList(controls)
     .map { meta, bamPath, baiPath -> tuple(meta, file(bamPath), file(baiPath)) }
 
     BED_PREPARATION (
@@ -88,21 +82,10 @@ workflow PANEL_WES {
         ch_organism_gtf_tsv
         )
 
-        ch_all_varcalls = ch_all_varcalls
-        .mix(
-            CNVKIT_ANALYSIS.out.ch_cnvkit_calls
-                .map {tuple -> 
-                    def meta = tuple[0]
-                    def f6 = tuple[5]
-                    [meta, f6]
-                }
+        ch_all_varcalls = Utils.mixAndCollectVarcalls(
+            ch_all_varcalls,
+            CNVKIT_ANALYSIS.out.ch_cnvkit_calls.map { tuple -> [tuple[0], tuple[5]] }
         )
-        .groupTuple()
-	    .map { tuple ->
-		    def meta = tuple[0]
-		    def files = tuple[1..-1].flatten()
-		    [meta, files]
-	    }
 
     }
 
@@ -129,28 +112,53 @@ workflow PANEL_WES {
         ch_organism_ploidy_priors
         )
 
-        ch_all_varcalls = ch_all_varcalls
-        .mix(GATK_ANALYSIS.out.ch_gatk_segment
-            .map { tuple -> 
-                def meta = tuple[0]
-                def f2 = tuple[1]
-                [meta, f2]
-            }
-        .groupTuple()
-        .map { tuple ->
-            def meta = tuple[0]
-            def files = tuple[1..-1].flatten()
-            [meta, files]
-        }
-    )
+        ch_all_varcalls = Utils.mixAndCollectVarcalls(
+            ch_all_varcalls,
+            GATK_ANALYSIS.out.ch_gatk_segment.map { tuple -> [tuple[0], tuple[1]] }
+        )
 }
 
-    ch_all_bam_control_files = ch_controls
+    if (params.use_ecole) {
+        ECOLE_ANALYSIS(
+            ch_samples,
+            ch_organism_dna_panel
+        )
+        ch_all_varcalls = Utils.mixAndCollectVarcalls(ch_all_varcalls, ECOLE_ANALYSIS.out.ch_ecole_varcalls)
+    }
+
+    if (params.use_xhmm) {
+        XHMM_ANALYSIS(
+            ch_samples,
+            ch_organism_dna_panel
+        )
+        ch_all_varcalls = Utils.mixAndCollectVarcalls(ch_all_varcalls, XHMM_ANALYSIS.out.ch_xhmm_varcalls)
+    }
+
+    if (params.use_conifer) {
+        CONIFER_ANALYSIS(
+            ch_samples,
+            ch_organism_dna_panel,
+            ch_organism_gtf
+        )
+        ch_all_varcalls = Utils.mixAndCollectVarcalls(ch_all_varcalls, CONIFER_ANALYSIS.out.ch_conifer_varcalls)
+    }
+
+    if (params.use_controlfreec) {
+        FREEC_ANALYSIS(
+            ch_samples,
+            ch_organism_fasta,
+            ch_organism_fasta_fai,
+            ch_organism_dna_panel
+        )
+        ch_all_varcalls = Utils.mixAndCollectVarcalls(ch_all_varcalls, FREEC_ANALYSIS.out.ch_freec_varcalls)
+    }
+
+    ch_samples_as_cohort = ch_samples
         .map { meta, bam, bai -> bam }
         .collect()
         .map { bam_files -> [bam_files] }
         .concat(
-            ch_controls
+            ch_samples
                 .map { meta, bam, bai -> bai }
                 .collect()
                 .map { bai_files -> [bai_files] }
@@ -158,57 +166,47 @@ workflow PANEL_WES {
         .collect()
         .map { lists -> tuple(lists[0], lists[1]) }
 
+    ch_panelcnmops_cohort = params.use_panelcnmops_cohortdata
+        ? Channel.fromPath(params.cohort_panelcnmops_ref).collect()
+        : ch_samples_as_cohort
+
   if (params.use_panelcnmops) {
         PANELCNMOPS_ANALYSIS (
         ch_samples,
-        ch_all_bam_control_files,
+        ch_panelcnmops_cohort,
         ch_organism_dna_panel
         )
 
-        ch_all_varcalls = ch_all_varcalls
-        .mix(PANELCNMOPS_ANALYSIS.out.ch_panelcnmops_varcalls)
-        .groupTuple()
-	    .map { tuple ->
-		    def meta = tuple[0]
-		    def files = tuple[1..-1].flatten()
-		    [meta, files]
-	    }
+        ch_all_varcalls = Utils.mixAndCollectVarcalls(ch_all_varcalls, PANELCNMOPS_ANALYSIS.out.ch_panelcnmops_varcalls)
   }
+
+    ch_cnmops_cohort = params.use_cnmops_cohortdata
+        ? Channel.fromPath(params.cohort_cnmops_ref).collect()
+        : ch_samples_as_cohort
 
   if (params.use_cnmops) {
         CNMOPS_ANALYSIS (
         ch_samples,
-        ch_all_bam_control_files,
+        ch_cnmops_cohort,
         ch_organism_dna_panel
         )
 
-        ch_all_varcalls = ch_all_varcalls
-        .mix(CNMOPS_ANALYSIS.out.ch_cnmops_varcalls)
-        .groupTuple()
-        .map { tuple ->
-            def meta = tuple[0]
-            def files = tuple[1..-1].flatten()
-            [meta, files]
-        }
+        ch_all_varcalls = Utils.mixAndCollectVarcalls(ch_all_varcalls, CNMOPS_ANALYSIS.out.ch_cnmops_varcalls)
 
   }
+    ch_exomedepth_cohort = params.use_exomedepth_cohortdata
+        ? Channel.fromPath(params.cohort_exomedepth_ref).collect()
+        : ch_samples_as_cohort
 
   if (params.use_exomedepth) {
         EXOMEDEPTH_ANALYSIS (
         ch_samples,
-        ch_all_bam_control_files,
+        ch_exomedepth_cohort,
         ch_organism_dna_panel,
         ch_organism_fasta
         )
 
-        ch_all_varcalls = ch_all_varcalls
-        .mix(EXOMEDEPTH_ANALYSIS.out.ch_exomeDepth_varcalls)
-        .groupTuple()
-        .map { tuple ->
-            def meta = tuple[0]
-            def files = tuple[1..-1].flatten()
-            [meta, files]
-        }
+        ch_all_varcalls = Utils.mixAndCollectVarcalls(ch_all_varcalls, EXOMEDEPTH_ANALYSIS.out.ch_exomeDepth_varcalls)
 
   }
 
@@ -221,7 +219,7 @@ workflow PANEL_WES {
             .combine(JABCONTOOL_ANALYSIS.out.ch_jabcontool_norm_varcalls)
             .map { tuple ->
                 def meta = tuple[0]
-                def varcall_files = tuple[1]  // [file1, file2, file3, file4, file5]
+                def varcall_files = tuple[1]
                 def jabcontool_file = tuple[2]
                 def all_files = varcall_files + [jabcontool_file]
                 [meta,[all_files].flatten()]
@@ -243,34 +241,12 @@ workflow PANEL_WES {
         ch_organism_gtf_tsv
     )
 
-    PSEUDOGENE_ANALYSIS(
-        ch_samples,
-        ch_organism_fasta,
-        ch_organism_fasta_fai,
-        ch_organism_gene_bed
-    )
-
-    if (params.use_ecole) {
-        ECOLE_ANALYSIS(
+    if (params.run_pseudogene) {
+        PSEUDOGENE_ANALYSIS(
             ch_samples,
-            ch_organism_dna_panel
+            ch_organism_fasta,
+            ch_organism_fasta_fai,
+            ch_organism_gene_bed
         )
     }
-
-    if (params.use_xhmm) {
-        XHMM_ANALYSIS(
-            ch_samples,
-            ch_organism_dna_panel
-        )
-    }
-
-    if (params.use_conifer) {
-        CONIFER_ANALYSIS(
-            ch_samples,
-            ch_organism_dna_panel,
-            ch_organism_gtf
-        )
-    }
-
-
 }

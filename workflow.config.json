@@ -40,6 +40,11 @@
         "type": "int",
         "default": 2
       },
+      "size_threshold": {
+        "label": "Filter CNVs bigger than this threshold.",
+        "type": "int",
+        "default": 500000
+      },
     "use_cnmops": {
         "label": "Use cnMOPS for variant calling.",
         "type": "bool",
@@ -90,11 +95,11 @@
         "type": "bool",
         "default": true
       },
-      "panel_of_normals": {
-        "label": "Provide control samples (panel of normals)",
+      "run_pseudogene": {
+        "label": "Run pseudogene reads reanalysis.",
         "type": "bool",
         "default": false
-      }
+       }
     },
     "detailed": {
       "wgs_bin_size": {
@@ -106,6 +111,34 @@
         "label": "Minimum RPKM for conifer.",
         "type": "int",
         "default": 1,
+        "conditions": {
+          "relevance": {
+            "operand": "equal",
+            "negation": false,
+            "values": {
+              "use_conifer": true
+            }
+          }
+        }
+      },
+      "conifer_svd_components": {
+        "label": "Number of SVD components to use in conifer.",
+        "type": "int",
+        "default": 12,
+        "conditions": {
+          "relevance": {
+            "operand": "equal",
+            "negation": false,
+            "values": {
+              "use_conifer": true
+            }
+          }
+        }
+      },
+      "conifer_threshold": {
+        "label": "threshold to consider a variant in conifer.",
+        "type": "float",
+        "default": 3,
         "conditions": {
           "relevance": {
             "operand": "equal",
@@ -301,13 +334,153 @@
       "xhmm_params_values": {
         "label": "List of XHMM parameters values",
         "type": "string",
-        "default": "[1e-8, 6, 70, -3, 1, 0, 1, 3, 1]",
+        "default": "[1e-4, 3, 6, -3, 1, 0, 1, 3, 1]",
         "conditions": {
           "relevance": {
             "operand": "equal",
             "negation": false,
             "values": {
               "use_xhmm": true
+            }
+          }
+        }
+      },
+      "xhmm_pve_mean_factor": {
+        "label": "Factor to multiply the mean PVE to determine the number of PCA components to use in XHMM.",
+        "type": "float",
+        "default": 0.7,
+        "conditions": {
+          "relevance": {
+            "operand": "equal",
+            "negation": false,
+            "values": {
+              "use_xhmm": true
+            }
+          }
+        }
+      },
+      "freec_breakpoint_threshold": {
+        "label": "Breakpoint threshold for Control-FREEC.",
+        "type": "float",
+        "default": 0.6,
+        "conditions": {
+          "relevance": {
+            "operand": "equal",
+            "negation": false,
+            "values": {
+              "use_control_freec": true
+            }
+          }
+        }
+      },
+      "freec_mappability_k": {
+        "label": "K-mer size for mappability calculation in Control-FREEC.",
+        "type": "int",
+        "default": 30,
+        "conditions": {
+          "relevance": {
+            "operand": "equal",
+            "negation": false,
+            "values": {
+              "use_control_freec": true
+            }
+          }
+        }
+      },
+      "freec_mappability_e": {
+        "label": "Mappability threshold for Control-FREEC.",
+        "type": "int",
+        "default": 2,
+        "conditions": {
+          "relevance": {
+            "operand": "equal",
+            "negation": false,
+            "values": {
+              "use_control_freec": true
+            }
+          }
+        }
+      },
+      "freec_ploidy": {
+        "label": "Ploidy for Control-FREEC.",
+        "type": "int",
+        "default": 2,
+        "conditions": {
+          "relevance": {
+            "operand": "equal",
+            "negation": false,
+            "values": {
+              "use_control_freec": true
+            }
+          }
+        }
+      },
+      "freec_window": {
+        "label": "Window size for Control-FREEC.",
+        "type": "int",
+        "default": 0,
+        "conditions": {
+          "relevance": {
+            "operand": "equal",
+            "negation": false,
+            "values": {
+              "use_control_freec": true
+            }
+          }
+        }
+      },
+      "freec_min_expected_gc": {
+        "label": "Minimum expected GC content for Control-FREEC.",
+        "type": "float",
+        "default": 0.4,
+        "conditions": {
+          "relevance": {
+            "operand": "equal",
+            "negation": false,
+            "values": {
+              "use_control_freec": true
+            }
+          }
+        }
+      },
+      "freec_max_expected_gc": {
+        "label": "Maximum expected GC content for Control-FREEC.",
+        "type": "float",
+        "default": 0.5,
+        "conditions": {
+          "relevance": {
+            "operand": "equal",
+            "negation": false,
+            "values": {
+              "use_control_freec": true
+            }
+          }
+        }
+      },
+      "freec_coeff_var": {
+        "label": "Coefficient of variation for Control-FREEC.",
+        "type": "float",
+        "default": 0.1,
+        "conditions": {
+          "relevance": {
+            "operand": "equal",
+            "negation": false,
+            "values": {
+              "use_control_freec": true
+            }
+          }
+        }
+      },
+      "freec_min_map": {
+        "label": "Minimum mappability for Control-FREEC.",
+        "type": "float",
+        "default": 0.85,
+        "conditions": {
+          "relevance": {
+            "operand": "equal",
+            "negation": false,
+            "values": {
+              "use_control_freec": true
             }
           }
         }
@@ -330,17 +503,6 @@
         "label": "Save info about coverage data to the cohort_cnv_info file. (include loaded cohort data)",
         "type": "bool",
         "default": true
-      }
-    },
-    "samples": {
-      "sample_type": {
-        "label": "Sample type (role)",
-        "type": "enum",
-        "default": "sample",
-        "list": {
-          "sample": "Sample (study subject)",
-          "control": "Control (reference panel)"
-        }
       }
     }
   }

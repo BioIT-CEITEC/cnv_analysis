@@ -1,5 +1,4 @@
 process FILTER_INTERVALS_GATK {
-
     conda "${moduleDir}/../env.yaml"
 
     input:
@@ -12,24 +11,20 @@ process FILTER_INTERVALS_GATK {
     path("*.gc.filtered.interval_list"), emit: qc_filtered_regions_gatk
 
     script:
-
-      def panel = lib_ROI.toString().replace('.bed', '') 
-
-        """
-        gatk FilterIntervals \\
-          -L ${interval_list} \\
-          --annotated-intervals ${annotated_intervals} \\
-          -I ${read_counts.join(" -I ")} \\
-          -imr OVERLAPPING_ONLY \\
-          -O ${panel}.gc.filtered.interval_list
-
-
-        """
+    def panel = lib_ROI.toString().replace('.bed', '') 
+    """
+    gatk FilterIntervals \\
+      -L ${interval_list} \\
+      --annotated-intervals ${annotated_intervals} \\
+      -I ${read_counts.join(" -I ")} \\
+      -imr OVERLAPPING_ONLY \\
+      --exclude-intervals X \\
+      --exclude-intervals Y \\
+      -O ${panel}.gc.filtered.interval_list
+    """
 
     stub:
-        """
-        mkdir -p results
-        touch results/target.bed
-        touch results/antitarget.bed
-        """
+    """
+    touch ${panel}.gc.filtered.interval_list
+    """
 }

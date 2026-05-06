@@ -7,19 +7,20 @@ process CALCULATE_RPKM_CONIFER {
     path probes
 
     output:
-    tuple val(meta), path("${meta.sample_name}_rpkm.txt"), emit: rpkm_conifer
+    tuple val(meta), path("${meta.sample_name}.rpkm.txt"), emit: rpkm_conifer
 
     script:
+    def conifer = "${moduleDir}/../conifer_v0.2.2/conifer.py"
     """
-    python3 ${moduleDir}/conifer_v0.2.2/conifer.py \
+    python ${conifer} \
         rpkm \
         --probes ${probes} \
         --input ${bam} \
-        --output ${meta.sample_name}_rpkm.txt
+        --output ${meta.sample_name}.rpkm.txt
     """
 
     stub:
     """
-    touch ${meta.sample_name}_rpkm.txt
+    touch ${meta.sample_name}.rpkm.txt
     """
 }

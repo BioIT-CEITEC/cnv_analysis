@@ -9,23 +9,28 @@ workflow XHMM_ANALYSIS {
 
     main:
 
-
-    // Transform input channel
     ch_input_bams
         .map { sample ->
-            sample[1..-1] // Remove the first element if necessary
+            sample[1..-1]
         }
-        .flatten() // Flatten the nested structure
-        .collect() // Collect all files into a single list
+        .flatten()
+        .collect()
         .set { ch_all_bam_files }
 
+    ch_input_bams
+        .map { meta, bam, bai -> bam.simpleName }
+        .collect()
+        .set { ch_unique_basenames }
+
+    ch_unique_basenames.view()
 
     CNV_CALL_XHMM (
         ch_all_bam_files,
-        ch_regions_of_interest
+        ch_regions_of_interest,
+        ch_unique_basenames
     )
 
-    ch_cohort_varcalls     = CNV_CALL_XHMM.out.xhmm_cnvcalls
+    ch_cohort_varcalls = CNV_CALL_XHMM.out.xhmm_cnvcalls
 
     PER_SAMPLE_CALL_XHMM (
         ch_input_bams,

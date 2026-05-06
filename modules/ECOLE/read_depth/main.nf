@@ -10,7 +10,6 @@ process READ_DEPTH_ECOLE {
     path("processed_samples/"), emit: ecole_preprocessed_samples
 
     script:
-
     """
     mkdir -p read_depths
     mkdir -p processed_samples

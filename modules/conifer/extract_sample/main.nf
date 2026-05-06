@@ -1,6 +1,6 @@
 process EXTRACT_SAMPLE_CONIFER {
     tag "${meta.sample_name}"
-    publishDir "${params.publish_dir}/conifer", mode: 'copy', overwrite: true
+    publishDir "structural_varcalls/${meta.sample_name}/conifer", mode: 'copy'
     conda "${moduleDir}/../env.yaml"
 
     input:

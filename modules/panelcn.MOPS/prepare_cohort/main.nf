@@ -1,6 +1,6 @@
 process PREPARE_COHORT_PANELCNMOPS {
 
-    publishDir "structural_varcalls/panelcnMOPS", mode: 'copy'
+    publishDir "cohort_data", mode: 'copy'
     conda "${moduleDir}/env.yaml"
 
     input:
@@ -11,21 +11,15 @@ process PREPARE_COHORT_PANELCNMOPS {
     path("cohort_data/panelcnMOPS_customCohort.RData"), emit: panelcnmops_cohort
 
     script:
-
     def bam_files = bam instanceof List ? bam.join(' ') : bam
-
-        """
-        mkdir -p cohort_data
-
-        Rscript ${projectDir}/bin/prepare_panelcnMOPS_wrapper.R ${regions_of_interest} cohort_data/panelcnMOPS_customCohort.RData ${bam_files}
-
-        """
+    """
+    mkdir -p cohort_data
+    Rscript ${projectDir}/bin/prepare_panelcnMOPS_wrapper.R ${regions_of_interest} cohort_data/panelcnMOPS_customCohort.RData ${bam_files}
+    """
 
     stub:
-        """
-        mkdir -p cohort_data
-        touch cohort_data/target.bed
-        touch cohort_data/antitarget.bed
-        """
-
+    """
+    mkdir -p cohort_data
+    touch cohort_data/panelcnMOPS_customCohort.RData
+    """
 }
