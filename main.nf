@@ -14,7 +14,7 @@ data, references and config differs.
 */
 
 include { PANEL_WES } from './workflows/PANEL.nf'
-include { WGS } from './workflows/WGS.nf'
+//include { WGS } from './workflows/WGS.nf'
 
 /*
 -----------------------------------------------------------------------
@@ -23,13 +23,9 @@ include { WGS } from './workflows/WGS.nf'
 */
 
 workflow CNV_ANALYSIS {
-
-    if (params.lib_ROI == 'wgs') {
-        WGS()
-    } else {
         PANEL_WES()
     }
-}
+
 
 /*
 -----------------------------------------------------------------------
