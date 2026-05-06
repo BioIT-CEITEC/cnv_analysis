@@ -31,15 +31,15 @@ workflow JABCONTOOL_ANALYSIS {
     ch_combined = COVERAGE_CALC.out.region_coverage
         .map { meta, cov -> cov }
         .collect()
-        .map { cov_files -> [cov_files] }  // Wrap in list to preserve structure
+        .map { cov_files -> [cov_files] }
         .concat(
             SNP_AF_CALC.out.snpAF
                 .map { meta, snp -> snp }
                 .collect()
-                .map { snp_files -> [snp_files] }  // Wrap in list to preserve structure
+                .map { snp_files -> [snp_files] }
         )
         .collect()
-        .map { lists -> tuple(lists[0], lists[1]) }  // Create tuple from the two lists
+        .map { lists -> tuple(lists[0], lists[1]) }
 
     JABCONTOOL_CALL (
         ch_combined,

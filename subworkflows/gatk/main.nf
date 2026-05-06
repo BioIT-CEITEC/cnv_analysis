@@ -37,8 +37,6 @@ workflow GATK_ANALYSIS {
     )
 
     ch_annotated_regions = ANNOTATE_REGIONS_GATK.out.annotated_regions_gatk.collect()
-    ch_annotated_regions.view()
-
 
     COUNT_READS_GATK(
     normal_bam,
@@ -50,7 +48,7 @@ workflow GATK_ANALYSIS {
     )
 
     ch_filtering_input = COUNT_READS_GATK.out.read_counts_gatk
-      .map { meta, counts -> 
+      .map { meta, counts ->
         return counts}
       .collect()
 
