@@ -7,7 +7,7 @@ process CNV_CALL_ECOLE {
     path target_bed
 
     output:
-    path("ECOLE/*"), emit: ecole_cnvcalls
+    path("ECOLE/*"), emit: ecole_varcalls
 
     script:
     def ecole_path = "${moduleDir}/../ECOLE-0.2/scripts/ECOLE_call.py"
