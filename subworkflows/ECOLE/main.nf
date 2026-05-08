@@ -31,7 +31,17 @@ workflow ECOLE_ANALYSIS {
         ch_bed
     )
 
+    ch_ecole_per_sample = ch_input_bams
+        .map { meta, bam, bai -> [meta.sample_name, meta] }
+        .combine(
+            CNV_CALL_ECOLE.out.ecole_varcalls.flatten()
+        )
+        .filter { sample_name, meta, ecole_file ->
+            ecole_file.name.contains(sample_name)
+        }
+        .map { sample_name, meta, ecole_file -> [meta, ecole_file] }
+
     emit:
-    ch_ecole_varcalls = CNV_CALL_ECOLE.out.ecole_varcalls
+    ch_ecole_varcalls = ch_ecole_per_sample
 
 }
