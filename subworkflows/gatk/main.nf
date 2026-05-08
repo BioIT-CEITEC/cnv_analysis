@@ -103,7 +103,7 @@ workflow GATK_ANALYSIS {
   )
 
     ch_gatk_segment = POSTPROCESSING_CNV_GATK.out.postprocess_cnv_gatk
-      .map { meta, intervals_vcf, intervals_index, segments_vcf, segments_index, copy_ratios -> 
+      .map { meta, intervals_vcf, intervals_index, segments_vcf, segments_index, copy_ratios ->
         return[meta, segments_vcf]
       }
 

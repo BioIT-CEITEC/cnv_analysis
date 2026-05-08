@@ -86,7 +86,6 @@ workflow PANEL_WES {
             ch_all_varcalls,
             CNVKIT_ANALYSIS.out.ch_cnvkit_calls.map { tuple -> [tuple[0], tuple[5]] }
         )
-
     }
 
     if (params.use_jabcontool) {

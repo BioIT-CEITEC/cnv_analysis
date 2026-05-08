@@ -22,8 +22,6 @@ workflow XHMM_ANALYSIS {
         .collect()
         .set { ch_unique_basenames }
 
-    ch_unique_basenames.view()
-
     CNV_CALL_XHMM (
         ch_all_bam_files,
         ch_regions_of_interest,

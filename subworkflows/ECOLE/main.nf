@@ -11,13 +11,12 @@ workflow ECOLE_ANALYSIS {
 
     ch_bed = ch_regions_of_interest.first()
 
-    // Transform input channel
     ch_input_bams
         .map { sample ->
-            sample[1..-1] // Remove the first element if necessary
+            sample[1..-1]
         }
-        .flatten() // Flatten the nested structure
-        .collect() // Collect all files into a single list
+        .flatten()
+        .collect()
         .set { ch_all_bam_files }
 
     READ_DEPTH_ECOLE (
