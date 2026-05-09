@@ -1,4 +1,5 @@
 process CNV_CALL_FREEC {
+    publishDir "structural_varcalls/${meta.sample_name}/freec", mode: 'copy'
     tag "${meta.sample_name}"
     conda "${moduleDir}/../env.yaml"
 
@@ -14,6 +15,7 @@ process CNV_CALL_FREEC {
           path("${meta.sample_name}_freec/${meta.sample_name}_freec_config.txt"),
           path("${meta.sample_name}_freec/*.bam_ratio.txt"),
           emit: var_call
+    tuple val(meta), path("${meta.sample_name}_freec/*.bam_info.txt"), emit: freec_info
 
     script:
     def window_line = (params.freec_window && params.freec_window != "0") \
@@ -86,9 +88,11 @@ CODE
 
     stub:
     """
+    mkdir -p ${meta.sample_name}_freec
     touch ${meta.sample_name}_freec/${meta.sample_name}_${meta.sample_name}.bam_CNVs
     touch ${meta.sample_name}_freec/${meta.sample_name}_freec_config.txt
     touch ${meta.sample_name}_freec/${meta.sample_name}.bam_ratio.txt
+    touch ${meta.sample_name}_freec/${meta.sample_name}.bam_info.txt
     """
 
 }

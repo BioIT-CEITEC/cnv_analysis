@@ -1,4 +1,5 @@
 process COHORT_CALL_CONIFER {
+    publishDir "cohort_data", mode: 'copy'
     conda "${moduleDir}/../env.yaml"
 
     input:

@@ -9,21 +9,19 @@ process PREPARE_COHORT_EXOMEDEPTH {
     path reference_fasta
 
     output:
-    path("cohort_data/exomeDepth_customCohort.RData"), emit: exomeDepth_cohort
+    path("exomeDepth_customCohort.RData"), emit: exomeDepth_cohort
 
     script:
 
     def bam_files = bam instanceof List ? bam.join(' ') : bam
 
     """
-    mkdir -p cohort_data
-    Rscript ${projectDir}/bin/prepare_exomeDepth_wrapper.R ${regions_of_interest} ${reference_fasta} cohort_data/exomeDepth_customCohort.RData ${bam_files} 
+    Rscript ${projectDir}/bin/prepare_exomeDepth_wrapper.R ${regions_of_interest} ${reference_fasta} exomeDepth_customCohort.RData ${bam_files} 
     """
 
     stub:
         """
-        mkdir -p cohort_data
-        touch cohort_data/exomeDepth_customCohort.RData
+        touch exomeDepth_customCohort.RData
         """
 
 }

@@ -1,5 +1,5 @@
 process CNV_VARCALLS_GATK {
-
+    publishDir "structural_varcalls/${meta.sample_name}/gatk", mode: 'copy'
     conda "${moduleDir}/../env.yaml"
     tag "${meta.sample_name}"
 

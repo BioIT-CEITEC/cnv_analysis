@@ -1,4 +1,5 @@
 process CNV_CALL_XHMM {
+    publishDir "structural_varcalls/all_samples", mode: 'copy'
     conda "${moduleDir}/../env.yaml"
 
     input:
@@ -7,7 +8,8 @@ process CNV_CALL_XHMM {
     val sample_names
 
     output:
-    path("xhmm_calls_output/*.xcnv"), emit: xhmm_cnvcalls
+    path("xhmm_calls_output/*.xcnv"),    emit: xhmm_cnvcalls
+    path("xhmm_calls_output/xhmm_work"), emit: xhmm_intermediates
 
     script:
     def bam_files_str = bams.findAll { it.name.endsWith('.bam') }.join(' ')
@@ -42,7 +44,7 @@ process CNV_CALL_XHMM {
 
     stub:
     """
-    mkdir -p xhmm_calls_output
+    mkdir -p xhmm_calls_output/xhmm_work
     touch xhmm_calls_output/calls.xcnv
     """
 }

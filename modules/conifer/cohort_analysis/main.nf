@@ -1,4 +1,5 @@
 process COHORT_ANALYSIS_CONIFER {
+    publishDir "cohort_analysis", mode: 'copy', overwrite: true
     conda "${moduleDir}/../env.yaml"
 
     input:
