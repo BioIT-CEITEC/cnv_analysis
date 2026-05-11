@@ -45,6 +45,11 @@
         "type": "int",
         "default": 500000
       },
+      "smooth_gap_bp": {
+        "label": "Merge CNVs closer than this distance.",
+        "type": "int",
+        "default": 10000
+      },
     "use_cnmops": {
         "label": "Use cnMOPS for variant calling.",
         "type": "bool",

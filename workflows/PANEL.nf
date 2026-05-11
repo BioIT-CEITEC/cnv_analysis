@@ -14,7 +14,7 @@ include { PANELCNMOPS_ANALYSIS } from "../subworkflows/panelcnMOPS/main.nf"
 include { EXOMEDEPTH_ANALYSIS } from "../subworkflows/ExomeDepth/main.nf"
 include { VARIANT_NORMALIZATION } from "../modules/variantNormalization/main.nf"
 include { PSEUDOGENE_ANALYSIS } from "../subworkflows/pseudogene_identification/main.nf"
-include { MERGE_VARIANT_CALLS } from "../modules/merge_and_smooth_CNVs/main.nf"
+include { MERGE_VARIANT_CALLS } from "../modules/merge_and_smooth_CNVs_2/main.nf"
 include { CLASSIFY_AND_ANNOTATE } from "../modules/classify_and_annotate_CNVs/main.nf"
 include { ECOLE_ANALYSIS } from "../subworkflows/ECOLE/main.nf"
 include { XHMM_ANALYSIS } from "../subworkflows/XHMM/main.nf"
@@ -230,10 +230,12 @@ workflow PANEL_WES {
 
     MERGE_VARIANT_CALLS(
         ch_all_varcalls_for_merging,
-        ch_organism_dna_panel
+        ch_organism_dna_panel,
+        ch_organism_gtf
     )
 
     ch_variants_to_annotate = MERGE_VARIANT_CALLS.out.merged_calls
+        .mix(MERGE_VARIANT_CALLS.out.smoothed_calls)
 
     CLASSIFY_AND_ANNOTATE(
         ch_variants_to_annotate,
