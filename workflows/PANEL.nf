@@ -12,7 +12,6 @@ include { DELLY_ANALYSIS } from "../subworkflows/delly/main.nf"
 include { CNMOPS_ANALYSIS } from "../subworkflows/cnMOPS/main.nf"
 include { PANELCNMOPS_ANALYSIS } from "../subworkflows/panelcnMOPS/main.nf"
 include { EXOMEDEPTH_ANALYSIS } from "../subworkflows/ExomeDepth/main.nf"
-include { VARIANT_NORMALIZATION } from "../modules/variantNormalization/main.nf"
 include { PSEUDOGENE_ANALYSIS } from "../subworkflows/pseudogene_identification/main.nf"
 include { MERGE_VARIANT_CALLS } from "../modules/merge_and_smooth_CNVs_2/main.nf"
 include { CLASSIFY_AND_ANNOTATE } from "../modules/classify_and_annotate_CNVs/main.nf"
@@ -209,12 +208,8 @@ workflow PANEL_WES {
 
   }
 
-    VARIANT_NORMALIZATION(
-        ch_all_varcalls
-    )
-
     if (params.use_jabcontool) {
-        ch_all_varcalls_for_merging = VARIANT_NORMALIZATION.out.normalized_varcalls
+        ch_all_varcalls_for_merging = ch_all_varcalls
             .combine(JABCONTOOL_ANALYSIS.out.ch_jabcontool_norm_varcalls)
             .map { tuple ->
                 def meta = tuple[0]
@@ -225,7 +220,7 @@ workflow PANEL_WES {
             }
 
     } else {
-        ch_all_varcalls_for_merging = VARIANT_NORMALIZATION.out.normalized_varcalls
+        ch_all_varcalls_for_merging = ch_all_varcalls
     }
 
     MERGE_VARIANT_CALLS(
@@ -234,8 +229,7 @@ workflow PANEL_WES {
         ch_organism_gtf
     )
 
-    ch_variants_to_annotate = MERGE_VARIANT_CALLS.out.merged_calls
-        .mix(MERGE_VARIANT_CALLS.out.smoothed_calls)
+    ch_variants_to_annotate = MERGE_VARIANT_CALLS.out.merged_tsv
 
     CLASSIFY_AND_ANNOTATE(
         ch_variants_to_annotate,

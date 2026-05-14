@@ -3,6 +3,7 @@ process MERGE_VARIANT_CALLS {
     publishDir "structural_varcalls/${meta.sample_name}", mode: 'copy'
     conda "${moduleDir}/env.yaml"
     tag "${meta.sample_name}"
+    cache false
 
     input:
     tuple val(meta), path(cnv_varcalls)
@@ -10,8 +11,8 @@ process MERGE_VARIANT_CALLS {
     path(gtf_file)
 
     output:
-    tuple val(meta), path("merged_variants/*_merged_target_consensus.tsv"), path("merged_variants/*_merged_target_consensus.bed"), emit: merged_calls
-    tuple val(meta), path("merged_variants/*_smoothed_variants.tsv"),       path("merged_variants/*_smoothed_variants.bed"),       emit: smoothed_calls
+    tuple val(meta), path("merged_variants/*_merged_target_consensus.tsv"), path("merged_variants/*_merged_target_consensus.bed"), emit: final_tsvs
+    tuple val(meta), path("merged_variants/*_smoothed_variants.tsv"), path("merged_variants/*_smoothed_variants.bed"),       emit: merged_tsv
     tuple val(meta), path("merged_variants/*_per_exon_matrix.tsv"),                                                                emit: raw_matrix
 
     script:

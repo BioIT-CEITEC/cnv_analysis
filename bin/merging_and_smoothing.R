@@ -704,16 +704,16 @@ make_merged_target_consensus <- function(per_exon_dt, tool_names, sample_id,
   called_cols  <- intersect(paste0(tool_names, "_called"),  names(per_exon_dt))
   active_tools <- sub("_called$", "", called_cols)
 
-  dt <- per_exon_dt[n_tools_called >= min_callers]
+  dt <- per_exon_dt[n_tools_called >= min_callers & end > start]
   if (nrow(dt) == 0) {
     fwrite(data.table(), out_file, sep = "\t")
     if (!is.null(bed_file))
       fwrite(data.table(CHR = character(), START = integer(), END = integer(), TYPE = character()),
-             bed_file, sep = "\t")
+             bed_file, sep = "\t", col.names = FALSE)
     cat(sprintf("       0 exons with >= %d callers\n", min_callers))
     return(invisible(NULL))
   }
-  
+
   for (tool in active_tools) {
     col_c  <- paste0(tool, "_called")
     col_d  <- paste0(tool, "_direction")
@@ -760,7 +760,7 @@ make_merged_target_consensus <- function(per_exon_dt, tool_names, sample_id,
   
   fwrite(out, out_file, sep = "\t")
   if (!is.null(bed_file))
-    fwrite(out[, .(CHR = CHROM, START, END, TYPE = consensus_type)], bed_file, sep = "\t")
+    fwrite(out[, .(CHR = CHROM, START, END, TYPE = consensus_type)], bed_file, sep = "\t", col.names = FALSE)
   cat(sprintf("       %d exons written in merged_target_consensus\n", nrow(out)))
 }
 
@@ -768,12 +768,13 @@ make_smoothed_variants <- function(per_exon_dt, sample_id, out_file,
                                    bed_file = NULL, min_callers = 2, max_gap_bp = 500000) {
   dt <- per_exon_dt[n_tools_called >= min_callers &
                       direction_consensus != 0 &
-                      has_conflict == 0]
+                      has_conflict == 0 &
+                      end > start]
   if (nrow(dt) == 0) {
     fwrite(data.table(), out_file, sep = "\t")
     if (!is.null(bed_file))
       fwrite(data.table(CHR = character(), START = integer(), END = integer(), TYPE = character()),
-             bed_file, sep = "\t")
+             bed_file, sep = "\t", col.names = FALSE)
     cat(sprintf("       0 CNVs in smoothed_variants with current filters\n"))
     return(invisible(NULL))
   }
@@ -822,7 +823,7 @@ make_smoothed_variants <- function(per_exon_dt, sample_id, out_file,
   )))
   fwrite(out, out_file, sep = "\t")
   if (!is.null(bed_file))
-    fwrite(out[, .(CHR = CHROM, START, END, TYPE = consensus_type)], bed_file, sep = "\t")
+    fwrite(out[, .(CHR = CHROM, START, END, TYPE = consensus_type)], bed_file, sep = "\t", col.names = FALSE)
   cat(sprintf("       %d CNVs in smoothed_variants\n", nrow(out)))
 }
 
