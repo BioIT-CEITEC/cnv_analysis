@@ -41,6 +41,7 @@ ch_organism_snps = params.organism_snps_panel ? Channel.fromPath(params.organism
 ch_organism_ploidy_priors = params.organism_ploidy_priors ? Channel.fromPath(params.organism_ploidy_priors).collect() : Channel.empty()
 ch_organism_gtf_tsv = params.organism_gtf_tsv ? Channel.fromPath(params.organism_gtf_tsv).collect() : Channel.empty()
 ch_organism_gtf = params.organism_gtf ? Channel.fromPath(params.organism_gtf).collect() : Channel.empty()
+ch_organism_gene_bed = params.gene_pseudogene_bed ? Channel.fromPath(params.gene_pseudogene_bed).collect() : Channel.empty()
 
 Utils.loadSample(params)
 def inputData = Utils.parseInputVC(params.new_samples, projectDir, log)

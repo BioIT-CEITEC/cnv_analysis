@@ -33,7 +33,6 @@ Two combination strategies are available:
   - [Pitfalls and caveats](#pitfalls-and-caveats)
 - [Cohort data reuse](#cohort-data-reuse)
 - [Resources and executor tuning](#resources-and-executor-tuning)
-- [Known limitations](#known-limitations)
 
 ---
 
@@ -56,7 +55,6 @@ local.config                site overrides (tmp dirs, conda cacheDir, scratch)
 workflow.config.json        descriptor for the institutional workflow manager (LOG)
 workflows/
   PANEL.nf                  the panel/WES workflow — reference loading, caller toggles, wiring
-  WGS.nf                    WGS variant (currently not included from main.nf)
 subworkflows/<tool>/main.nf per-caller orchestration
 modules/<tool>/main.nf      individual processes (+ env.yaml, helper scripts)
 bin/                        R/Python helper scripts called by the modules
@@ -161,8 +159,8 @@ jabCoNtool (`jabCoNtool_*`) and Control-FREEC (`freec_*`).
    `CONSENSUS_MODEL_SCORE` (trained model).
 4. **Annotation** — `CLASSIFY_AND_ANNOTATE` (ClassifyCNV + `cnvAnnotateCNVkit.R`).
 5. **Reporting** — `FINAL_FORMATTING_TABLES` produces the cohort tables and HTML report.
-6. **Optional** — `PSEUDOGENE_ANALYSIS` (`run_pseudogene`, see
-   [Known limitations](#known-limitations)).
+6. **Optional** — `PSEUDOGENE_ANALYSIS`, gated by `run_pseudogene` and driven by
+   `gene_pseudogene_bed`.
 
 ## Output layout
 
@@ -491,20 +489,3 @@ run with `maxForks = 4`. Adjust both the `executor` block and the per-process ov
 `local.config` holds site-specific overrides (tmp directories, `conda.cacheDir`, `scratch`) and
 is applied with `-c local.config`.
 
-## Known limitations
-
-- **Pseudogene branch is not wired.** `params.run_pseudogene` and `params.organism_gene_bed` are
-  not declared, and `PSEUDOGENE_ANALYSIS` is called with an undefined `ch_organism_gene_bed`.
-  Enabling it as-is will fail.
-- **WGS workflow is disabled.** `workflows/WGS.nf` exists but its include is commented out in
-  `main.nf`; only `PANEL_WES` runs.
-- **ECOLE fine-tuning is not exposed.** `modules/ECOLE/ECOLE-0.2/` ships
-  `ECOLE_finetune.py`, `finetune_preprocess_sample.py` and `create_dataset.py`, but only
-  read-depth preprocessing and calling are wired into the workflow; ECOLE always uses its
-  pre-trained weights. The scripts also hardcode paths
-  (`./finetune_example_data/ground_truth_labels/`, `./processed_finetuning_dataset`) that would
-  need parameterising first.
-- **Unused modules.** `delly`, `purple`, `vardict`, `sage`, `svprep`, `cobalt`, `amber` and
-  `modules/backup/*` are present but not part of `PANEL_WES`.
-- **Heavy ECOLE environment.** Pinned to Python 3.8 / CUDA 10.1 via a full Anaconda export;
-  expect a long first-run environment build. `use_ecole = false` skips it.
