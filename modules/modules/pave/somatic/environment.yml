@@ -1,7 +1,0 @@
-name: pave_somatic
-channels:
-  - conda-forge
-  - bioconda
-  - defaults
-dependencies:
-  - bioconda::hmftools-pave=1.6

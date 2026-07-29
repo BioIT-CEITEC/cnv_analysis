@@ -11,15 +11,17 @@ process FILTER_INTERVALS_GATK {
     path("*.gc.filtered.interval_list"), emit: qc_filtered_regions_gatk
 
     script:
-    def panel = lib_ROI.toString().replace('.bed', '') 
+    def panel = lib_ROI.toString().replace('.bed', '')
+    def chrX  = params.assembly ==~ /hg(19|38)/ ? "chrX" : "X"
+    def chrY  = params.assembly ==~ /hg(19|38)/ ? "chrY" : "Y"
     """
     gatk FilterIntervals \\
       -L ${interval_list} \\
       --annotated-intervals ${annotated_intervals} \\
       -I ${read_counts.join(" -I ")} \\
       -imr OVERLAPPING_ONLY \\
-      --exclude-intervals X \\
-      --exclude-intervals Y \\
+      --exclude-intervals ${chrX} \\
+      --exclude-intervals ${chrY} \\
       -O ${panel}.gc.filtered.interval_list
     """
 

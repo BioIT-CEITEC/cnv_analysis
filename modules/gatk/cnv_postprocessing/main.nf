@@ -18,12 +18,16 @@ process POSTPROCESSING_CNV_GATK {
     path("gatk/copy_ratios_${meta.sample_name}.tsv"), emit: postprocess_cnv_gatk
 
     script:
+    def chrX = params.assembly ==~ /hg(19|38)/ ? "chrX" : "X"
+    def chrY = params.assembly ==~ /hg(19|38)/ ? "chrY" : "Y"
     """
     mkdir -p gatk
+    export XDG_CACHE_HOME=\$PWD/.cache
+    mkdir -p \$XDG_CACHE_HOME/arviz
     gatk PostprocessGermlineCNVCalls \\
       --model-shard-path cohort-model \\
       --calls-shard-path germline-calls \\
-      --allosomal-contig X --allosomal-contig Y \\
+      --allosomal-contig ${chrX} --allosomal-contig ${chrY} \\
       --contig-ploidy-calls ploidy-calls \\
       --sample-index 0 \\
       --output-genotyped-intervals gatk/genotyped_intervals_${meta.sample_name}.vcf.gz \\

@@ -55,5 +55,6 @@ workflow JABCONTOOL_ANALYSIS {
         ch_jabcontool_varcalls
     )
     emit:
-    ch_jabcontool_norm_varcalls = VARIANT_NORMALIZATION_JABCONTOOL.out.normalized_varcalls
+    ch_jabcontool_norm_varcalls = JABCONTOOL_CALL.out.final_CNV_probs
+    ch_coverage_files           = COVERAGE_CALC.out.region_coverage
 }

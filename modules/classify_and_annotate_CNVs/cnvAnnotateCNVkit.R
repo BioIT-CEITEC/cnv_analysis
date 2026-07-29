@@ -25,6 +25,14 @@ run_all <- function(args){
   ##############################################################################
   inputDF <- fread(file=input_tsv, sep='\t', header = TRUE)
   names(inputDF)
+
+  # No calls for this sample — write empty outputs and exit cleanly
+  if (nrow(inputDF) == 0) {
+    dir.create(dirname(output_tsv), recursive=TRUE, showWarnings=FALSE)
+    write.table(data.frame(), file=output_tsv, sep="\t", quote=FALSE, row.names=FALSE, col.names=FALSE)
+    writexl::write_xlsx(data.frame(), path=output_xlsx)
+    return(invisible(NULL))
+  }
   
   if(all(c("CHROM","POS","END","SVTYPE") %in% names(inputDF))){
     setnames(inputDF,c("CHROM","POS","END","SVTYPE"),c("CHR","START","STOP","CNVtype"))

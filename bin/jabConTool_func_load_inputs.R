@@ -18,7 +18,6 @@ load_panel_intervals <- function(panel_intervals_filename,library_type){
     panel_intervals[,V4 := paste("reg",V1,V2,V3,sep = "_")]
   }
   setnames(panel_intervals,c("chr","start","end","region_name"))
-  panel_intervals[,chr := sub("^chr","",chr)]
 
   if(library_type == "wgs"){
     #remove regions smaller then 1/2 of size
@@ -42,11 +41,10 @@ get_cov_tab <- function(sample_tab,panel_intervals,cohort_tab,join_intervals_dis
   cov_tab[,tail(names(cov_tab),3) := NULL]
   setnames(cov_tab,c("V1","V2","V3"),c("chr","start","end"))
   setnames(cov_tab,tail(names(cov_tab),1),c("cov_raw"))
-  cov_tab[,chr := sub("^chr","",chr)]
 
   # chr X a Y pořešíme později, zatím analýza bez něj, aby nezkresloval výsledky
   #homsap hack TODO
-  cov_tab <- cov_tab[chr %in% as.character(1:22)]
+  cov_tab <- cov_tab[chr %in% 1:22]
 
   #add panel_intervals grouping based on join
   if(join_intervals_distance > 0){
@@ -107,7 +105,6 @@ get_snp_tab <- function(sample_tab,panel_snps_filename,panel_intervals,individua
   snp_tab <- fread_vector_of_files(sample_tab$snp_tab_filenames,sample_tab$sample)
   print("loaded snp tab")
   setnames(snp_tab,c("sample","chr","pos","A","C","G","T","cov"))
-  snp_tab[,chr := sub("^chr","",chr)]
   print("changed snp tab names")
   snp_tab <- snp_tab[cov > 0]
   print("filtered snp tab names")
@@ -115,7 +112,6 @@ get_snp_tab <- function(sample_tab,panel_snps_filename,panel_intervals,individua
   print("loaded snp panel tsv file")
   
   setnames(panel_snps,c("chr","pos","ref","alt","BAF"))
-  panel_snps[,chr := sub("^chr","",chr)]
   #genetics law
   panel_snps[,pop_HET_probability := 2*BAF*(1-BAF)]
   print(colnames(panel_snps))
@@ -135,7 +131,7 @@ get_snp_tab <- function(sample_tab,panel_snps_filename,panel_intervals,individua
 
   # chr X a Y pořešíme později, zatím analýza bez něj, aby nezkresloval výsledky
   #homsap hack TODO
-  snp_tab <- snp_tab[chr %in% as.character(1:22)]
+  snp_tab <- snp_tab[chr %in% 1:22]
 
   snp_tab[,max_pos_cov := max(cov),by = .(chr,pos) ]
 

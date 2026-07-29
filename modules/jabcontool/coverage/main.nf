@@ -1,6 +1,7 @@
 process COVERAGE_CALC {
 
     tag "${meta.sample_name}"
+    //publishDir "structural_varcalls/cohort_results/${meta.sample_name}", mode: 'copy'
     conda "${moduleDir}/env.yaml"
 
     input:

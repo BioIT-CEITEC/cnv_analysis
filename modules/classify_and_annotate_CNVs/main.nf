@@ -1,8 +1,7 @@
 process CLASSIFY_AND_ANNOTATE {
 
     tag "${meta.sample_name}"
-    publishDir "structural_varcalls/${meta.sample_name}", mode: 'copy'
-    conda "${moduleDir}/env.yaml" 
+    conda "${moduleDir}/env.yaml"
 
     input:
     tuple val(meta), path(merged_tsv), path(merged_bed)
@@ -10,6 +9,7 @@ process CLASSIFY_AND_ANNOTATE {
 
     output:
     tuple val(meta), path("classified_and_annotated_CNVs/Scoresheet.txt"), path("classified_and_annotated_CNVs/*"), emit: cnvkit_annotated_calls
+    tuple val(meta), path("classified_and_annotated_CNVs/${meta.sample_name}_final_CNVs_annotated.tsv"),            emit: annotated_tsv
 
     script:
 

@@ -25,7 +25,10 @@ process FIX_AND_SEGMENT_CNVKIT {
 
     cnvkit.py segment segmented/fixed_cov_filtered.cnr \
         --method cbs \
-        -o segmented/segmented_cov.cns
+        --drop-low-coverage \
+        -o segmented/segmented_cov_raw.cns
+
+    awk 'NR==1 || \$7 >= 3' segmented/segmented_cov_raw.cns > segmented/segmented_cov.cns
     """
 
     stub:
