@@ -1,1 +1,5 @@
 .DS_Store
+CLAUDE.md
+command.md
+graphify-out/
+modules/graphify-out/cache/stat-index.json
