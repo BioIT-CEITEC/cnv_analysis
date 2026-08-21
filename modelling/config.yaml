@@ -11,10 +11,10 @@ reports:
   eda_dir: reports/eda
   metrics_dir: reports/metrics
 
-# Phase 4+ (not used yet)
+# Phase 4
 split:
-  seed: null          # fixed seed for GroupKFold by sample, set in Phase 4
-  n_folds: null
+  seed: 42            # fixed seed for GroupKFold by sample (src/features.py)
+  n_folds: 5
 
 # Phase 6+ (not used yet)
 metric_targets:
