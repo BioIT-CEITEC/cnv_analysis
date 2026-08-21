@@ -1,0 +1,167 @@
+{
+  "beta": 2,
+  "n_total_events": 3414,
+  "n_unreachable_events": 55,
+  "event_recall_ceiling": 0.9839,
+  "rule_a": {
+    "pr_auc": 0.7659,
+    "sweep": [
+      {
+        "description": "agreement_count >= 1",
+        "n_predicted_positive": 55221,
+        "row_precision": 0.062,
+        "row_recall": 1.0,
+        "row_f2": 0.2484,
+        "event_recall": 0.9839,
+        "k": 1
+      },
+      {
+        "description": "agreement_count >= 2",
+        "n_predicted_positive": 8454,
+        "row_precision": 0.3908,
+        "row_recall": 0.965,
+        "row_f2": 0.7458,
+        "event_recall": 0.9619,
+        "k": 2
+      },
+      {
+        "description": "agreement_count >= 3",
+        "n_predicted_positive": 3874,
+        "row_precision": 0.7447,
+        "row_recall": 0.8426,
+        "row_f2": 0.821,
+        "event_recall": 0.845,
+        "k": 3
+      },
+      {
+        "description": "agreement_count >= 4",
+        "n_predicted_positive": 2511,
+        "row_precision": 0.8467,
+        "row_recall": 0.6209,
+        "row_f2": 0.6559,
+        "event_recall": 0.6227,
+        "k": 4
+      },
+      {
+        "description": "agreement_count >= 5",
+        "n_predicted_positive": 1347,
+        "row_precision": 0.8931,
+        "row_recall": 0.3513,
+        "row_f2": 0.3999,
+        "event_recall": 0.3524,
+        "k": 5
+      },
+      {
+        "description": "agreement_count >= 6",
+        "n_predicted_positive": 554,
+        "row_precision": 0.9458,
+        "row_recall": 0.153,
+        "row_f2": 0.1839,
+        "event_recall": 0.1535,
+        "k": 6
+      },
+      {
+        "description": "agreement_count >= 7",
+        "n_predicted_positive": 144,
+        "row_precision": 0.9653,
+        "row_recall": 0.0406,
+        "row_f2": 0.0502,
+        "event_recall": 0.0407,
+        "k": 7
+      },
+      {
+        "description": "agreement_count >= 8",
+        "n_predicted_positive": 24,
+        "row_precision": 0.9583,
+        "row_recall": 0.0067,
+        "row_f2": 0.0084,
+        "event_recall": 0.0067,
+        "k": 8
+      }
+    ]
+  },
+  "rule_b": {
+    "XHMM": {
+      "description": "XHMM fired",
+      "n_predicted_positive": 1682,
+      "row_precision": 0.8282,
+      "row_recall": 0.4068,
+      "row_f2": 0.4529,
+      "event_recall": 0.408,
+      "pr_auc": null
+    },
+    "gatk": {
+      "description": "gatk fired",
+      "n_predicted_positive": 4027,
+      "row_precision": 0.7842,
+      "row_recall": 0.9223,
+      "row_f2": 0.8909,
+      "event_recall": 0.9227,
+      "pr_auc": null
+    }
+  },
+  "rule_c": {
+    "candidates": [
+      {
+        "description": "(agreement_count >= 2) OR (XHMM fired) OR (gatk fired)",
+        "n_predicted_positive": 8693,
+        "row_precision": 0.3808,
+        "row_recall": 0.9667,
+        "row_f2": 0.7392,
+        "event_recall": 0.9625,
+        "k": 2,
+        "pr_auc": null
+      },
+      {
+        "description": "(agreement_count >= 3) OR (XHMM fired) OR (gatk fired)",
+        "n_predicted_positive": 4730,
+        "row_precision": 0.6808,
+        "row_recall": 0.9404,
+        "row_f2": 0.8738,
+        "event_recall": 0.9402,
+        "k": 3,
+        "pr_auc": null
+      },
+      {
+        "description": "(agreement_count >= 4) OR (XHMM fired) OR (gatk fired)",
+        "n_predicted_positive": 4327,
+        "row_precision": 0.7338,
+        "row_recall": 0.9273,
+        "row_f2": 0.8808,
+        "event_recall": 0.9274,
+        "k": 4,
+        "pr_auc": null
+      },
+      {
+        "description": "(agreement_count >= 5) OR (XHMM fired) OR (gatk fired)",
+        "n_predicted_positive": 4272,
+        "row_precision": 0.7416,
+        "row_recall": 0.9252,
+        "row_f2": 0.8816,
+        "event_recall": 0.9253,
+        "k": 5,
+        "pr_auc": null
+      }
+    ],
+    "best": {
+      "description": "(agreement_count >= 5) OR (XHMM fired) OR (gatk fired)",
+      "n_predicted_positive": 4272,
+      "row_precision": 0.7416,
+      "row_recall": 0.9252,
+      "row_f2": 0.8816,
+      "event_recall": 0.9253,
+      "k": 5,
+      "pr_auc": null
+    }
+  },
+  "best_overall": {
+    "description": "gatk fired",
+    "n_predicted_positive": 4027,
+    "row_precision": 0.7842,
+    "row_recall": 0.9223,
+    "row_f2": 0.8909,
+    "event_recall": 0.9227,
+    "pr_auc": null,
+    "rule": "B (gatk)"
+  }
+}
