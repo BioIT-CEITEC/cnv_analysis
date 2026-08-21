@@ -77,6 +77,21 @@ def discover_ground_truth_with_names(base=BRONCO_BASE):
     return gt_named
 
 
+def export_ground_truth(gt_named, out_path):
+    """Flatten {sample: [variants]} to one TSV: sample, chr, start, end, type, name.
+
+    Independent record of the true simulated events, since all_samples_merged.tsv
+    only contains rows where >=1 caller fired -- a variant no caller detected at
+    all has no row there. This file is the correct recall denominator.
+    """
+    with open(out_path, "w", encoding="utf-8", newline="") as fh:
+        fh.write("\t".join(["sample", "chr", "start", "end", "type", "name"]) + "\n")
+        for sample in sorted(gt_named):
+            for v in gt_named[sample]:
+                fh.write("\t".join(str(x) for x in
+                          [sample, v["chr"], v["start"], v["end"], v["type"], v["name"]]) + "\n")
+
+
 def best_gt_match(region, gt_variants):
     """(matches_gt, gt_gene) for one merged region against its sample's ground truth."""
     for g in gt_variants:
@@ -143,6 +158,8 @@ def write_tsv(rows, out_path):
 def main():
     ap = argparse.ArgumentParser(description="Merge CNV calls across all BRONCO samples (no training/scoring)")
     ap.add_argument("--out", default="all_samples_merged.tsv")
+    ap.add_argument("--gt-out", default=None,
+                    help="Also export the flat ground-truth event list here (sample, chr, start, end, type, name)")
     ap.add_argument("--callers", nargs="+", default=None,
                     help="Callers to include (default: all detected)")
     args = ap.parse_args()
@@ -173,6 +190,11 @@ def main():
     write_tsv(all_rows, args.out)
     print(f"\nDone. {len(all_rows)} merged candidate regions across {len(all_samples)} samples.")
     print(f"Written -> {args.out}")
+
+    if args.gt_out:
+        export_ground_truth(gt_named, args.gt_out)
+        total_gt = sum(len(v) for v in gt_named.values())
+        print(f"Ground truth: {total_gt} events across {len(gt_named)} samples -> {args.gt_out}")
 
 
 if __name__ == "__main__":
