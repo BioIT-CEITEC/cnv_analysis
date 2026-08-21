@@ -6,3 +6,4 @@ modules/graphify-out/cache/stat-index.json
 modelling/data
 *.pyc
 .nextflow.log
+IMPLEMENTATION_PLAN.md
