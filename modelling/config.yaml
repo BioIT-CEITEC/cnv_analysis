@@ -1,0 +1,21 @@
+# Consensus CNV Caller -- project config (IMPLEMENTATION_PLAN.md)
+# Filled in incrementally as phases are implemented; keys for later phases are
+# placeholders so this file doesn't need restructuring later.
+
+data:
+  raw_merged: data/raw/all_samples_merged.tsv
+  raw_ground_truth: data/raw/ground_truth_events.tsv
+  processed_dir: data/processed
+
+reports:
+  eda_dir: reports/eda
+  metrics_dir: reports/metrics
+
+# Phase 4+ (not used yet)
+split:
+  seed: null          # fixed seed for GroupKFold by sample, set in Phase 4
+  n_folds: null
+
+# Phase 6+ (not used yet)
+metric_targets:
+  precision_target: null   # e.g. 0.90 -- operating point selection target
