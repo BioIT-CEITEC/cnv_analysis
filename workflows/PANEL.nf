@@ -10,7 +10,6 @@ include { COHORT_PREPARATION } from "../modules/preprocessing/cohort_preparation
 include { CNVKIT_ANALYSIS } from "../subworkflows/cnvkit/main.nf"
 include { JABCONTOOL_ANALYSIS } from "../subworkflows/jabcontool/main.nf"
 include { GATK_ANALYSIS } from "../subworkflows/gatk/main.nf"
-include { DELLY_ANALYSIS } from "../subworkflows/delly/main.nf"
 include { CNMOPS_ANALYSIS } from "../subworkflows/cnMOPS/main.nf"
 include { PANELCNMOPS_ANALYSIS } from "../subworkflows/panelcnMOPS/main.nf"
 include { EXOMEDEPTH_ANALYSIS } from "../subworkflows/ExomeDepth/main.nf"

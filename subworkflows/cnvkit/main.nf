@@ -2,7 +2,6 @@ include { PREPARE_REGIONS_CNVKIT } from "../../modules/cnvkit/prepare_regions/ma
 include { GET_COVERAGE_CNVKIT } from "../../modules/cnvkit/coverage/main.nf"
 include { REFERENCE_CNVKIT } from "../../modules/cnvkit/reference_preparation/main.nf"
 include { FIX_AND_SEGMENT_CNVKIT } from "../../modules/cnvkit/fix_and_segment/main.nf"
-include { VARDICT_CALL } from "../../modules/vardict/main.nf"
 include { CNVKIT_CALL } from "../../modules/cnvkit/call/main.nf"
 include { DIAGRAM_AND_SCATTER_CNVKIT } from "../../modules/cnvkit/plotting/main.nf"
 include { CNVKIT_CLASSIFY_AND_ANNOTATE } from "../../modules/cnvkit/classify_and_annotate/main.nf"
