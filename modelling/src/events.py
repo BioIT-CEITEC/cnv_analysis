@@ -55,7 +55,43 @@ def event_recall(predicted_mask, event_keys, gt):
     return len(matched_and_predicted) / len(gt)
 
 
+def _self_test():
+    """Hand-checked sample: exact match, boundary-overlap match (frac==MIN_OVERLAP_FRAC
+    exactly), a too-small overlap, a type mismatch, and a gt event with zero
+    supporting rows -- covers every branch match_rows_to_events/event_recall take.
+    """
+    gt = pd.DataFrame([
+        {"sample": "S1", "chr": "chr1", "start": 1000, "end": 2000, "type": "DEL"},  # G1
+        {"sample": "S1", "chr": "chr1", "start": 5000, "end": 6000, "type": "DEL"},  # G3
+        {"sample": "S2", "chr": "chr2", "start": 500, "end": 600, "type": "DUP"},    # G2, never matched
+    ])
+    df = pd.DataFrame([
+        {"sample": "S1", "chr": "chr1", "start": 1000, "end": 2000, "type": "DEL"},  # R1: exact -> G1
+        {"sample": "S1", "chr": "chr1", "start": 1500, "end": 2500, "type": "DEL"},  # R3: frac==0.5 -> G1
+        {"sample": "S1", "chr": "chr1", "start": 1900, "end": 2900, "type": "DEL"},  # R4: frac==0.1 -> no match
+        {"sample": "S1", "chr": "chr1", "start": 1000, "end": 2000, "type": "DUP"},  # R5: type mismatch -> no match
+        {"sample": "S1", "chr": "chr1", "start": 5000, "end": 6000, "type": "DEL"},  # R6: exact -> G3
+    ])
+    g1_key = ("S1", "chr1", 1000, 2000, "DEL")
+    g3_key = ("S1", "chr1", 5000, 6000, "DEL")
+
+    keys = match_rows_to_events(df, gt)
+    expected = [g1_key, g1_key, None, None, g3_key]
+    assert list(keys) == expected, f"expected {expected}, got {list(keys)}"
+
+    oracle_recall = event_recall(pd.Series(True, index=df.index), keys, gt)
+    assert oracle_recall == 2 / 3, f"expected 2/3 (G2 unreachable), got {oracle_recall}"
+
+    partial_mask = pd.Series([True, True, False, False, False], index=df.index)
+    partial_recall = event_recall(partial_mask, keys, gt)
+    assert partial_recall == 1 / 3, f"expected 1/3 (only G1 predicted), got {partial_recall}"
+
+    print("_self_test: OK")
+
+
 if __name__ == "__main__":
+    _self_test()
+
     sys.path.insert(0, str(Path(__file__).parent))
     from load import load_ground_truth, load_merged  # noqa: E402
 
