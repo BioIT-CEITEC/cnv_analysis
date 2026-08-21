@@ -319,7 +319,7 @@ def parse_cnMOPS(path):
             if vtype is None:
                 continue
             score = abs(float(r.get("mean", 0) or 0))
-            calls.append({"chr": norm_chr(r["seqnames"]), "start": int(r["start"]),
+            calls.append({"chr": norm_chr(r.get("chromosome", r.get("seqnames"))), "start": int(r["start"]),
                           "end": int(r["end"]), "type": vtype, "score": score})
     except Exception:
         pass
