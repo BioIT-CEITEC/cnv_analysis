@@ -3,3 +3,6 @@ CLAUDE.md
 command.md
 graphify-out/
 modules/graphify-out/cache/stat-index.json
+modelling/data
+*.pyc
+.nextflow.log
