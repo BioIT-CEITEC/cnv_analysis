@@ -10,8 +10,8 @@ public static parseInputVC(inputSh, projectDir, log) {
             sample_name : entry.sample_name
         ]
 
-        def bamPath = "${projectDir}/mapped/${meta.sample_name}.bam"
-        def baiPath = "${projectDir}/mapped/${meta.sample_name}.bam.bai"
+        def bamPath = entry.bam_path ?: "${projectDir}/mapped/${meta.sample_name}.bam"
+        def baiPath = entry.bai_path ?: "${projectDir}/mapped/${meta.sample_name}.bam.bai"
 
         return [meta, bamPath, baiPath]
     }
@@ -24,7 +24,9 @@ public static parseInputVC(inputSh, projectDir, log) {
         conf.samples.each { key, value ->
             def row = [
                 sample_name : value.sample_name,
-                index       : key
+                index       : key,
+                bam_path    : value.bam_path,
+                bai_path    : value.bai_path
             ]
             samplesList << row
         }
