@@ -17,6 +17,7 @@ from pathlib import Path
 import numpy as np
 import pandas as pd
 from scipy.stats import spearmanr
+from sklearn.inspection import permutation_importance
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import average_precision_score, precision_recall_curve
 from sklearn.pipeline import Pipeline
@@ -27,7 +28,7 @@ sys.path.insert(0, str(Path(__file__).parent))
 from baseline import BETA, evaluate_rule  # noqa: E402
 from events import match_rows_to_events  # noqa: E402
 from features import FEATURE_COLUMNS, OUT_PATH as FEATURES_PATH  # noqa: E402
-from load import load_ground_truth  # noqa: E402
+from load import CALLER_COLUMNS, load_ground_truth  # noqa: E402
 
 SEED = 42
 
@@ -110,7 +111,13 @@ def score_model(name, y_true, oof_prob, event_keys, gt):
 
 def feature_importance_check(df):
     """Fit one XGBoost model on the full frame (importance only, never used
-    for scoring) and check its caller-flag ranking against CALLER_PRECISION."""
+    for scoring) and check its caller-flag ranking against CALLER_PRECISION.
+
+    Reports both gain-based importance (biased toward whichever correlated
+    feature the tree happens to split on first) and permutation importance
+    (drop-in-place-of-noise, less biased by feature correlation) so a single
+    dominant feature can be told apart from a genuine bug.
+    """
     model = XGBClassifier(
         scale_pos_weight=(df["matches_gt"] == 0).sum() / (df["matches_gt"] == 1).sum(),
         random_state=SEED,
@@ -118,14 +125,67 @@ def feature_importance_check(df):
     model.fit(df[FEATURE_COLUMNS], df["matches_gt"])
     importances = dict(zip(FEATURE_COLUMNS, model.feature_importances_.tolist()))
 
+    perm = permutation_importance(model, df[FEATURE_COLUMNS], df["matches_gt"],
+                                  scoring="average_precision", n_repeats=5,
+                                  random_state=SEED)
+    perm_importances = dict(zip(FEATURE_COLUMNS, perm.importances_mean.tolist()))
+
     callers = list(CALLER_PRECISION)
     rho, pvalue = spearmanr([CALLER_PRECISION[c] for c in callers],
                             [importances[c] for c in callers])
+    perm_rho, perm_pvalue = spearmanr([CALLER_PRECISION[c] for c in callers],
+                                      [perm_importances[c] for c in callers])
     return {
         "importances": {k: round(v, 4) for k, v in importances.items()},
+        "permutation_importances": {k: round(v, 4) for k, v in perm_importances.items()},
         "caller_ranking_spearman_rho": round(float(rho), 4),
         "caller_ranking_spearman_pvalue": round(float(pvalue), 4),
+        "caller_ranking_spearman_rho_permutation": round(float(perm_rho), 4),
+        "caller_ranking_spearman_pvalue_permutation": round(float(perm_pvalue), 4),
     }
+
+
+def caller_redundancy_with_gatk(df):
+    """For each non-gatk caller: of the true positives it fires on, what
+    fraction does gatk ALSO fire on? High redundancy explains why a caller
+    can have decent standalone precision (Phase 3 Task 4) yet ~zero marginal
+    importance in the combined model -- gatk already covers the same rows.
+    """
+    tp = df[df["matches_gt"] == 1]
+    out = {}
+    for caller in CALLER_COLUMNS:
+        if caller == "gatk":
+            continue
+        fired = tp[tp[caller] == 1]
+        if len(fired) == 0:
+            out[caller] = {"n_tp_fired": 0, "n_also_gatk": 0,
+                           "n_unique_tp": 0, "redundancy_frac": None}
+            continue
+        also_gatk = int((fired["gatk"] == 1).sum())
+        out[caller] = {
+            "n_tp_fired": int(len(fired)),
+            "n_also_gatk": also_gatk,
+            "n_unique_tp": int(len(fired)) - also_gatk,
+            "redundancy_frac": round(also_gatk / len(fired), 4),
+        }
+    return out
+
+
+def ablation_without_gatk(df, event_keys, gt):
+    """Same OOF XGBoost training, but with `gatk` removed from the feature
+    set -- quantifies how much signal the other 7 callers + engineered
+    features carry on their own, independent of gatk."""
+    features = [c for c in FEATURE_COLUMNS if c != "gatk"]
+
+    def fit_predict_fold(train, test):
+        n_pos = (train["matches_gt"] == 1).sum()
+        n_neg = (train["matches_gt"] == 0).sum()
+        model = XGBClassifier(scale_pos_weight=n_neg / n_pos, random_state=SEED)
+        model.fit(train[features], train["matches_gt"])
+        return model.predict_proba(test[features])[:, 1]
+
+    prob = _oof_predict(df, fit_predict_fold)
+    return score_model("xgboost_no_gatk", df["matches_gt"], prob, event_keys, gt)
 
 
 def render_markdown(results):
@@ -135,7 +195,8 @@ def render_markdown(results):
     lines += ["## Out-of-fold model comparison", ""]
     lines.append("| model | threshold | pr_auc | row_precision | row_recall | row_F2 | event_recall |")
     lines.append("|---|---|---|---|---|---|---|")
-    for r in (results["xgboost"], results["logreg"], results["baseline_best"]):
+    for r in (results["xgboost"], results["logreg"], results["xgboost_no_gatk"],
+             results["baseline_best"]):
         label = r.get("description", r.get("rule", "baseline"))
         threshold = r.get("threshold", "-")
         pr_auc = r.get("pr_auc") if r.get("pr_auc") is not None else "-"
@@ -155,17 +216,31 @@ def render_markdown(results):
                      "baseline rule as sufficient.")
     lines.append("")
 
-    lines += ["## Feature importance (XGBoost, full-data fit, gain-based) vs "
-              "Phase 3 caller precision", ""]
-    lines.append(f"Spearman rho (caller precision vs importance) = "
-                 f"{results['feature_importance']['caller_ranking_spearman_rho']} "
-                 f"(p={results['feature_importance']['caller_ranking_spearman_pvalue']})")
+    fi = results["feature_importance"]
+    lines += ["## Feature importance (XGBoost, full-data fit) vs Phase 3 caller precision", ""]
+    lines.append(f"Spearman rho, gain-based importance = {fi['caller_ranking_spearman_rho']} "
+                 f"(p={fi['caller_ranking_spearman_pvalue']})")
+    lines.append(f"Spearman rho, permutation importance = "
+                 f"{fi['caller_ranking_spearman_rho_permutation']} "
+                 f"(p={fi['caller_ranking_spearman_pvalue_permutation']})")
     lines.append("")
-    lines.append("| feature | importance |")
-    lines.append("|---|---|")
-    for feat, imp in sorted(results["feature_importance"]["importances"].items(),
-                            key=lambda kv: -kv[1]):
-        lines.append(f"| {feat} | {imp} |")
+    lines.append("| feature | gain importance | permutation importance |")
+    lines.append("|---|---|---|")
+    for feat, imp in sorted(fi["importances"].items(), key=lambda kv: -kv[1]):
+        lines.append(f"| {feat} | {imp} | {fi['permutation_importances'][feat]} |")
+    lines.append("")
+
+    lines += ["## Caller redundancy with gatk (on true positives only)", ""]
+    lines.append("Of the true positives each caller fires on, the fraction gatk also fires "
+                 "on -- high redundancy means the caller adds few TPs gatk doesn't already "
+                 "cover, which is why it gets little marginal importance above.")
+    lines.append("")
+    lines.append("| caller | n_tp_fired | n_also_gatk | n_unique_tp | redundancy_frac |")
+    lines.append("|---|---|---|---|---|")
+    for caller, r in sorted(results["caller_redundancy_with_gatk"].items(),
+                            key=lambda kv: -(kv[1]["redundancy_frac"] or 0)):
+        lines.append(f"| {caller} | {r['n_tp_fired']} | {r['n_also_gatk']} | "
+                     f"{r['n_unique_tp']} | {r['redundancy_frac']} |")
     lines.append("")
 
     return "\n".join(lines)
@@ -190,6 +265,12 @@ def main():
     print("Feature importance vs Phase 3 caller precision...")
     importance = feature_importance_check(df)
 
+    print("Caller redundancy with gatk (on true positives)...")
+    redundancy = caller_redundancy_with_gatk(df)
+
+    print("Ablation: XGBoost OOF without gatk...")
+    no_gatk_result = ablation_without_gatk(df, event_keys, gt)
+
     baseline_best = json.loads(BASELINE_JSON.read_text(encoding="utf-8"))["best_overall"]
     gate_passed = xgb_result["row_f2"] > baseline_best["row_f2"]
 
@@ -197,7 +278,9 @@ def main():
         "beta": BETA,
         "xgboost": xgb_result,
         "logreg": logreg_result,
+        "xgboost_no_gatk": no_gatk_result,
         "feature_importance": importance,
+        "caller_redundancy_with_gatk": redundancy,
         "baseline_best": baseline_best,
         "gate_passed": gate_passed,
     }
@@ -208,9 +291,10 @@ def main():
 
     print(f"\nWritten -> {REPORT_JSON}")
     print(f"Written -> {REPORT_MD}")
-    print(f"\nXGBoost OOF:  row_F2={xgb_result['row_f2']}, event_recall={xgb_result['event_recall']}")
-    print(f"Logreg OOF:   row_F2={logreg_result['row_f2']}, event_recall={logreg_result['event_recall']}")
-    print(f"Baseline:     row_F2={baseline_best['row_f2']}, event_recall={baseline_best['event_recall']}")
+    print(f"\nXGBoost OOF:        row_F2={xgb_result['row_f2']}, event_recall={xgb_result['event_recall']}")
+    print(f"Logreg OOF:         row_F2={logreg_result['row_f2']}, event_recall={logreg_result['event_recall']}")
+    print(f"XGBoost (no gatk):  row_F2={no_gatk_result['row_f2']}, event_recall={no_gatk_result['event_recall']}")
+    print(f"Baseline:           row_F2={baseline_best['row_f2']}, event_recall={baseline_best['event_recall']}")
     print(f"\nGate {'PASSED' if gate_passed else 'FAILED'}")
 
 
