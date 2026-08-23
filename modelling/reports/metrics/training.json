@@ -20,6 +20,16 @@
     "pr_auc": 0.9217,
     "threshold": 0.7608
   },
+  "xgboost_no_gatk": {
+    "description": "xgboost_no_gatk (OOF, threshold=0.6964)",
+    "n_predicted_positive": 3656,
+    "row_precision": 0.8671,
+    "row_recall": 0.9258,
+    "row_f2": 0.9134,
+    "event_recall": 0.9259,
+    "pr_auc": 0.9424,
+    "threshold": 0.6964
+  },
   "feature_importance": {
     "importances": {
       "cnvkit": 0.0082,
@@ -35,8 +45,68 @@
       "log_span_width": 0.0045,
       "type_conflict": 0.001
     },
+    "permutation_importances": {
+      "cnvkit": 0.0128,
+      "freec": 0.0097,
+      "exomeDepth": 0.0017,
+      "panelcnMOPS": 0.1443,
+      "cnMOPS": 0.0027,
+      "XHMM": 0.002,
+      "conifer": 0.0212,
+      "gatk": 0.4588,
+      "agreement_count": 0.0396,
+      "type_DUP": 0.0161,
+      "log_span_width": 0.099,
+      "type_conflict": 0.0
+    },
     "caller_ranking_spearman_rho": 0.0476,
-    "caller_ranking_spearman_pvalue": 0.9108
+    "caller_ranking_spearman_pvalue": 0.9108,
+    "caller_ranking_spearman_rho_permutation": -0.2619,
+    "caller_ranking_spearman_pvalue_permutation": 0.5309
+  },
+  "caller_redundancy_with_gatk": {
+    "cnvkit": {
+      "n_tp_fired": 1042,
+      "n_also_gatk": 988,
+      "n_unique_tp": 54,
+      "redundancy_frac": 0.9482
+    },
+    "freec": {
+      "n_tp_fired": 1449,
+      "n_also_gatk": 1341,
+      "n_unique_tp": 108,
+      "redundancy_frac": 0.9255
+    },
+    "exomeDepth": {
+      "n_tp_fired": 774,
+      "n_also_gatk": 735,
+      "n_unique_tp": 39,
+      "redundancy_frac": 0.9496
+    },
+    "panelcnMOPS": {
+      "n_tp_fired": 3250,
+      "n_also_gatk": 3143,
+      "n_unique_tp": 107,
+      "redundancy_frac": 0.9671
+    },
+    "cnMOPS": {
+      "n_tp_fired": 399,
+      "n_also_gatk": 394,
+      "n_unique_tp": 5,
+      "redundancy_frac": 0.9875
+    },
+    "XHMM": {
+      "n_tp_fired": 1393,
+      "n_also_gatk": 1384,
+      "n_unique_tp": 9,
+      "redundancy_frac": 0.9935
+    },
+    "conifer": {
+      "n_tp_fired": 2163,
+      "n_also_gatk": 1995,
+      "n_unique_tp": 168,
+      "redundancy_frac": 0.9223
+    }
   },
   "baseline_best": {
     "description": "gatk fired",
