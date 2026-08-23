@@ -7,3 +7,5 @@ modelling/data
 *.pyc
 .nextflow.log
 IMPLEMENTATION_PLAN.md
+modelling/SESSION_HANDOFF.md
+modelling/reports/discussion.md
