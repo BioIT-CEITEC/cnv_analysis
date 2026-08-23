@@ -1,0 +1,52 @@
+{
+  "beta": 2,
+  "xgboost": {
+    "description": "xgboost (OOF, threshold=0.6992)",
+    "n_predicted_positive": 3627,
+    "row_precision": 0.8715,
+    "row_recall": 0.9232,
+    "row_f2": 0.9124,
+    "event_recall": 0.9233,
+    "pr_auc": 0.9394,
+    "threshold": 0.6992
+  },
+  "logreg": {
+    "description": "logreg (OOF, threshold=0.7608)",
+    "n_predicted_positive": 3862,
+    "row_precision": 0.8226,
+    "row_recall": 0.9279,
+    "row_f2": 0.9047,
+    "event_recall": 0.9285,
+    "pr_auc": 0.9217,
+    "threshold": 0.7608
+  },
+  "feature_importance": {
+    "importances": {
+      "cnvkit": 0.0082,
+      "freec": 0.0039,
+      "exomeDepth": 0.0045,
+      "panelcnMOPS": 0.0086,
+      "cnMOPS": 0.0028,
+      "XHMM": 0.0053,
+      "conifer": 0.0203,
+      "gatk": 0.9227,
+      "agreement_count": 0.0133,
+      "type_DUP": 0.0048,
+      "log_span_width": 0.0045,
+      "type_conflict": 0.001
+    },
+    "caller_ranking_spearman_rho": 0.0476,
+    "caller_ranking_spearman_pvalue": 0.9108
+  },
+  "baseline_best": {
+    "description": "gatk fired",
+    "n_predicted_positive": 4027,
+    "row_precision": 0.7842,
+    "row_recall": 0.9223,
+    "row_f2": 0.8909,
+    "event_recall": 0.9227,
+    "pr_auc": null,
+    "rule": "B (gatk)"
+  },
+  "gate_passed": true
+}
