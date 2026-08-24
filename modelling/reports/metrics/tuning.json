@@ -1,0 +1,102 @@
+{
+  "beta": 2,
+  "precision_target": 0.9,
+  "best_params": {
+    "subsample": 1.0,
+    "scale_pos_weight": 7.563814252336448,
+    "n_estimators": 500,
+    "min_child_weight": 3,
+    "max_depth": 4,
+    "learning_rate": 0.05,
+    "colsample_bytree": 0.6
+  },
+  "cv_results_top5": [
+    {
+      "subsample": 1.0,
+      "scale_pos_weight": 7.563814252336448,
+      "n_estimators": 500,
+      "min_child_weight": 3,
+      "max_depth": 4,
+      "learning_rate": 0.05,
+      "colsample_bytree": 0.6,
+      "mean_pr_auc": 0.9474
+    },
+    {
+      "subsample": 0.8,
+      "scale_pos_weight": 11.345721378504672,
+      "n_estimators": 500,
+      "min_child_weight": 1,
+      "max_depth": 6,
+      "learning_rate": 0.01,
+      "colsample_bytree": 0.6,
+      "mean_pr_auc": 0.9471
+    },
+    {
+      "subsample": 0.8,
+      "scale_pos_weight": 11.345721378504672,
+      "n_estimators": 100,
+      "min_child_weight": 1,
+      "max_depth": 5,
+      "learning_rate": 0.2,
+      "colsample_bytree": 0.8,
+      "mean_pr_auc": 0.9467
+    },
+    {
+      "subsample": 0.6,
+      "scale_pos_weight": 30.255257009345794,
+      "n_estimators": 300,
+      "min_child_weight": 5,
+      "max_depth": 8,
+      "learning_rate": 0.03,
+      "colsample_bytree": 0.8,
+      "mean_pr_auc": 0.9452
+    },
+    {
+      "subsample": 1.0,
+      "scale_pos_weight": 11.345721378504672,
+      "n_estimators": 100,
+      "min_child_weight": 5,
+      "max_depth": 5,
+      "learning_rate": 0.05,
+      "colsample_bytree": 0.6,
+      "mean_pr_auc": 0.9449
+    }
+  ],
+  "xgboost_tuned": {
+    "description": "xgboost_tuned (OOF, threshold=0.6491)",
+    "n_predicted_positive": 3613,
+    "row_precision": 0.8813,
+    "row_recall": 0.9299,
+    "row_f2": 0.9198,
+    "event_recall": 0.9291,
+    "pr_auc": 0.9466,
+    "threshold": 0.6491
+  },
+  "xgboost_untuned": {
+    "description": "xgboost (OOF, threshold=0.6992)",
+    "n_predicted_positive": 3627,
+    "row_precision": 0.8715,
+    "row_recall": 0.9232,
+    "row_f2": 0.9124,
+    "event_recall": 0.9233,
+    "pr_auc": 0.9394,
+    "threshold": 0.6992
+  },
+  "baseline_best": {
+    "description": "gatk fired",
+    "n_predicted_positive": 4027,
+    "row_precision": 0.7842,
+    "row_recall": 0.9223,
+    "row_f2": 0.8909,
+    "event_recall": 0.9227,
+    "pr_auc": null,
+    "rule": "B (gatk)"
+  },
+  "operating_point": {
+    "threshold": 0.7161478400230408,
+    "precision": 0.900626423690205,
+    "recall": 0.9237733644859814,
+    "target_met": true
+  },
+  "model_path": "/mnt/data/ceitec_cfg2/710000-CEITEC/713000-cmm/713016-bioit/base/workspace/aman/cnv/modelling/models/xgboost_tuned.json"
+}
