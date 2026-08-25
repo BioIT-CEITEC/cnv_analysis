@@ -1,0 +1,85 @@
+{
+  "beta": 2,
+  "dropped_features": [
+    "freec",
+    "cnMOPS"
+  ],
+  "feature_columns": [
+    "cnvkit",
+    "exomeDepth",
+    "panelcnMOPS",
+    "XHMM",
+    "conifer",
+    "gatk",
+    "agreement_count",
+    "type_DUP",
+    "log_span_width",
+    "type_conflict"
+  ],
+  "xgboost_reduced_untuned": {
+    "description": "xgboost_reduced (OOF, threshold=0.7432)",
+    "n_predicted_positive": 3573,
+    "row_precision": 0.8819,
+    "row_recall": 0.9203,
+    "row_f2": 0.9123,
+    "event_recall": 0.9206,
+    "pr_auc": 0.9388,
+    "threshold": 0.7432
+  },
+  "best_params_reduced": {
+    "subsample": 1.0,
+    "scale_pos_weight": 7.563814252336448,
+    "n_estimators": 500,
+    "min_child_weight": 3,
+    "max_depth": 4,
+    "learning_rate": 0.05,
+    "colsample_bytree": 0.6
+  },
+  "xgboost_reduced_tuned": {
+    "description": "xgboost_reduced_tuned (OOF, threshold=0.6733)",
+    "n_predicted_positive": 3596,
+    "row_precision": 0.8835,
+    "row_recall": 0.9279,
+    "row_f2": 0.9186,
+    "event_recall": 0.9277,
+    "pr_auc": 0.9449,
+    "threshold": 0.6733
+  },
+  "operating_point_reduced": {
+    "threshold": 0.7499069571495056,
+    "precision": 0.9001716247139588,
+    "recall": 0.9191004672897196,
+    "target_met": true
+  },
+  "xgboost_full_untuned": {
+    "description": "xgboost (OOF, threshold=0.6992)",
+    "n_predicted_positive": 3627,
+    "row_precision": 0.8715,
+    "row_recall": 0.9232,
+    "row_f2": 0.9124,
+    "event_recall": 0.9233,
+    "pr_auc": 0.9394,
+    "threshold": 0.6992
+  },
+  "xgboost_full_tuned": {
+    "description": "xgboost_tuned (OOF, threshold=0.6491)",
+    "n_predicted_positive": 3613,
+    "row_precision": 0.8813,
+    "row_recall": 0.9299,
+    "row_f2": 0.9198,
+    "event_recall": 0.9291,
+    "pr_auc": 0.9466,
+    "threshold": 0.6491
+  },
+  "baseline_best": {
+    "description": "gatk fired",
+    "n_predicted_positive": 4027,
+    "row_precision": 0.7842,
+    "row_recall": 0.9223,
+    "row_f2": 0.8909,
+    "event_recall": 0.9227,
+    "pr_auc": null,
+    "rule": "B (gatk)"
+  },
+  "model_path": "/mnt/data/ceitec_cfg2/710000-CEITEC/713000-cmm/713016-bioit/base/workspace/aman/cnv/modelling/models/xgboost_tuned_no_freec_cnmops.json"
+}
