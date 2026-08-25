@@ -7,10 +7,6 @@ process XGBOOST_CONSENSUS_SCORE {
     input:
     tuple val(meta), path(sample_dir)
     path model_json
-    // Staged into the task's working directory so score_samples_xgb.py can
-    // import it via `sys.path.insert(0, ".")` -- the script never hardcodes
-    // where cnv_consensus_model.py physically lives on disk.
-    path cnv_consensus_model_py
 
     output:
     tuple val(meta), path("merged_variants/${meta.sample_name}_merged_target_consensus.tsv"),

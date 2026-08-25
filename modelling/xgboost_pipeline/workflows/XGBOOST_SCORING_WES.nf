@@ -37,16 +37,7 @@ workflow XGBOOST_SCORING_WES {
         checkIfExists: true
     ).collect()
 
-    // The one place this pipeline points at the shared modules/consensus_model/
-    // (repo root) -- reused unchanged for its caller-parsing/candidate-merging
-    // logic, staged into the scoring task so score_samples_xgb.py can import it
-    // without hardcoding this path itself.
-    ch_cnv_consensus_model_py = Channel.fromPath(
-        "${projectDir}/../../modules/consensus_model/cnv_consensus_model.py",
-        checkIfExists: true
-    ).collect()
-
-    XGBOOST_CONSENSUS_SCORE(ch_samples, ch_xgb_model, ch_cnv_consensus_model_py)
+    XGBOOST_CONSENSUS_SCORE(ch_samples, ch_xgb_model)
 
     CLASSIFY_AND_ANNOTATE(
         XGBOOST_CONSENSUS_SCORE.out.merged_tsv,

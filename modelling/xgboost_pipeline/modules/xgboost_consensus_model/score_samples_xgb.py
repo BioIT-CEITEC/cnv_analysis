@@ -33,11 +33,11 @@ import numpy as np
 import pandas as pd
 import xgboost as xgb
 
-# cnv_consensus_model.py is staged into the current working directory by the
-# XGBOOST_CONSENSUS_SCORE process (Nextflow `path cnv_consensus_model_py`
-# input) -- this script never hardcodes where that file physically lives on
-# disk, so it doesn't break if either module gets relocated again.
-sys.path.insert(0, ".")
+# Reuse the shared cnv_consensus_model.py (repo root modules/consensus_model/)
+# unchanged -- same sys.path convention already used by modelling/merge_from_bronco.py.
+# This file lives at modelling/xgboost_pipeline/modules/xgboost_consensus_model/,
+# four levels under the repo root.
+sys.path.insert(0, str(Path(__file__).parents[4] / "modules" / "consensus_model"))
 from cnv_consensus_model import ALL_CALLERS, _merge_candidates, load_sample_calls  # noqa: E402
 
 EMPTY_HEADER = "sample\tchr\tstart\tend\ttype\tn_callers\tcallers_supporting\tconsensus_score\tcn_label\n"
