@@ -133,7 +133,10 @@ def main():
     event_keys = match_rows_to_events(df, gt)
     all_true_mask = pd.Series(True, index=df.index)
     ceiling = event_recall(all_true_mask, event_keys, gt)
-    n_unreachable = len(gt) - int(len(set(event_keys.dropna())))
+    matched_events = set()
+    for matches in event_keys:
+        matched_events.update(matches)
+    n_unreachable = len(gt) - len(matched_events)
 
     print("Rule A: agreement_count sweep...")
     rule_a = rule_a_agreement_sweep(df, y_true, agreement, event_keys, gt)
