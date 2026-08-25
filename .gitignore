@@ -9,3 +9,7 @@ modelling/data
 IMPLEMENTATION_PLAN.md
 modelling/SESSION_HANDOFF.md
 modelling/reports/discussion.md
+
+# Real patient data (Prague cohort evaluation) -- never committed
+modelling/real_data_eval/results/
+modelling/xgboost_pipeline/test_prague.config
