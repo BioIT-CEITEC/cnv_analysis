@@ -215,7 +215,7 @@ def main():
 
     print("Matching candidate rows to real ground-truth events...")
     event_keys = match_rows_to_events(df, gt)
-    y_true = event_keys.notna().astype(int)
+    y_true = (event_keys.apply(len) > 0).astype(int)
     y_prob = df["consensus_score"].values
 
     # Event-recall ceiling (same check as Phase 3's blocking check on BRONCO,
@@ -224,7 +224,10 @@ def main():
     # Separates "the model missed it" from "no caller ever proposed it".
     all_true_mask = pd.Series(True, index=df.index)
     event_recall_ceiling = event_recall(all_true_mask, event_keys, gt)
-    n_unreachable_events = len(gt) - len(set(event_keys.dropna()))
+    matched_events = set()
+    for matches in event_keys:
+        matched_events.update(matches)
+    n_unreachable_events = len(gt) - len(matched_events)
 
     pr_auc = round(average_precision_score(y_true, y_prob), 4)
     threshold = best_f2_threshold(y_true, y_prob)
