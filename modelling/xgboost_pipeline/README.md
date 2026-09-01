@@ -77,7 +77,7 @@ nextflow run modelling/xgboost_pipeline/main.nf -c local.config -resume
 |---|---|---|
 | `samples` | `[:]` | See above |
 | `xgb_model` | `null` | Override the model path; default is the bundled `modules/xgboost_consensus_model/xgboost_tuned_no_freec_cnmops.json` |
-| `xgb_cutoff` | `null` | Score threshold to filter on; `null` keeps every scored candidate. Model's own ≥0.90-precision threshold: `0.7161` |
+| `xgb_cutoff` | `null` | Score threshold to filter on; `null` keeps every scored candidate. Bundled model's own ≥0.90-precision threshold: `0.7499` |
 
 All `organism_*` reference params (genome, GTF, DNA panel, ...) are
 inherited from the repo-root `nextflow.config` — nothing to set here unless
