@@ -1,4 +1,5 @@
 .DS_Store
+._*
 CLAUDE.md
 command.md
 graphify-out/
@@ -9,6 +10,12 @@ modelling/data
 IMPLEMENTATION_PLAN.md
 modelling/SESSION_HANDOFF.md
 modelling/reports/discussion.md
+modelling/reports/manuscript_modelling_section.md
+modelling/reports/manuscript_modelling_section.docx
+modelling/reports/manuscript_modelling_section_v2.md
+modelling/reports/manuscript_modelling_section_v2.docx
+modelling/reports/plots/
+train_no_freec_cnmops.log
 
 # Real patient data (Prague cohort evaluation) -- never committed
 modelling/real_data_eval/results/
