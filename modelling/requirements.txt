@@ -1,0 +1,26 @@
+# Exact package versions from the "cnv" conda environment on
+# aman-pod-small-rc265, captured 2026-09-04 via:
+#   ~/.conda/envs/cnv/bin/python -m pip list --format=freeze
+# (pip freeze was not usable here -- conda-forge-built packages report
+# local build-artifact paths instead of plain versions.)
+#
+# To recreate on a new pod:
+#   conda create -n cnv python=3.12.13
+#   conda activate cnv
+#   pip install -r requirements.txt
+
+joblib==1.5.3
+narwhals==2.24.0
+numpy==2.5.2
+nvidia-nccl-cu13==2.31.2
+packaging==26.3
+pandas==3.0.5
+pip==26.2.1
+python-dateutil==2.9.0.post0
+scikit-learn==1.9.0
+scipy==1.18.0
+setuptools==84.0.0
+six==1.17.0
+threadpoolctl==3.6.0
+wheel==0.48.0
+xgboost==3.4.1
