@@ -78,7 +78,7 @@ nextflow run $PIPE/main.nf -c local.config -resume
 |---|---|---|
 | `samples` | `[:]` | See above (defined here) |
 | `xgb_model` | `null` | Override the model path; default is `<repo root>/modules/xgboost_consensus_model/xgboost_tuned_no_freec_cnmops.json` |
-| `xgb_cutoff` | `null` | Score threshold to filter on; `null` keeps every scored candidate. Model's own ≥0.90-precision threshold: `0.7499` |
+| `xgb_cutoff` | `0.7499` | Score threshold to filter on: the model's own ≥0.90-precision threshold, inherited from the repo-root config. To keep every scored candidate, set `params.xgb_cutoff = null` in a `-c` override file. Don't pass `--xgb_cutoff null` on the command line, which may arrive as the string `"null"`. The unfiltered set is always in `*_all_scored_candidates.tsv` |
 
 `xgb_model` / `xgb_cutoff` are declared in the repo-root `nextflow.config`.
 This pipeline lives inside `modules/xgboost_consensus_model/`, the same module
@@ -87,7 +87,11 @@ entry points run the identical process and read the same two params.
 
 All `organism_*` reference params (genome, GTF, DNA panel, ...) are
 inherited from the repo-root `nextflow.config` — nothing to set here unless
-overriding.
+overriding. `organism_dna_panel` is **required**: scoring breaks each
+candidate down to the supported exons of that panel BED (`refine_regions.py`)
+before annotation. If it is unset, the panel channel is empty and no sample
+is ever scored. The panel must be the one the caller output was produced
+against.
 
 ## Output
 

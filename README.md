@@ -38,7 +38,9 @@ choice.
 
 ## Requirements
 
-- **Nextflow** ≥ 22.10 — DSL2
+- **Nextflow** ≥ 22.10 — DSL2, classic syntax parser. `workflows/PANEL.nf` and the standalone
+  `XGBOOST_SCORING_WES.nf` declare channels at the top level of the script, outside any
+  workflow, which the strict syntax parser (`NXF_SYNTAX_PARSER=v2`) rejects.
 - **Conda** (or Mamba) — every process declares its own `env.yaml`; Nextflow creates the
   environments on first run (`conda.createTimeout = '2 h'` is set because some are large)
 - A CUDA GPU is **optional**; only ECOLE benefits from one (`--gpu 0`), everything else is CPU
@@ -51,7 +53,8 @@ choice.
 main.nf                     entry point → workflow CNV_ANALYSIS → PANEL_WES
 nextflow.config             all params, conda/executor settings, per-process resources
 local.config                site overrides (tmp dirs, conda cacheDir, scratch)
-workflow.config.json        descriptor for the institutional workflow manager (LOG)
+workflow.config.json        descriptor for the institutional workflow manager (LOG); its GUI
+                            defaults override nextflow.config for runs launched from it
 workflows/
   PANEL.nf                  the panel/WES workflow — reference loading, caller toggles, wiring
 subworkflows/<tool>/main.nf per-caller orchestration
@@ -74,8 +77,8 @@ nextflow run main.nf -c local.config -resume
 Useful variants:
 
 ```bash
-nextflow run main.nf -stub -resume        # exercise the channel topology; processes that define a
-                                          # stub: block (73 of 76) become no-ops
+nextflow run main.nf -stub -resume        # exercise the channel topology; every process the
+                                          # workflow uses defines a stub: block, so all become no-ops
 
 nextflow run main.nf --use_ecole false    # override any param on the command line
 nextflow run main.nf -with-report -with-trace
@@ -113,7 +116,7 @@ All parameters live in the `params { }` block of `nextflow.config`.
 
 | Param | Purpose |
 |---|---|
-| `assembly` | e.g. `hg19` — informational/annotation selection |
+| `assembly` | e.g. `GRCh38`. Selects ClassifyCNV's resources (`GRCh37`/`hg19` → hg19, anything else → hg38) and GATK's sex-chromosome names (`hg19`/`hg38` → `chrX`/`chrY`, anything else → `X`/`Y`), so it must match both the build and the chromosome naming of the FASTA |
 | `organism_fasta`, `organism_dict`, `organism_fasta.fai` (derived) | genome sequence and dictionary |
 | `organism_ploidy_priors` | expected copies per chromosome (GATK gCNV) |
 | `organism_gtf`, `organism_gtf_tsv` | annotation; some tools need the tabular form |
@@ -128,7 +131,16 @@ All parameters live in the `params { }` block of `nextflow.config`.
 `use_controlfreec`, `use_panelcnmops`, `use_cnmops`, `use_exomedepth`
 
 **Combination**: `use_consensus`, plus `xgb_model` / `xgb_cutoff` — documented in
-[Consensus model](#consensus-model).
+[Consensus model](#consensus-model). The rule-based path (`use_consensus = false`) is tuned by:
+
+| Param | Default | Meaning |
+|---|---|---|
+| `min_number_callers` | `3` | callers that must agree for a call to be kept |
+| `size_threshold` | `500000` | maximum call size in bp |
+| `smooth_gap_bp` | `10000` | merge same-type segments separated by ≤ this many bp. Used by both paths and by `FINAL_FORMATTING_TABLES` |
+
+Runs launched from the workflow manager take their toggles and these defaults from the
+`gui_params` in `workflow.config.json`, not from `nextflow.config`. Keep the two in step.
 
 **Per-caller tuning** blocks exist for CoNIFER (`conifer_*`), XHMM (`xhmm_*`),
 jabCoNtool (`jabCoNtool_*`) and Control-FREEC (`freec_*`).
@@ -152,10 +164,11 @@ jabCoNtool (`jabCoNtool_*`) and Control-FREEC (`freec_*`).
    | CoNIFER | `conifer` | `<sample>_conifer.tsv` |
    | Control-FREEC | `controlFREEC` | `<sample>_freec.tsv` |
    | ECOLE (deep learning) | `ECOLE` | per-sample text output, published only (not combined, see [Pitfalls](#pitfalls-and-caveats)) |
-   | jabCoNtool | `jabcontool` | normalised per-sample varcalls (added last) |
+   | jabCoNtool | `jabcontool` | one cohort-level `final_CNV_probs_jabcontool.tsv`, appended to every sample's file list (added last; not read by the consensus model) |
 
    Calls are accumulated per sample with `Utils.mixAndCollectVarcalls()` into
    `ch_all_varcalls` → `ch_all_varcalls_for_merging` = `[meta, [all caller files]]`.
+   ECOLE is the exception: it is not added to this channel.
 3. **Combination** — either `MERGE_VARIANT_CALLS` (R merge & smooth) or
    `XGBOOST_CONSENSUS_SCORE` (score with the trained model, filter by `xgb_cutoff`, refine
    the survivors to supported panel exons).
@@ -209,8 +222,9 @@ modules/xgboost_consensus_model/
   refine_regions.py                       breaks scored candidates down to supported panel exons
   xgboost_tuned_no_freec_cnmops.json      the model shipped with the repo (XGBoost native format)
   main.nf                                 XGBOOST_CONSENSUS_SCORE
-  env.yaml                                python 3.12 + numpy/pandas/xgboost
+  env.yaml                                python 3.12 + numpy/pandas + xgboost >= 3.4
   modelling/                              offline training + evaluation (not run by the pipeline)
+    requirements.txt                      exact package versions the model was trained with
     merge_from_bronco.py                  build the training table from the BRONCO cohort
     src/                                  load → features → baseline/eda → tune → train
     models/                               trained model artifacts
