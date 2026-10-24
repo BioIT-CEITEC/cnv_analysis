@@ -4,9 +4,8 @@ XGBoost consensus model (no freec/cnMOPS in FEATURE_COLUMNS). The model was
 produced by modelling/src/train_no_freec_cnmops.py; this script must stay in
 sync with that file's feature construction.
 
-Unlike score_samples.py (which loops over an sv_dir of many sample
-subdirectories), this scores exactly ONE sample per invocation -- matching
-the one-Nextflow-task-per-sample granularity XGBOOST_CONSENSUS_SCORE runs at.
+Scores exactly ONE sample per invocation -- matching the
+one-Nextflow-task-per-sample granularity XGBOOST_CONSENSUS_SCORE runs at.
 
 Expected --sample_dir layout: a directory holding that one sample's caller
 output files (matched by CALLER_FILE_PATTERNS in cnv_consensus_model.py).
@@ -19,9 +18,9 @@ train_no_freec_cnmops.py drops freec/cnMOPS from FEATURE_COLUMNS. Do not
 "simplify" this to 6 callers -- it would silently mismatch what the model
 was trained on.
 
-Output TSV columns (tab-separated, one row per merged candidate region) --
-identical shape to score_samples.py's output, so main.nf's awk reshape can
-be reused unchanged:
+Output TSV columns (tab-separated, one row per merged candidate region);
+main.nf's awk reshape turns this into the 13-column MERGE_VARIANT_CALLS
+schema the annotation step expects:
     sample | chr | start | end | type | n_callers | callers_supporting | consensus_score | cn_label
 """
 
@@ -33,11 +32,10 @@ import numpy as np
 import pandas as pd
 import xgboost as xgb
 
-# Reuse the shared cnv_consensus_model.py (repo root modules/consensus_model/)
-# unchanged -- same sys.path convention already used by modelling/merge_from_bronco.py.
-# This file lives at modelling/xgboost_pipeline/modules/xgboost_consensus_model/,
-# four levels under the repo root.
-sys.path.insert(0, str(Path(__file__).parents[4] / "modules" / "consensus_model"))
+# cnv_consensus_model.py sits next to this file, but Nextflow invokes this
+# script by absolute path from a work directory, so its own directory is not
+# already importable -- add it explicitly.
+sys.path.insert(0, str(Path(__file__).parent))
 from cnv_consensus_model import ALL_CALLERS, _merge_candidates, load_sample_calls  # noqa: E402
 
 EMPTY_HEADER = "sample\tchr\tstart\tend\ttype\tn_callers\tcallers_supporting\tconsensus_score\tcn_label\n"
@@ -50,15 +48,18 @@ FEATURE_COLUMNS = ["cnvkit", "exomeDepth", "panelcnMOPS", "XHMM", "conifer", "ga
 
 
 def build_candidate_table(calls_by_caller):
-    """Same candidate-building step as cnv_consensus_model.score_calls(), up
-    to _merge_candidates() -- our own feature vector is built from there
-    instead of the [hit, score] pairs BoundedConsensusModel expects."""
+    """Flatten every caller's calls into one frame and cluster them into the
+    candidate regions that get scored. _merge_candidates() decides each
+    region's coordinates; the model only assigns it a probability."""
     candidates = []
     for caller, calls in calls_by_caller.items():
         for call in calls:
+            # "cn" is not a model feature, but _merge_candidates() needs the
+            # column present to build cn_label -- without it every candidate
+            # comes out as "<caller>:NA".
             candidates.append({"chr": call["chr"], "start": call["start"],
                                "end": call["end"], "type": call["type"],
-                               "caller": caller})
+                               "caller": caller, "cn": call.get("cn")})
     if not candidates:
         return pd.DataFrame()
     return _merge_candidates(pd.DataFrame(candidates))

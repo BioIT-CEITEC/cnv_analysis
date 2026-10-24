@@ -1,8 +1,11 @@
 nextflow.enable.dsl = 2
 
-include { XGBOOST_CONSENSUS_SCORE } from '../modules/xgboost_consensus_model/main.nf'
-include { CLASSIFY_AND_ANNOTATE }   from '../../../modules/classify_and_annotate_CNVs/main.nf'
-include { FINAL_FORMATTING_TABLES } from '../../../modules/final_formatting_tables/main.nf'
+// This workflow lives at
+// modules/xgboost_consensus_model/modelling/xgboost_pipeline/workflows/ --
+// three levels up is the module itself, four is modules/.
+include { XGBOOST_CONSENSUS_SCORE } from '../../../main.nf'
+include { CLASSIFY_AND_ANNOTATE }   from '../../../../classify_and_annotate_CNVs/main.nf'
+include { FINAL_FORMATTING_TABLES } from '../../../../final_formatting_tables/main.nf'
 
 /*
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -32,12 +35,16 @@ workflow XGBOOST_SCORING_WES {
     ch_samples = Channel.fromList(xgbSamples)
         .map { meta, svDir -> tuple(meta, file(svDir)) }
 
+    // projectDir is this pipeline's directory; the shipped model sits at the
+    // module root, two levels up, and is shared with the main pipeline.
     ch_xgb_model = Channel.fromPath(
-        params.xgb_model ?: "${projectDir}/modules/xgboost_consensus_model/xgboost_tuned_no_freec_cnmops.json",
+        params.xgb_model ?: "${projectDir}/../../xgboost_tuned_no_freec_cnmops.json",
         checkIfExists: true
     ).collect()
 
-    XGBOOST_CONSENSUS_SCORE(ch_samples, ch_xgb_model)
+    // The panel BED is needed to break union candidates down to supported
+    // capture exons before CLASSIFY_AND_ANNOTATE sees them.
+    XGBOOST_CONSENSUS_SCORE(ch_samples, ch_xgb_model, ch_organism_dna_panel)
 
     CLASSIFY_AND_ANNOTATE(
         XGBOOST_CONSENSUS_SCORE.out.merged_tsv,

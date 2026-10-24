@@ -4,8 +4,11 @@ training or scoring anything -- just the candidate-region merge
 (cnv_consensus_model.py's _merge_candidates) applied per sample, concatenated,
 reshaped to match template.txt's column layout.
 
-Reads directly from the 22 scattered run folders (no copying), reusing the
-sample discovery from train_from_bronco.py.
+Reads directly from the 22 scattered run folders (no copying).
+
+The output table is the input to the offline XGBoost training pipeline --
+modelling/src/load.py's load_merged() reads it, features.py builds the feature
+matrix from it, and train_no_freec_cnmops.py fits the shipped model on that.
 
 Usage:
   python merge_from_bronco.py --out all_samples_merged.tsv
@@ -18,16 +21,89 @@ from pathlib import Path
 
 import pandas as pd
 
-sys.path.insert(0, str(Path(__file__).parent.parent / "modules" / "consensus_model"))
+sys.path.insert(0, str(Path(__file__).parent.parent))
 from cnv_consensus_model import (  # noqa: E402
-    ALL_CALLERS, MIN_OVERLAP_FRAC, norm_chr, load_sample_calls,
-    _merge_candidates, overlaps,
+    ALL_CALLERS, CALLER_FILE_PATTERNS, MIN_OVERLAP_FRAC, norm_chr,
+    merge_gt_variants, load_sample_calls, _merge_candidates, overlaps,
 )
 
-sys.path.insert(0, str(Path(__file__).parent))
-from train_from_bronco import (  # noqa: E402
-    BRONCO_BASE, discover_samples, detect_callers_scattered,
+BRONCO_BASE = Path(
+    "/mnt/data/ceitec_cfg2/710000-CEITEC/713000-cmm/713016-bioit"
+    "/base/workspace/alejandro/test_bronco/mapped_final"
 )
+
+
+# ---------------------------------------------------------------------------
+# Enumeration: build {sample_name: structural_varcalls dir} + ground truth,
+# reading directly from the 22 scattered run folders. No copying.
+# ---------------------------------------------------------------------------
+
+def discover_samples(base=BRONCO_BASE):
+    runs = sorted(d.name for d in base.iterdir() if d.is_dir() and d.name.startswith("BRONCO_"))
+
+    raw_pairs = []  # (run, sample, sv_dir, gt_tsv_path)
+    for run in runs:
+        mapped_dir = base / run / "simulated_data" / "mapped"
+        sv_dir = base / run / "simulated_data" / "structural_varcalls"
+        if not mapped_dir.is_dir() or not sv_dir.is_dir():
+            continue
+        for gt_tsv in mapped_dir.glob("*_selected_regions.tsv"):
+            sample = gt_tsv.name[: -len("_selected_regions.tsv")]
+            sample_sv_dir = sv_dir / sample
+            if sample_sv_dir.is_dir():
+                raw_pairs.append((run, sample, sample_sv_dir, gt_tsv))
+
+    name_to_runs = defaultdict(list)
+    for run, sample, _, _ in raw_pairs:
+        name_to_runs[sample].append(run)
+    dupe_names = {n for n, rs in name_to_runs.items() if len(rs) > 1}
+
+    sample_dirs = {}
+    gt = {}
+    all_samples = set()
+    for run, sample, sv_dir, gt_tsv in raw_pairs:
+        final_name = f"{run}_{sample}" if sample in dupe_names else sample
+        sample_dirs[final_name] = sv_dir
+
+        df = pd.read_csv(gt_tsv, sep="\t", encoding="utf-8", encoding_errors="replace")
+        df.columns = df.columns.str.strip()
+        variants = []
+        for _, row in df.iterrows():
+            vtype = str(row["type"]).strip().upper()
+            if vtype not in ("DEL", "DUP"):
+                continue
+            variants.append({
+                "chr": norm_chr(row["chrom"]),
+                "start": int(row["start"]),
+                "end": int(row["end"]),
+                "type": vtype,
+            })
+        gt[final_name] = merge_gt_variants(variants)
+        all_samples.add(final_name)
+
+    print(f"Runs found: {len(runs)}")
+    print(f"Total samples discovered: {len(all_samples)}")
+    print(f"Duplicate names disambiguated with run prefix: {len(dupe_names)}")
+    return sample_dirs, gt, all_samples
+
+
+def detect_callers_scattered(sample_dirs):
+    found = set()
+    for sv_dir in sample_dirs.values():
+        for sub in sv_dir.iterdir():
+            if sub.is_dir() and sub.name in ALL_CALLERS:
+                found.add(sub.name)
+        for caller in ALL_CALLERS:
+            if caller in found:
+                continue
+            pattern = CALLER_FILE_PATTERNS.get(caller, f"*_{caller}.tsv")
+            if next(sv_dir.rglob(pattern), None) is not None:
+                found.add(caller)
+            elif pattern.endswith(".vcf.gz") and next(sv_dir.rglob(pattern[:-3]), None) is not None:
+                found.add(caller)
+        if len(found) == len(ALL_CALLERS):
+            break
+    return [c for c in ALL_CALLERS if c in found]
 
 
 def discover_ground_truth_with_names(base=BRONCO_BASE):

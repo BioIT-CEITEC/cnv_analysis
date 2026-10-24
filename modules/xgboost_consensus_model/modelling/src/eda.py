@@ -18,7 +18,7 @@ import pandas as pd
 sys.path.insert(0, str(Path(__file__).parent))
 from load import CALLER_COLUMNS, load_ground_truth, load_merged  # noqa: E402
 
-sys.path.insert(0, str(Path(__file__).parent.parent.parent / "modules" / "consensus_model"))
+sys.path.insert(0, str(Path(__file__).parent.parent.parent))
 from cnv_consensus_model import MIN_OVERLAP_FRAC, overlaps  # noqa: E402
 
 REPORT_PATH = Path(__file__).parent.parent / "reports" / "eda" / "findings.md"

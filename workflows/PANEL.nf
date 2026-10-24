@@ -20,9 +20,7 @@ include { ECOLE_ANALYSIS } from "../subworkflows/ECOLE/main.nf"
 include { XHMM_ANALYSIS } from "../subworkflows/XHMM/main.nf"
 include { CONIFER_ANALYSIS } from "../subworkflows/conifer/main.nf"
 include { FREEC_ANALYSIS } from "../subworkflows/controlFREEC/main.nf"
-include { CONSENSUS_MODEL_SCORE } from "../modules/consensus_model/main.nf"
-include { CONSENSUS_MODEL_TRAIN } from "../modules/consensus_model/main.nf"
-include { CONSENSUS_PREPARE_TRAINING_DIR } from "../modules/consensus_model/main.nf"
+include { XGBOOST_CONSENSUS_SCORE } from "../modules/xgboost_consensus_model/main.nf"
 include { FINAL_FORMATTING_TABLES } from "../modules/final_formatting_tables/main.nf"
 
 /*
@@ -122,11 +120,16 @@ workflow PANEL_WES {
 }
 
     if (params.use_ecole) {
+        // ECOLE calls the whole cohort in one task and emits a bare file list
+        // with no meta, so it is NOT mixed into ch_all_varcalls: groupTuple
+        // would key that list by its first file and invent a bogus "sample"
+        // that crashes MERGE_VARIANT_CALLS / XGBOOST_CONSENSUS_SCORE on
+        // meta.sample_name. Neither combiner reads ECOLE output anyway; its
+        // calls are published to structural_varcalls/all_samples/.
         ECOLE_ANALYSIS(
             ch_samples,
             ch_organism_dna_panel
         )
-        ch_all_varcalls = Utils.mixAndCollectVarcalls(ch_all_varcalls, ECOLE_ANALYSIS.out.ch_ecole_varcalls)
     }
 
     if (params.use_xhmm) {
@@ -232,49 +235,25 @@ workflow PANEL_WES {
         .map { meta, cov -> cov }
         .collect()
 
-    // ─── Consensus model: optional training, then scoring ────────────────────
-    // consensus_train = true trains a new model from ground-truth data before
-    // scoring; otherwise the pre-trained model shipped with the module (or the
-    // one given in params.consensus_model) is used.
-    ch_consensus_model = Channel.empty()
-
-    if (params.consensus_train) {
-        if (!params.consensus_train_gt_dir) {
-            error "consensus_train = true requires params.consensus_train_gt_dir (directory of <SAMPLE>_selected_regions.tsv ground-truth files)"
-        }
-
-        ch_consensus_gt_dir = Channel.fromPath(params.consensus_train_gt_dir, type: 'dir', checkIfExists: true).collect()
-
-        // Training cohort: an external set of caller calls when
-        // consensus_train_sv_dir is given, otherwise this run's own calls.
-        if (params.consensus_train_sv_dir) {
-            ch_consensus_train_dirs = Channel
-                .fromPath("${params.consensus_train_sv_dir}/*", type: 'dir', checkIfExists: true)
-                .collect()
-        } else {
-            CONSENSUS_PREPARE_TRAINING_DIR(ch_all_varcalls_for_merging)
-            ch_consensus_train_dirs = CONSENSUS_PREPARE_TRAINING_DIR.out.sample_dir.collect()
-        }
-
-        CONSENSUS_MODEL_TRAIN(
-            ch_consensus_train_dirs,
-            ch_consensus_gt_dir
-        )
-        ch_consensus_model = CONSENSUS_MODEL_TRAIN.out.model.first()
-    }
-    else if (params.use_consensus) {
-        ch_consensus_model = Channel.fromPath(
-            params.consensus_model ?: "${projectDir}/modules/consensus_model/cnv_consensus_model.pkl",
+    // ─── Consensus model ─────────────────────────────────────────────────────
+    // use_consensus = true replaces the rule-based MERGE_VARIANT_CALLS with the
+    // tuned XGBoost consensus model. The model is trained offline
+    // (modules/xgboost_consensus_model/modelling/src/train_no_freec_cnmops.py);
+    // the pipeline only scores.
+    if (params.use_consensus) {
+        ch_xgb_model = Channel.fromPath(
+            params.xgb_model ?: "${projectDir}/modules/xgboost_consensus_model/xgboost_tuned_no_freec_cnmops.json",
             checkIfExists: true
         ).collect()
-    }
 
-    if (params.use_consensus) {
-        CONSENSUS_MODEL_SCORE(
+        // The panel BED is needed to break union candidates down to supported
+        // capture exons before CLASSIFY_AND_ANNOTATE sees them.
+        XGBOOST_CONSENSUS_SCORE(
             ch_all_varcalls_for_merging,
-            ch_consensus_model
+            ch_xgb_model,
+            ch_organism_dna_panel
         )
-        ch_variants_to_annotate = CONSENSUS_MODEL_SCORE.out.merged_tsv
+        ch_variants_to_annotate = XGBOOST_CONSENSUS_SCORE.out.merged_tsv
     } else {
         MERGE_VARIANT_CALLS(
             ch_all_varcalls_for_merging,

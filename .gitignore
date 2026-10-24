@@ -4,19 +4,19 @@ CLAUDE.md
 command.md
 graphify-out/
 modules/graphify-out/cache/stat-index.json
-modelling/data
+modules/xgboost_consensus_model/modelling/data
 *.pyc
 .nextflow.log
 IMPLEMENTATION_PLAN.md
-modelling/SESSION_HANDOFF.md
-modelling/reports/discussion.md
-modelling/reports/manuscript_modelling_section.md
-modelling/reports/manuscript_modelling_section.docx
-modelling/reports/manuscript_modelling_section_v2.md
-modelling/reports/manuscript_modelling_section_v2.docx
-modelling/reports/plots/
+modules/xgboost_consensus_model/modelling/SESSION_HANDOFF.md
+modules/xgboost_consensus_model/modelling/reports/discussion.md
+modules/xgboost_consensus_model/modelling/reports/manuscript_modelling_section.md
+modules/xgboost_consensus_model/modelling/reports/manuscript_modelling_section.docx
+modules/xgboost_consensus_model/modelling/reports/manuscript_modelling_section_v2.md
+modules/xgboost_consensus_model/modelling/reports/manuscript_modelling_section_v2.docx
+modules/xgboost_consensus_model/modelling/reports/plots/
 train_no_freec_cnmops.log
 
 # Real patient data (Prague cohort evaluation) -- never committed
-modelling/real_data_eval/results/
-modelling/xgboost_pipeline/test_prague.config
+modules/xgboost_consensus_model/modelling/real_data_eval/results/
+modules/xgboost_consensus_model/modelling/xgboost_pipeline/test_prague.config

@@ -13,7 +13,7 @@ process CLASSIFY_AND_ANNOTATE {
 
     script:
 
-    def genomeBuild = params.assembly == "GRCh37" ? "hg19" : "hg38"
+    def genomeBuild = params.assembly in ["GRCh37", "hg19"] ? "hg19" : "hg38"
 
     """
     mkdir -p classified_and_annotated_CNVs

@@ -35,10 +35,15 @@
   ],
   "gui_params": {
     "primary": {
+      "use_consensus": {
+        "label": "Combine caller outputs with the XGBoost consensus model instead of rule-based merging.",
+        "type": "bool",
+        "default": true
+      },
       "min_number_callers": {
-        "label": "Minimum number of callers to consider a variant.",
+        "label": "Minimum number of callers to consider a variant (rule-based merging only).",
         "type": "int",
-        "default": 2
+        "default": 3
       },
     "use_cnmops": {
         "label": "Use cnMOPS for variant calling.",
@@ -55,7 +60,7 @@
         "type": "bool",
         "default": true
       },
-      "use_control_freec": {
+      "use_controlfreec": {
         "label": "Use Control-FREEC for variant calling.",
         "type": "bool",
         "default": true
@@ -63,7 +68,7 @@
       "use_ecole": {
         "label": "Use ECOLE for variant calling.",
         "type": "bool",
-        "default": true
+        "default": false
       },
       "use_exomedepth": {
         "label": "Use ExomeDepth for variant calling.",
@@ -89,11 +94,6 @@
         "label": "Use XHMM for variant calling.",
         "type": "bool",
         "default": true
-      },
-      "panel_of_normals": {
-        "label": "Provide control samples (panel of normals)",
-        "type": "bool",
-        "default": false
       }
     },
     "detailed": {
@@ -312,24 +312,10 @@
           }
         }
       },
-      "purple_diploid_regions": {
-        "label": "Use purple diploid regions for variant calling.",
-        "type": "bool",
-        "default": true
-      },
       "use_cohort_data": {
         "label": "Load coverage data from previous experiments for normal estimation. Need file: cohort_data/cohort_cnv_info.tar.gz",
         "type": "bool",
         "default": false
-      },
-      "calling_type": {
-        "type": "constant",
-        "default": "germline"
-      },
-      "create_cohort_data": {
-        "label": "Save info about coverage data to the cohort_cnv_info file. (include loaded cohort data)",
-        "type": "bool",
-        "default": true
       }
     },
     "samples": {

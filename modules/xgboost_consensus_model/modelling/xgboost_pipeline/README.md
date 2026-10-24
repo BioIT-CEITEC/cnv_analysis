@@ -54,30 +54,36 @@ params {
 }
 ```
 
-Then run with an extra `-c`:
+Then run with an extra `-c` (see [Run it](#run-it) for `$PIPE`):
 ```bash
-nextflow run modelling/xgboost_pipeline/main.nf -c local.config -c modelling/xgboost_pipeline/test_prague.config -resume
+nextflow run $PIPE/main.nf -c local.config -c $PIPE/test_prague.config -resume
 ```
 
 ## Run it
 
 ```bash
 cd <repo root>
+PIPE=modules/xgboost_consensus_model/modelling/xgboost_pipeline
 
 # 1. Dry run first -- checks wiring, no real work
-nextflow run modelling/xgboost_pipeline/main.nf -c local.config -stub -resume
+nextflow run $PIPE/main.nf -c local.config -stub -resume
 
 # 2. Real run
-nextflow run modelling/xgboost_pipeline/main.nf -c local.config -resume
+nextflow run $PIPE/main.nf -c local.config -resume
 ```
 
 ## Config
 
 | Param | Default | Meaning |
 |---|---|---|
-| `samples` | `[:]` | See above |
-| `xgb_model` | `null` | Override the model path; default is the bundled `modules/xgboost_consensus_model/xgboost_tuned_no_freec_cnmops.json` |
-| `xgb_cutoff` | `null` | Score threshold to filter on; `null` keeps every scored candidate. Bundled model's own ≥0.90-precision threshold: `0.7499` |
+| `samples` | `[:]` | See above (defined here) |
+| `xgb_model` | `null` | Override the model path; default is `<repo root>/modules/xgboost_consensus_model/xgboost_tuned_no_freec_cnmops.json` |
+| `xgb_cutoff` | `null` | Score threshold to filter on; `null` keeps every scored candidate. Model's own ≥0.90-precision threshold: `0.7499` |
+
+`xgb_model` / `xgb_cutoff` are declared in the repo-root `nextflow.config`.
+This pipeline lives inside `modules/xgboost_consensus_model/`, the same module
+the main `CNV_ANALYSIS` pipeline scores with (`use_consensus = true`), so both
+entry points run the identical process and read the same two params.
 
 All `organism_*` reference params (genome, GTF, DNA panel, ...) are
 inherited from the repo-root `nextflow.config` — nothing to set here unless
@@ -88,4 +94,4 @@ overriding.
 | What | Where |
 |---|---|
 | Cohort tables + HTML report | `structural_varcalls/cohort_results/` (relative to where you ran `nextflow run` from) |
-| Per-sample scored candidates / annotated calls | Nextflow `work/` only — no `publishDir` on those steps (same as the main pipeline's `CONSENSUS_MODEL_SCORE`/`CLASSIFY_AND_ANNOTATE`). Find a specific task with `nextflow log <run_name> -f hash,name,workdir`. |
+| Per-sample scored candidates / annotated calls | Nextflow `work/` only — no `publishDir` on those steps (same as the main pipeline's `XGBOOST_CONSENSUS_SCORE`/`CLASSIFY_AND_ANNOTATE`). Find a specific task with `nextflow log <run_name> -f hash,name,workdir`. |

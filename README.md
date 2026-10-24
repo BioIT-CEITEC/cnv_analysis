@@ -8,8 +8,11 @@ Two combination strategies are available:
 
 | Strategy | Enabled by | Implementation |
 |---|---|---|
-| Rule-based merge & smooth (default) | `use_consensus = false` | `bin/merging_and_smoothing.R` via `MERGE_VARIANT_CALLS` |
-| **Trained consensus model** | `use_consensus = true` | `modules/consensus_model/` — logistic model with per-caller weights, **trainable from ground-truth data** (see [Consensus model](#consensus-model)) |
+| Rule-based merge & smooth | `use_consensus = false` | `bin/merging_and_smoothing.R` via `MERGE_VARIANT_CALLS` |
+| **XGBoost consensus model** (default in `nextflow.config`) | `use_consensus = true` | `modules/xgboost_consensus_model/` — tuned gradient-boosted trees over 6 callers, trained offline (see [Consensus model](#consensus-model)) |
+
+Both write the same output files, so annotation and the cohort tables are unaffected by the
+choice.
 
 ---
 
@@ -23,13 +26,10 @@ Two combination strategies are available:
 - [What the pipeline does](#what-the-pipeline-does)
 - [Output layout](#output-layout)
 - [Consensus model](#consensus-model)
-  - [How the model works](#how-the-model-works)
-  - [Scoring mode](#scoring-mode)
-  - [Training mode](#training-mode)
-  - [Ground-truth format](#ground-truth-format)
-  - [Training parameters](#training-parameters)
-  - [Training outputs](#training-outputs)
-  - [Reusing a trained model](#reusing-a-trained-model)
+  - [Candidate regions](#candidate-regions)
+  - [Features and model](#features-and-model)
+  - [Scoring (`use_consensus = true`)](#scoring-use_consensus--true)
+  - [Training the model](#training-the-model)
   - [Pitfalls and caveats](#pitfalls-and-caveats)
 - [Cohort data reuse](#cohort-data-reuse)
 - [Resources and executor tuning](#resources-and-executor-tuning)
@@ -38,8 +38,7 @@ Two combination strategies are available:
 
 ## Requirements
 
-- **Nextflow** ≥ 22.10 — DSL2, and the consensus-model wiring uses `error` and directory
-  `stageAs` patterns
+- **Nextflow** ≥ 22.10 — DSL2
 - **Conda** (or Mamba) — every process declares its own `env.yaml`; Nextflow creates the
   environments on first run (`conda.createTimeout = '2 h'` is set because some are large)
 - A CUDA GPU is **optional**; only ECOLE benefits from one (`--gpu 0`), everything else is CPU
@@ -57,6 +56,8 @@ workflows/
   PANEL.nf                  the panel/WES workflow — reference loading, caller toggles, wiring
 subworkflows/<tool>/main.nf per-caller orchestration
 modules/<tool>/main.nf      individual processes (+ env.yaml, helper scripts)
+  xgboost_consensus_model/  the consensus model — scorer, shipped model, and its
+                            offline training/evaluation code under modelling/
 bin/                        R/Python helper scripts called by the modules
 lib/Utils.groovy            sample-sheet parsing and the varcall channel helpers
 ```
@@ -126,7 +127,7 @@ All parameters live in the `params { }` block of `nextflow.config`.
 `use_cnvkit`, `use_jabcontool`, `use_gatk`, `use_ecole`, `use_xhmm`, `use_conifer`,
 `use_controlfreec`, `use_panelcnmops`, `use_cnmops`, `use_exomedepth`
 
-**Combination**: `use_consensus`, plus the whole `consensus_*` block — documented in
+**Combination**: `use_consensus`, plus `xgb_model` / `xgb_cutoff` — documented in
 [Consensus model](#consensus-model).
 
 **Per-caller tuning** blocks exist for CoNIFER (`conifer_*`), XHMM (`xhmm_*`),
@@ -150,13 +151,14 @@ jabCoNtool (`jabCoNtool_*`) and Control-FREEC (`freec_*`).
    | XHMM | `XHMM` | `<sample>_xhmm.tsv` |
    | CoNIFER | `conifer` | `<sample>_conifer.tsv` |
    | Control-FREEC | `controlFREEC` | `<sample>_freec.tsv` |
-   | ECOLE (deep learning) | `ECOLE` | per-sample text output |
+   | ECOLE (deep learning) | `ECOLE` | per-sample text output, published only (not combined, see [Pitfalls](#pitfalls-and-caveats)) |
    | jabCoNtool | `jabcontool` | normalised per-sample varcalls (added last) |
 
    Calls are accumulated per sample with `Utils.mixAndCollectVarcalls()` into
    `ch_all_varcalls` → `ch_all_varcalls_for_merging` = `[meta, [all caller files]]`.
 3. **Combination** — either `MERGE_VARIANT_CALLS` (R merge & smooth) or
-   `CONSENSUS_MODEL_SCORE` (trained model).
+   `XGBOOST_CONSENSUS_SCORE` (score with the trained model, filter by `xgb_cutoff`, refine
+   the survivors to supported panel exons).
 4. **Annotation** — `CLASSIFY_AND_ANNOTATE` (ClassifyCNV + `cnvAnnotateCNVkit.R`).
 5. **Reporting** — `FINAL_FORMATTING_TABLES` produces the cohort tables and HTML report.
 6. **Optional** — `PSEUDOGENE_ANALYSIS`, gated by `run_pseudogene` and driven by
@@ -181,7 +183,6 @@ structural_varcalls/
     coverage/*.tsv
 coverage_tracks/<sample>/         per-region coverage
 cohort_data/                      reusable cohort references (cn.MOPS etc.)
-consensus_model/                  trained consensus model + training statistics
 pseudogene/final_classification/  optional pseudogene analysis
 ```
 
@@ -193,53 +194,82 @@ Per-sample combined calls (`merged_variants/*`) and annotated calls
 
 # Consensus model
 
-`modules/consensus_model/` replaces the rule-based merge with a learned model that assigns a
-**probability that a candidate region is a real CNV**, given which callers detected it and how
-confident each one was.
+`modules/xgboost_consensus_model/` replaces the rule-based merge with a learned model that
+assigns a **probability that a candidate region is a real CNV**, given which callers detected
+it, what type it is, and how wide it is.
+
+Everything belonging to the model — the deployed scorer *and* the offline research/training
+code that produced it — lives under that one directory:
 
 ```
-modules/consensus_model/
-  cnv_consensus_model.py      shared library: parsers, overlap logic, candidate merging,
-                              BoundedConsensusModel, feature matrix
-  train_consensus_model.py    training entry point (ground truth → model)
-  score_samples.py            scoring entry point (model → per-sample scored calls)
-  cnv_consensus_model.pkl     the model shipped with the repo (used when not training)
-  cnv_consensus_model.json    its weights/metrics in readable form
-  cnv_train_*.tsv             training statistics from the shipped model
-  main.nf                     CONSENSUS_PREPARE_TRAINING_DIR, CONSENSUS_MODEL_TRAIN,
-                              CONSENSUS_MODEL_SCORE
-  env.yaml                    python 3.12 + numpy/pandas/scikit-learn/scipy
+modules/xgboost_consensus_model/
+  cnv_consensus_model.py                  shared library: per-caller parsers, overlap logic,
+                                          candidate merging, ground-truth loading
+  score_samples_xgb.py                    scoring entry point, one sample per invocation
+  refine_regions.py                       breaks scored candidates down to supported panel exons
+  xgboost_tuned_no_freec_cnmops.json      the model shipped with the repo (XGBoost native format)
+  main.nf                                 XGBOOST_CONSENSUS_SCORE
+  env.yaml                                python 3.12 + numpy/pandas/xgboost
+  modelling/                              offline training + evaluation (not run by the pipeline)
+    merge_from_bronco.py                  build the training table from the BRONCO cohort
+    src/                                  load → features → baseline/eda → tune → train
+    models/                               trained model artifacts
+    reports/metrics/                      metrics for every training phase
+    xgboost_pipeline/                     standalone pipeline: score pre-computed caller output
 ```
 
-## How the model works
+**Paths in the rest of this section are relative to `modules/xgboost_consensus_model/`.**
 
-**Candidate regions.** Calls from all callers are clustered by chromosome and variant type
-(DEL/DUP) into candidate regions. A call counts as overlapping when the overlap covers at least
-`MIN_OVERLAP_FRAC = 0.5` of the *smaller* interval, so a gene-level segment containing a single
-exon still matches it. Calls larger than `MAX_CLUSTER_SIZE_RATIO = 50` × the median call size in
-a cluster still count toward `n_callers` but do not extend the candidate's boundaries — this
-stops one caller's multi-megabase segment from inflating an exon-level candidate.
+The model is **trained offline**, not by the pipeline — see [Training the model](#training-the-model).
 
-**Features.** Two per caller: `[hit, score]`, where `hit ∈ {0,1}` is detection of the candidate
-and `score` is that caller's own confidence for its best matching call (0 when there is no hit).
+## Candidate regions
 
-**Model.** `BoundedConsensusModel` = `StandardScaler` + logistic regression, with the constraint
-that **every coefficient is non-negative and capped**. A caller can therefore only ever add
-evidence, never subtract it, and no single caller can dominate:
+Calls from all callers are clustered by chromosome and variant type (DEL/DUP) into candidate
+regions. A call counts as overlapping when the overlap covers at least `MIN_OVERLAP_FRAC = 0.5`
+of the *smaller* interval, so a gene-level segment containing a single exon still matches it.
 
-```
-consensus_score(region) = sigmoid( intercept + Σ_c  w_c · features_c(region) )
-```
+**The model never chooses coordinates.** `_merge_candidates()` does, and it takes the **union**
+of the cluster: `start = min(start)`, `end = max(end)` over its members. A region is therefore
+as wide as the widest caller that supports it. These union coordinates are what the model
+scores; they are only narrowed afterwards, by `refine_regions.py`, for the candidates that pass
+the cutoff (see [Scoring](#scoring-use_consensus--true), step 5).
 
-Two capping modes:
+To stop one caller inflating everything, calls larger than `MAX_CLUSTER_SIZE_RATIO = 50` × the
+median call size in a cluster are treated as **coordinate outliers**: they still count toward
+`n_callers` and `callers_supporting`, but their boundaries are excluded. That way a caller
+reporting a gene-level deletion can vote for a candidate without stretching it to megabase scale.
 
-- `per_caller` (default) — `hit` + `score` coefficients of one caller sum to ≤ `weight_cap`
-- `per_coef` — each coefficient individually ≤ `weight_cap` (a caller can reach 2 × cap)
+Clustering is greedy and seeded in sorted-by-start order, and each absorbed call widens the
+interval that subsequent calls are tested against — so clusters chain: if A–B overlap and B–C
+overlap, C joins even when A and C do not.
+
+## Features and model
+
+Ten columns, in this exact order (`FEATURE_COLUMNS` in `score_samples_xgb.py`, which must stay
+in sync with `modelling/src/train_no_freec_cnmops.py`):
+
+| Feature | Meaning |
+|---|---|
+| `cnvkit`, `exomeDepth`, `panelcnMOPS`, `XHMM`, `conifer`, `gatk` | binary — did that caller support the candidate |
+| `agreement_count` | number of supporting callers, counted over **all 8** of `ALL_CALLERS` |
+| `type_DUP` | `1` for DUP, `0` for DEL |
+| `log_span_width` | `log1p(end - start)` |
+| `type_conflict` | do DEL and DUP both exist at the same `(chr, start, end)` |
+
+`freec` and `cnMOPS` are dropped as model inputs but **still counted in `agreement_count`** —
+that is how the training data was built, and "simplifying" it to 6 would silently mismatch the
+model. Per-caller confidence scores are not used; only the detection pattern, the variant type,
+and the span.
+
+**Model.** `xgboost.XGBClassifier`, 500 trees, `max_depth=4`, `learning_rate=0.05`,
+`scale_pos_weight≈7.56`, loaded from XGBoost native JSON. Out-of-fold row precision `0.884` /
+recall `0.928` / F2 `0.919`, versus `0.784` / `0.922` for the "gatk fired" baseline — see
+[`modelling/reports/metrics/no_freec_cnmops.md`](modules/xgboost_consensus_model/modelling/reports/metrics/no_freec_cnmops.md).
+Its own ≥0.90-precision operating threshold is **`0.7499`**.
 
 **Callers.** The parsers understand
-`cnvkit, freec, exomeDepth, panelcnMOPS, cnMOPS, XHMM, conifer, gatk`
-(`ALL_CALLERS`). The default trained subset is
-`exomeDepth, panelcnMOPS, XHMM, conifer, gatk` (`DEFAULT_CALLERS`). Files are located by pattern:
+`cnvkit, freec, exomeDepth, panelcnMOPS, cnMOPS, XHMM, conifer, gatk` (`ALL_CALLERS`).
+Files are located by pattern:
 
 | Caller | Pattern |
 |---|---|
@@ -255,209 +285,141 @@ Two capping modes:
 Both directory layouts are recognised — `<sample>/<caller>/<file>` and the flat
 `<sample>/<sample>_<caller>.tsv` that this pipeline produces.
 
-## Scoring mode
+## Scoring (`use_consensus = true`)
 
 ```groovy
-use_consensus    = true
-consensus_cutoff = null     // or e.g. 0.5
-consensus_model  = null     // or '/path/to/your_model.pkl'
+use_consensus = true
+xgb_cutoff    = 0.7499   // or null to keep every scored candidate
+xgb_model     = null     // or '/path/to/your_model.json'
 ```
-
-`CONSENSUS_MODEL_SCORE` runs once per sample. It stages that sample's caller files into
-`sv_dir/<sample>/`, runs `score_samples.py`, and writes into `merged_variants/`:
-
-| File | Content |
-|---|---|
-| `<sample>_smoothed_variants.tsv` | all scored candidates, reshaped to the exact `MERGE_VARIANT_CALLS` schema (13 columns) so the annotation step is agnostic to which combiner ran |
-| `<sample>_smoothed_variants.bed` | 1-based START, so `VariantID`s match ClassifyCNV's |
-| `<sample>_merged_target_consensus.tsv/.bed` | the cutoff-filtered set (or all calls when no cutoff) |
-| `<sample>_per_exon_matrix.tsv` | copy of the scored file, for downstream compatibility |
-
-Raw model output columns are
-`sample | chr | start | end | type | n_callers | callers_supporting | consensus_score | cn_label`.
-`consensus_cutoff` additionally makes `score_samples.py` write
-`*_smoothed_variants_filtered_<cutoff>.tsv`, which becomes the source of
-`_merged_target_consensus.*`.
-
-The process also restores the callers' original chromosome naming: `norm_chr()` always
-normalises internally to `chrN`, so the module detects whether the input files used a `chr`
-prefix and strips it again if they did.
-
-## Training mode
-
-Set `consensus_train = true` to fit a new model from ground-truth data. Training runs **before**
-scoring, and when `use_consensus = true` the freshly trained model is the one used to score the
-run. Training also works with `use_consensus = false` — the model is trained and published, and
-the run still combines calls with the rule-based merge.
-
-Two processes are involved:
-
-- **`CONSENSUS_PREPARE_TRAINING_DIR`** — only when training on this run's own calls. Copies each
-  sample's caller files into a directory named after the sample, which is the layout the trainer
-  expects.
-- **`CONSENSUS_MODEL_TRAIN`** — stages all sample directories under `sv_dir/`, runs
-  `train_consensus_model.py`, and publishes the model to `consensus_model/`.
-
-### Two training cohorts
-
-**A. External cohort (recommended).** Point the pipeline at a directory of previously called
-samples — typically a simulated cohort where the injected variants *are* the complete truth:
-
-```groovy
-use_consensus          = true
-consensus_train        = true
-consensus_train_sv_dir = '/data/model_training/structural_varcalls_simulated_BR'
-consensus_train_gt_dir = '/data/model_training/selected_regions_simulated'
-```
-
-Each immediate sub-directory of `consensus_train_sv_dir` is one training sample; the names
-`all_samples`, `selected_regions`, `merged_variants` and `selected_regions_simulated` are
-skipped automatically, so pointing at an existing `structural_varcalls/` directory works.
-
-**B. This run's own calls.** Leave `consensus_train_sv_dir` unset and the samples being analysed
-become the training cohort:
-
-```groovy
-use_consensus          = true
-consensus_train        = true
-consensus_train_gt_dir = '/data/truth/my_cohort'
-```
-
-Only sensible when the ground truth for those samples is (near-)complete — see
-[Pitfalls and caveats](#pitfalls-and-caveats).
-
-### What training does
-
-1. Load ground truth; merge exon-level entries into variant-level events (same chromosome and
-   type, gap ≤ 10 kb).
-2. Intersect labelled samples with the sample directories actually present.
-3. Detect which callers are present; restrict to `consensus_train_callers` or to the
-   `DEFAULT_CALLERS` that exist in the data.
-4. Split at **sample** level, stratified by "has any ground-truth variant"
-   (`consensus_train_test_size`, `consensus_train_seed`). The test split is recorded but not
-   consumed by training — it exists so held-out samples can be evaluated separately.
-5. Per-caller TP/FP/FN/precision/recall/F1 on the training samples, overall and split by DEL/DUP.
-6. Build the feature matrix — **positives** = one row per ground-truth variant; **negatives** =
-   each caller call that overlaps no ground-truth variant. Training aborts below 5 positives.
-7. Fit with 5-fold stratified CV (ROC-AUC), then refit on all training rows.
-8. Derive the **max-F1 threshold** on the training data as `suggested_cutoff`.
-
-## Ground-truth format
-
-One TSV per sample in `consensus_train_gt_dir`, named `<SAMPLE>_selected_regions.tsv`, with a
-header row:
-
-| Column | Meaning |
-|---|---|
-| `sample` | sample identifier — **must equal the sample directory name** |
-| `chrom` | chromosome (with or without `chr`; normalised internally) |
-| `start` | 1-based start |
-| `end` | end |
-| `name` | free text (gene/exon label), not used for matching |
-| `variant_type` | free text |
-| `type` | **`DEL` or `DUP`** — anything else is ignored |
-
-Rows whose `type` is not DEL/DUP are dropped silently. Empty files and dot-files are skipped.
-Exon-level rows belonging to one event should simply be listed individually; the 10 kb merge
-step reassembles them.
-
-Example:
-
-```
-sample	chrom	start	end	name	variant_type	type
-BR-2604	chr17	41243452	41246877	BRCA1_ex11	simulated	DEL
-BR-2604	chr17	41247862	41249306	BRCA1_ex10	simulated	DEL
-BR-2604	chr13	32900238	32900420	BRCA2_ex3	simulated	DUP
-```
-
-## Training parameters
 
 | Param | Default | Meaning |
 |---|---|---|
-| `consensus_train` | `false` | master switch for training |
-| `consensus_train_gt_dir` | `null` | **required** when training — ground-truth directory |
-| `consensus_train_sv_dir` | `null` | external training cohort; `null` = use this run's calls |
-| `consensus_train_callers` | `null` | space-separated subset, e.g. `'exomeDepth panelcnMOPS XHMM conifer gatk'` |
-| `consensus_train_weight_cap` | `1.0` | upper bound of each non-negative caller weight |
-| `consensus_train_cap_mode` | `'per_caller'` | `per_caller` or `per_coef` (see above) |
-| `consensus_train_l2` | `0.01` | L2 penalty on the coefficients |
-| `consensus_train_test_size` | `0.2` | fraction of samples held out (`0.0` = train on everything) |
-| `consensus_train_seed` | `42` | split seed |
-| `consensus_cutoff` | `null` | scoring threshold; when set it is also recorded in the trained model in place of the max-F1 cutoff |
-| `consensus_model` | `null` | pre-trained `.pkl` to score with; ignored while `consensus_train = true` |
+| `use_consensus` | `true` | `true` = score with the model instead of `MERGE_VARIANT_CALLS` |
+| `xgb_model` | `null` | pre-trained XGBoost `.json`; `null` = the one shipped in the module |
+| `xgb_cutoff` | `0.7499` | score threshold; the model's ≥0.90-precision operating point (precision `0.9002` / recall `0.9191`). `null` keeps every scored candidate |
+| `smooth_gap_bp` | `10000` | gap for re-merging refined exons (step 5); also used by `FINAL_FORMATTING_TABLES` |
 
-## Training outputs
+`min_number_callers` and `size_threshold` belong to the rule-based path and are **ignored**
+when `use_consensus = true` — `xgb_cutoff` is the only filter.
 
-Published to `consensus_model/`:
+### What happens, per sample
+
+`XGBOOST_CONSENSUS_SCORE` runs once per sample, in place of `MERGE_VARIANT_CALLS`. Everything
+upstream (the callers) and downstream (`CLASSIFY_AND_ANNOTATE`, `FINAL_FORMATTING_TABLES`) is
+unchanged.
+
+1. **Stage the calls.** The sample's caller files are linked into `sv_dir/<sample>/`, and the
+   calls of all 8 callers in `ALL_CALLERS` are parsed.
+2. **Build candidates.** `_merge_candidates()` clusters the calls into union-coordinate
+   candidate regions, as described in [Candidate regions](#candidate-regions).
+3. **Score.** `score_samples_xgb.py` builds the ten [features](#features-and-model) for each
+   candidate and writes the model's probability as `consensus_score`.
+4. **Filter.** Candidates with `consensus_score >= xgb_cutoff` continue; the rest are dropped
+   from the annotated and final tables. The complete scored set is still kept in
+   `_all_scored_candidates.tsv`.
+5. **Refine to supported exons.** `refine_regions.py` intersects each surviving candidate with
+   the panel BED and keeps only the exons that a member call actually overlaps. A member call
+   doesn't count as exon-level support when it is a size outlier (`MAX_CLUSTER_SIZE_RATIO`) or
+   spans exons of more than `MAX_SUPPORT_GENES = 2` panel genes. Without this step, a single
+   multi-megabase segment would make every exon it crosses an affected exon. Exons kept for
+   the same sample, chromosome and type are re-merged across gaps of up to `smooth_gap_bp`.
+   A candidate with no panel overlap, or no exon-level support, is passed through **unchanged**
+   rather than dropped. Losing a called region silently would be worse than reporting a coarse
+   one.
+6. **Reshape.** The refined regions are rewritten to the exact 13-column `MERGE_VARIANT_CALLS`
+   schema as `_smoothed_variants.tsv/.bed`. This is what `CLASSIFY_AND_ANNOTATE` receives, so
+   genes, classification and score are computed on the refined coordinates, not the union
+   span.
+
+### Outputs
+
+Written into `merged_variants/` in the task's work directory (not published; they flow into
+`cohort_results/`):
 
 | File | Content |
 |---|---|
-| `cnv_consensus_model.pkl` | the pickled model — what scoring loads |
-| `cnv_consensus_model.json` | caller weights, per-feature weights, intercept, cutoff, callers, CV/train metrics, and the train/test sample lists |
-| `cnv_train_caller_stats.tsv` | per-caller TP/FP/FN/precision/recall/F1 (training samples) |
-| `cnv_train_caller_stats_by_type.tsv` | the same, split into DEL and DUP |
-| `cnv_train_pr_curve.tsv` | consensus precision/recall/F1 across thresholds |
-| `cnv_train_train_test_split.tsv` | which sample went to train vs test |
+| `<sample>_all_scored_candidates.tsv` | **every** scored candidate, unfiltered and unrefined. Use this to re-threshold or audit |
+| `<sample>_refined_regions.tsv` | the final region set after steps 4–5 |
+| `<sample>_smoothed_variants.tsv` | the refined regions in the 13-column `MERGE_VARIANT_CALLS` schema, passed to annotation |
+| `<sample>_smoothed_variants.bed` | 1-based START, so `VariantID`s match ClassifyCNV's |
+| `<sample>_merged_target_consensus.tsv/.bed` | the cutoff-filtered candidates at union coordinates (before refinement) |
+| `<sample>_per_exon_matrix.tsv` | copy of `_all_scored_candidates.tsv`, for downstream compatibility |
 
-The training log prints the usable-sample count, the callers actually used, the per-caller
-table, the metrics and the final weights — **read it before trusting the model**. Key lines:
+Raw model output columns are
+`sample | chr | start | end | type | n_callers | callers_supporting | consensus_score | cn_label`.
+With `xgb_cutoff` set, `score_samples_xgb.py` also writes
+`*_smoothed_variants_filtered_<cutoff>.tsv`, and steps 5–6 read from that file. When the
+cutoff is set and candidates exist but the file is missing, the task fails rather than passing
+on unfiltered calls labelled as filtered.
 
-```
-  N samples usable (present in GT + simulated)
-  Using callers: exomeDepth, panelcnMOPS, XHMM, conifer, gatk
-  Shape: (rows, features)  |  positives: P  negatives: N
-  Suggested cutoff (max-F1 on train): 0.XXXX
-```
+The same module backs the standalone
+[`modelling/xgboost_pipeline/`](modules/xgboost_consensus_model/modelling/xgboost_pipeline/README.md), which scores
+pre-computed caller output without re-running the callers.
 
-Judge the result from `cv_roc_auc_mean` (generalisation) versus `train_roc_auc` (fit), and from
-`cnv_train_pr_curve.tsv` when choosing a `consensus_cutoff`.
+## Training the model
 
-## Reusing a trained model
+Training is **offline only** — there is no in-pipeline training process. The pipeline scores
+with a pre-trained model and nothing else. The full path, all under `modelling/`:
 
-Training every run is wasteful. Once you are happy with a model, either point the pipeline at
-the published copy:
+| Step | Script | Produces |
+|---|---|---|
+| 1. Merge caller calls across the training cohort | `merge_from_bronco.py` | `all_samples_merged.tsv` |
+| 2. Build the feature matrix | `src/features.py` | feature table + grouped CV folds |
+| 3. Baseline / EDA (optional) | `src/baseline.py`, `src/eda.py` | `reports/metrics/baseline.*` |
+| 4. Tune hyperparameters | `src/tune.py` | `reports/metrics/tuning.*` |
+| 5. Fit the shipped model | `src/train_no_freec_cnmops.py` | `models/xgboost_tuned_no_freec_cnmops.json` + `reports/metrics/no_freec_cnmops.*` |
 
-```groovy
-consensus_train = false
-use_consensus   = true
-consensus_model = '/path/to/consensus_model/cnv_consensus_model.pkl'
-```
+Splits are **grouped by sample** (`StratifiedGroupKFold`), so no sample appears in both train
+and test. Metrics are reported out-of-fold, and `F2` is the selection criterion throughout —
+recall is weighted over precision, on the view that a missed CNV costs more than one to review.
 
-or promote it to the repo default by copying it (and its `.json`) over
-`modules/consensus_model/cnv_consensus_model.pkl`, which is what `consensus_model = null` uses.
-
-The `.pkl` is a Python pickle of `BoundedConsensusModel`, so it must be loaded with a compatible
-`cnv_consensus_model.py` and a scikit-learn close to the one that produced it. Keep the `.json`
-alongside it — it is the human-readable record of how that model was trained.
+To deploy a newly trained model, copy it from `modelling/models/` up to the module root as
+`xgboost_tuned_no_freec_cnmops.json` (what `xgb_model = null` uses), or point `xgb_model` at
+it. **If you change `FEATURE_COLUMNS`, change it in both
+`train_no_freec_cnmops.py` and `score_samples_xgb.py`** — the column order must match the
+model's stored `feature_names` or scoring silently mispredicts.
 
 ## Pitfalls and caveats
 
-**Sample names must match exactly.** Ground truth is keyed by the `sample` *column inside* the
-TSV, not by the filename, and is intersected with the sample directory names — which in this
-pipeline are `meta.sample_name`, i.e. the full BAM basename
+**Ground-truth sample names must match exactly.** Ground truth is keyed by the `sample` *column
+inside* the TSV, not by the filename, and is intersected with sample directory names — which in
+this pipeline are `meta.sample_name`, i.e. the full BAM basename
 (`007_CZE3xBRCA1328_run137.picard.sorted.RG.rmdup`), not a short label. A mismatch yields
-0 usable samples and a confusing failure inside the train/test split rather than a clear error.
-Check the `N samples usable` line first whenever training fails.
+0 usable samples.
 
 **Negatives assume complete ground truth.** Every caller call that does not overlap a
 ground-truth variant becomes a negative training example. That is correct for a simulated cohort
 where the injected variants are the whole truth, but if the ground truth lists only a handful of
 known variants per sample, every other genuine CNV is labelled a false positive and the model
-learns to distrust the callers. For real cohorts, prefer an external simulated/curated training
-set (`consensus_train_sv_dir`).
+learns to distrust the callers.
 
-**Training on the run you score is optimistic.** Cohort B trains on the same calls it then
-scores; the resulting scores are not an unbiased estimate of performance. Use the held-out split
-or a separate cohort for any performance claim.
+**Coordinates are only as good as the callers.** The model scores union coordinates, so a single
+over-called segment widens the region it sees (`log_span_width`). `agreement_count` also counts
+a caller that agrees on the *event* even when it disagrees badly on the *boundaries*.
+`refine_regions.py` narrows the reported regions to supported exons. It does not change what
+was scored, and candidates outside the panel BED keep their union span. If breakpoint precision
+matters, `MIN_OVERLAP_FRAC`, `MAX_CLUSTER_SIZE_RATIO` and `MAX_SUPPORT_GENES` are the knobs.
+Retraining will not help, since the model never sees a coordinate choice to learn from.
 
-**Callers present ≠ callers expected.** The model is only trained on callers whose files exist
-in the training cohort, and scoring uses the caller list stored in the model. If you train with
-a cohort produced by a different toggle set than the run you later score, the weights will not
-cover the callers you actually have. Compare `Using callers:` in the training log with your
-`use_*` toggles.
+**Keep all 8 callers enabled.** The model's direct features are six callers, but `freec` and
+`cnMOPS` still feed it. Both count in `agreement_count`, and both take part in candidate
+merging, which decides which candidates exist, their boundaries (`log_span_width`) and
+`type_conflict`. Turning any of the eight off shifts every candidate's features away from what
+the model saw in training. The `0.7499` cutoff then no longer gives the ~0.90 precision the
+report states.
 
-**`CONSENSUS_MODEL_SCORE` is `cache false`.** Scoring re-runs on every `-resume`; training does
-not.
+**A failed scoring step fails the task.** A sample with no caller calls gets a header-only
+table from `score_samples_xgb.py` and carries on with zero CNVs. Any non-zero exit is therefore
+a real error, and it stops the task rather than being reported as a sample with no CNVs:
+a conda env without `xgboost` ≥ 3.4, an unreadable model, a parser error. The task's
+`.command.err` has the traceback (`nextflow log <run_name> -f name,workdir`).
+
+**ECOLE is not combined.** ECOLE calls the whole cohort in one task and its output carries no
+per-sample label, so it is kept out of `ch_all_varcalls`. Neither combiner reads it. With
+`use_ecole = true` its calls are only published to `structural_varcalls/all_samples/`.
+
+**`XGBOOST_CONSENSUS_SCORE` is `cache false`.** Scoring re-runs on every `-resume`.
 
 ---
 

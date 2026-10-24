@@ -84,74 +84,15 @@ fwrite(combined, file.path(output_dir, "all_samples_combined.tsv"), sep = "\t")
 cat("Wrote all_samples_combined.tsv\n")
 
 # ---------------------------------------------------------------------------
-# Per-exon breakdown for consensus-path regions
-# Consensus candidates use UNION coordinates (large when gene-level callers are
-# involved).  Re-intersecting with the capture BED gives per-exon entries that
-# match the granularity produced by merging_and_smoothing.R for the voting path,
-# so smooth_combined() behaves identically for both paths.
-# Only applied when 'consensus_score' column is present (consensus path only).
+# NOTE: the per-exon breakdown that used to live here has moved upstream, into
+# modules/xgboost_consensus_model/refine_regions.py, and now runs BEFORE
+# CLASSIFY_AND_ANNOTATE. Doing it here meant regions were annotated at their
+# union coordinates and every exon row then inherited the parent's GFT_genes,
+# Classification, Total score and dosage-sensitive gene list -- a 141 bp row
+# could carry a five-gene "Pathogenic" annotation, and exons with no caller
+# support got rows at all. Regions arriving here are already final, so this
+# script only joins, smooths adjacent segments and formats.
 # ---------------------------------------------------------------------------
-if (!is.null(bed_panel) && file.exists(bed_panel) &&
-    nrow(combined) > 0 &&
-    "consensus_score" %in% names(combined)) {
-
-  is_cons <- !is.na(combined[["consensus_score"]])
-
-  if (any(is_cons)) {
-    cat(sprintf("Per-exon breakdown: %d consensus regions using BED panel %s\n",
-                sum(is_cons), basename(bed_panel)))
-
-    bed <- tryCatch(
-      fread(bed_panel, header = FALSE, sep = "\t"),
-      error = function(e) { cat("  WARNING: could not read BED panel:", conditionMessage(e), "\n"); NULL }
-    )
-
-    if (!is.null(bed) && ncol(bed) >= 3) {
-      bed_col_names <- c("b_CHROM", "b_START", "b_END",
-                         if (ncol(bed) >= 4) "b_NAME" else NULL)
-      setnames(bed, seq_along(bed_col_names), bed_col_names)
-      bed[, b_CHROM := gsub("^chr", "", as.character(b_CHROM))]
-      bed[, b_START := as.integer(b_START) + 1L]   # BED 0-based → 1-based
-      bed[, b_END   := as.integer(b_END)]
-      setkey(bed, b_CHROM, b_START, b_END)
-
-      cons_dt  <- combined[ is_cons]
-      other_dt <- combined[!is_cons]
-
-      cons_dt[, CHROM := as.character(CHROM)]
-      setkey(cons_dt, CHROM, START, END)
-
-      ov <- tryCatch(
-        foverlaps(cons_dt, bed,
-                  by.x = c("CHROM", "START", "END"),
-                  by.y = c("b_CHROM", "b_START", "b_END"),
-                  type = "any", nomatch = NA),
-        error = function(e) { cat("  WARNING: foverlaps failed:", conditionMessage(e), "\n"); NULL }
-      )
-
-      if (!is.null(ov)) {
-        matched   <- ov[!is.na(b_START)]
-        unmatched <- ov[ is.na(b_START)]
-
-        if (nrow(matched) > 0) {
-          matched[, START := b_START]
-          matched[, END   := b_END]
-          cat(sprintf("  -> %d per-exon entries (from %d consensus regions)\n",
-                      nrow(matched), sum(is_cons)))
-        }
-
-        drop_cols <- intersect(c("b_CHROM","b_START","b_END","b_NAME"), names(ov))
-        for (col in drop_cols) {
-          if (col %in% names(matched))   matched[,   (col) := NULL]
-          if (col %in% names(unmatched)) unmatched[, (col) := NULL]
-        }
-
-        combined <- rbindlist(list(other_dt, matched, unmatched), fill = TRUE)
-        cat(sprintf("  -> %d total entries after breakdown\n", nrow(combined)))
-      }
-    }
-  }
-}
 
 # ---------------------------------------------------------------------------
 # Smoothing: merge adjacent segments per sample, same type, gap <= max_gap_bp
@@ -198,10 +139,14 @@ smooth_combined <- function(dt, max_gap_bp = 500000L) {
         split_field(r[["GFT_genes"]], ", ")
       )), collapse = ", ")
 
-      lbl <- na_str(r[["cn_label"]])
-      if (lbl != "")
-        cur$cn_labels <- if (cur$cn_labels == "") lbl
-                         else paste(cur$cn_labels, lbl, sep = "|")
+      # Dedup, like every other collapsed field in this block. The per-exon
+      # breakdown above copies one region-level cn_label onto each exon row it
+      # fans out, so a plain append repeats an identical label n_targets times
+      # (an 18-target NF1 region produced the same string 18 times).
+      cur$cn_labels <- paste(unique(c(
+        split_field(cur$cn_labels, "|"),
+        split_field(r[["cn_label"]], "|")
+      )), collapse = "|")
 
       cur$classifications <- paste(sort(unique(c(
         split_field(cur$classifications, ";"),
